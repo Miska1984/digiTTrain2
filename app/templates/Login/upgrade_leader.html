@@ -1,0 +1,13 @@
+{% extends 'login/base_in.html' %}
+
+{% block content %}
+    
+<h1>Egyesületvezető módosítása</h1>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    {{ form.full_name.label }} {{ form.full_name() }}
+    {{ form.short_name.label }} {{ form.short_name() }}
+    {{ form.submit() }}
+</form>
+
+{% endblock %}

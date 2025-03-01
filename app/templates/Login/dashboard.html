@@ -1,0 +1,123 @@
+{% extends 'login/base_in.html' %}
+
+{% block content %}
+    <h1>Üdvözöllek, {{ current_user.first_name }}!</h1>
+
+    <h2>Szerepkörök:</h2>
+    <ul class="list-group">
+        {% for role in roles %}
+            <li class="list-group-item">
+                <div class="row align-items-center">
+                    <div class="col-md-auto">
+                        <span>
+                            {{ role.name }}
+                            {% if role.name == "Szülő" %}
+                                {% if role.details.children %}
+                                    <ul>
+                                        {% for child in role.details.children %}
+                                            <li>
+                                                {{ child.name }}
+                                                {% if child.club %}
+                                                    ({{ child.club }}
+                                                    {% if child.sport %}
+                                                        - {{ child.sport }}
+                                                    {% endif %}
+                                                    {% if child.coach %}
+                                                        (Edző: {{ child.coach.first_name }} {{ child.coach.last_name }})
+                                                    {% endif %}
+                                                    )
+                                                {% endif %}
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                {% endif %}
+                            {% elif role.name == "Sportoló" %}
+                                {% if role.details.club %}
+                                    ({{ role.details.club }}
+                                    {% if role.details.sport %}
+                                        - {{ role.details.sport }}
+                                    {% endif %}
+                                    {% if role.details.coach_name %}
+                                        (Edző: {{ role.details.coach_name }})
+                                    {% endif %}
+                                    {% if role.details.parent_name %}
+                                        (Szülő: {{ role.details.parent_name }})
+                                    {% endif %}
+                                    )
+                                {% endif %}
+                            {% elif role.name == "Edző" %}
+                                {% if role.details.club %}
+                                    ({{ role.details.club }}
+                                    {% if role.details.sport %}
+                                        - {{ role.details.sport }}
+                                    {% endif %}
+                                    )
+                                {% endif %}
+                            {% elif role.name == "Egyesületvezető" %}
+                                {% if role.details.club %}
+                                    ({{ role.details.club }})
+                                    {% if role.details.sports %}
+                                        <div class="border p-2 mt-2">
+                                            Sportágak: {{ ', '.join(role.details.sports) }}
+                                        </div>
+                                    {% endif %}
+                                {% endif %}
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="col-md-auto ml-auto">
+                        {% if role.name == "Sportoló" %}
+                            {% if not role.has_parent %}
+                                <a href="{{ url_for('routes.add_parents')}}" class="btn btn-primary btn-sm mr-1">
+                                    Szülő hozzáadása
+                                </a>
+                            {% endif %}
+                        {% endif %}
+
+                        {% if role.name == "Egyesületvezető" %}
+                            <a href="{{ url_for('routes.upgrade_leader')}}" class="btn btn-warning btn-sm mr-1">
+                                <i class="fas fa-pencil-alt"></i>
+                            </a>
+                        {% endif %}
+                        {% if role.name == "Edző" %}
+                            <a href="#" class="btn btn-warning btn-sm mr-1">
+                                <i class="fas fa-pencil-alt"></i>
+                            </a>
+                        {% endif %}
+                        {% if role.name == "Sportoló" %}
+                            <a href="#" class="btn btn-warning btn-sm mr-1">
+                                <i class="fas fa-pencil-alt"></i>
+                            </a>
+                        {% endif %}
+                        {% if role.name == "Szülő" %}
+                            <a href="#" class="btn btn-warning btn-sm mr-1">
+                                <i class="fas fa-pencil-alt"></i>
+                            </a>
+                        {% endif %}
+
+                        <a href="#" class="btn btn-danger btn-sm mr-1">
+                            <i class="fas fa-trash-alt"></i>
+                        </a>
+                        {% if role.name == "Sportoló" %}
+                            <a href="#" class="btn btn-info btn-sm">
+                                Sportolói funkciók
+                            </a>
+                        {% elif role.name == "Edző" %}
+                            <a href="#" class="btn btn-info btn-sm">
+                                Edzői funkciók
+                            </a>
+                        {% elif role.name == "Szülő" %}
+                            <a href="#" class="btn btn-info btn-sm">
+                                Szülői funkciók
+                            </a>
+                        {% elif role.name == "Egyesületvezető" %}
+                            <a href="#" class="btn btn-info btn-sm">
+                                Egyesületvezetői funkciók
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </li>
+            {% endif %}
+    <script src="{{ url_for('static', filename='JS/dashboard.js') }}"></script>
+{% endblock %}

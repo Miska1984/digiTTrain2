@@ -1,0 +1,22 @@
+{% extends 'login/base_in.html' %}
+
+{% block content %}
+
+<div class="container mt-4">
+    <h2>Szülő hozzáadása</h2>
+    <p>Válaszd ki a szülőt, akit hozzá szeretnél rendelni!</p>
+
+    <form method="POST">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+            <label for="parent" class="form-label">Szülő kiválasztása</label>
+            {{ form.parent(class="form-control") }}
+        </div>
+
+        <button type="submit" class="btn btn-primary">Hozzárendelés</button>
+        <a href="{{ url_for('routes.dashboard') }}" class="btn btn-secondary">Mégse</a>
+    </form>
+</div>
+
+{% endblock %}

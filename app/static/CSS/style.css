@@ -1,0 +1,12 @@
+/* base-out navbár */
+.navbar {
+    background-color: #321977; 
+}
+
+button {
+    margin-right: 10px; 
+  }
+
+.d-flex a {
+    margin-right: 10px; 
+  }
