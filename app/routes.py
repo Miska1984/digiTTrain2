@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, abort
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from flask_login import login_user, logout_user, login_required, current_user
 from app.forms import RegistrationForm, LoginForm, ProfileForm, CreateClubForm, CreateRoleLeaderForm, CreateRoleCoachForm, CreateRoleParentForm, CreateRoleAthleteForm, AddParentsForm, UpgradeClubForm
 from app.models import User, db, Club, Leader, Sport, Coach, ClubSport, Parent, Athlete, AthleteParent
@@ -134,9 +134,26 @@ def logout():
 @bp.route('/dashboard')
 @login_required
 def dashboard():
-    user_id = current_user.id
-    roles = get_user_roles(user_id)
-    return render_template('login/dashboard.html', roles=roles)
+    # Sportolók lekérdezése (változatlan)
+    athletes = Athlete.query.all()
+
+    # Szülők lekérdezése (változatlan)
+    parents = Parent.query.all()
+
+    # Edzők lekérdezése a bejelentkezett felhasználó alapján (változatlan)
+    coach = Coach.query.filter_by(user_id=current_user.id).first()
+
+    # Vezetők lekérdezése (változatlan)
+    leaders = Leader.query.filter_by(user_id=current_user.id).join(Club, Leader.club_id == Club.id).all()
+
+    # Edzőhöz tartozó egyesületek és sportágak lekérdezése
+    club_sports = []
+    if coach:
+        club_sports = ClubSport.query.filter(ClubSport.id.in_([c.club_sport_id for c in Coach.query.filter_by(user_id=coach.user_id).all()])).all()
+
+
+    return render_template('login/dashboard.html', user=current_user, athletes=athletes,
+                                             parents=parents, coach=coach, club_sports=club_sports, leaders=leaders)
 
 @bp.route('/profile', methods=['GET', 'POST'])
 @login_required  # Csak bejelentkezett felhasználók számára
