@@ -6,28 +6,59 @@
     <p>Kedves <label>{{ user.last_name }} {{ user.first_name }}</label>! A következő szerepköreid vannak:</p>
     {% endif %}
 
-    {% if athletes %}    
-        <h2>Sportolók</h2>
-        <ul>
-            {% for athlete in athletes %}
-                <li>
-                    {{ athlete.user.username }} - Sportoló
-                    <a href="#"><i class="fas fa-pencil-alt"></i></a>
-                </li>
-            {% endfor %}
-        </ul>
+    {% if athlete %}
+    <h2>Sportoló adatai</h2>
+    <p><strong>Név:</strong> {{ athlete.user.first_name }} {{ athlete.user.last_name }}</p>
+    <p><strong>Edző:</strong> 
+        {% if coach %}
+        {{ coach.user.first_name }} {{ coach.user.last_name }}
+        {% else %}
+        Nincs hozzárendelve
+        {% endif %}
+        </p>
+        <p><strong>Sportág:</strong> {{ sport.name if sport else 'Nincs hozzárendelve' }}</p>
+        <p><strong>Egyesület:</strong> {{ club.full_name if club else 'Nincs hozzárendelve' }}</p>
+    {% if athlete.user.birth_year %}
+        <p><strong>Életkor:</strong> {{ (date.today().year - athlete.user.birth_year.year) }} éves</p>
     {% endif %}
 
+    <p><strong>Szülő hozzárendelve:</strong> 
+        {% if has_parent %}
+            <span class="badge bg-success">Igen</span>
+        {% else %}
+            <span class="badge bg-danger">Nem</span>
+        {% endif %}
+    </p>
+    <a href="#" style="color: yellow;"><i class="fas fa-pencil-alt"></i></a>
+    <a href="#" style="color: red;"><i class="fas fa-trash-alt"></i></a>
+    <a href="#" class="btn btn-primary">Szerepkör funkció</a>    
+
+    {% if not has_parent and athlete.user.birth_year and (date.today().year - athlete.user.birth_year.year) < 18 %}
+        <div class="alert alert-warning mt-3" role="alert">
+            <strong>Figyelem!</strong> A sportoló 18 év alatti, de nincs szülő hozzárendelve.
+        </div>
+        <a href="{{ url_for('routes.add_parents', athlete_id=athlete.id, coach_id=athlete.coach_id) }}" class="btn btn-warning mt-2">
+            <i class="bi bi-person-plus"></i> Szülő hozzáadása
+        </a>
+        
+    {% endif %}
+    {% endif %}
+
+
     {% if parents %}
-        <h2>Szülők</h2>
-        <ul>
-            {% for parent in parents %}
-                <li>
-                    {{ parent.user.username }} - Szülő
-                    <a href="#"><i class="fas fa-pencil-alt"></i></a>
-                </li>
-            {% endfor %}
-        </ul>
+    <h2>Szülő Szerepkör:</h2>
+    <ul>
+        {% for data in athletes_data %}
+            <p>Gyermek neve: {{ data.athlete.user.first_name }} {{ data.athlete.user.last_name }}</p>
+            <p>Egyesület: {{ data.club.full_name if data.club else 'N/A' }}</p>
+            <p>Sportág: {{ data.sport.name if data.sport else 'N/A' }}</p>
+            <p>Edző neve: {{ data.coach.first_name if data.coach else 'N/A' }} {{ data.coach.last_name if data.coach else '' }}</p>
+            <hr>
+            <a href="#" style="color: yellow;"><i class="fas fa-pencil-alt"></i></a>
+            <a href="#" style="color: red;"><i class="fas fa-trash-alt"></i></a>
+            <a href="#" class="btn btn-primary">Szerepkör funkció</a>
+        {% endfor %}
+    </ul>
     {% endif %}
 
     {% if coach %}

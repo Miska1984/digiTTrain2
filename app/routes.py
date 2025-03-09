@@ -83,6 +83,10 @@ def get_user_roles(user_id):
 
     return roles
 
+@bp.context_processor
+def inject_date():
+    return {'date': date}
+
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     return render_template('index.html')
@@ -135,16 +139,66 @@ def logout():
 @login_required
 def dashboard():
     # Sportolók lekérdezése (változatlan)
-    athletes = Athlete.query.all()
+    athlete = Athlete.query.filter_by(user_id=current_user.id).first()
+    parent = None
+    coach = None
+    club_sport = None
+    club = None
+    sport = None
+    has_parent = False
+
+    if athlete:
+        # Életkor kiszámítása
+        age = relativedelta(date.today(), athlete.user.birth_year).years
+
+        # Szülő hozzárendelés ellenőrzése
+        athlete_parent = AthleteParent.query.filter_by(athlete_id=athlete.id).first()
+        if athlete_parent:
+            parent = Parent.query.get(athlete_parent.parent_id)
+            has_parent = True  # Ha van, akkor True lesz
+
+        # Edző lekérdezése
+        coach = Coach.query.get(athlete.coach_id)
+
+        # Sport és egyesület lekérdezése
+        if coach:
+            club_sport = ClubSport.query.get(coach.club_sport_id)
+            if club_sport:
+                club = Club.query.get(club_sport.club_id)
+                sport = Sport.query.get(club_sport.sport_id)
+
+        # Ha a sportoló 18 év alatti és nincs szülő hozzárendelve, átirányítás a szülő hozzáadási oldalra
+        if age < 18 and not has_parent:
+            return redirect(url_for('routes.add_parents', athlete_id=athlete.id, coach_id=athlete.coach_id))
+
 
     # Szülők lekérdezése (változatlan)
-    parents = Parent.query.all()
+    parent = Parent.query.filter_by(user_id=current_user.id).first()
+    athletes_data = []
+    
+    if parent:
+        athlete_parents = AthleteParent.query.filter_by(parent_id=parent.id).all()
+        for ap in athlete_parents:
+            athlete = Athlete.query.get(ap.athlete_id)
+            if athlete:
+                coach = Coach.query.get(athlete.coach_id)
+                club_sport = ClubSport.query.get(coach.club_sport_id) if coach else None
+                club = Club.query.get(club_sport.club_id) if club_sport else None
+                sport = Sport.query.get(club_sport.sport_id) if club_sport else None
 
-    # Edzők lekérdezése a bejelentkezett felhasználó alapján (változatlan)
-    coach = Coach.query.filter_by(user_id=current_user.id).first()
+                athletes_data.append({
+                    'athlete': athlete,
+                    'coach': coach.user if coach else None,
+                    'club': club,
+                    'sport': sport
+                })
+
 
     # Vezetők lekérdezése (változatlan)
     leaders = Leader.query.filter_by(user_id=current_user.id).join(Club, Leader.club_id == Club.id).all()
+
+    # Edzők lekérdezése a bejelentkezett felhasználó alapján (változatlan)
+    coach = Coach.query.filter_by(user_id=current_user.id).first()
 
     # Edzőhöz tartozó egyesületek és sportágak lekérdezése
     club_sports = []
@@ -152,8 +206,10 @@ def dashboard():
         club_sports = ClubSport.query.filter(ClubSport.id.in_([c.club_sport_id for c in Coach.query.filter_by(user_id=coach.user_id).all()])).all()
 
 
-    return render_template('login/dashboard.html', user=current_user, athletes=athletes,
-                                             parents=parents, coach=coach, club_sports=club_sports, leaders=leaders)
+    return render_template('login/dashboard.html', user=current_user, athletes_data=athletes_data, club_sport=club_sport,
+                                             parents=[parent] if parent else [], athlete=athlete, parent=parent, club=club, 
+                                             sport=sport, has_parent=has_parent, coach=coach, club_sports=club_sports, 
+                                             leaders=leaders)
 
 @bp.route('/profile', methods=['GET', 'POST'])
 @login_required  # Csak bejelentkezett felhasználók számára
