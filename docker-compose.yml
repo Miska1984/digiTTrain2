@@ -1,0 +1,43 @@
+# version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+    ports:
+      - "3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_container
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      PMA_ARBITRARY: 1
+      MYSQL_ROOT_PASSWORD: ''
+    depends_on:
+      - db
+
+  app:
+    build: .
+    container_name: django_app
+    command: sh -c "sleep 5 && python manage.py runserver 0.0.0.0:8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    volumes:
+      - .:/workspace
+    env_file:
+      - .env
+
+volumes:
+  dbdata:
