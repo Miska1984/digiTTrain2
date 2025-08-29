@@ -1,27 +1,21 @@
 # Dockerfile
+FROM python:3.12-slim
 
-# Alap kép
-FROM python:3.12
-
-# A kimenet azonnali megjelenítése a logokban
 ENV PYTHONUNBUFFERED=1
 
-# Konténer munkakönyvtárának beállítása
-# Most a gyökérkönyvtár lesz a munkakönyvtár
 WORKDIR /app
 
-# MySQL függőségek telepítése (fontos a telepítés a pip előtt)
+# MySQL függőségek telepítése
 RUN apt-get update && apt-get install -y default-libmysqlclient-dev
 
-# Függőségek másolása és telepítése
 COPY requirements.txt /app/
+
 RUN pip install -r /app/requirements.txt
 
-# A teljes projekt másolása
 COPY . /app/
 
-# Django settings környezeti változó beállítása
-ENV DJANGO_SETTINGS_MODULE=digiTTrain2.digiTTrain.production
+# Django settings
+ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 
-# A Gunicorn parancs a megfelelő elérési úttal
-CMD exec gunicorn digiTTrain2.digiTTrain.wsgi:application --bind :$PORT --workers 2 --threads 4 --timeout 0
+# Run the application with the correct project name
+CMD exec gunicorn digiTTrain.wsgi:application --bind :$PORT --workers 2 --threads 4 --timeout 0
