@@ -5,11 +5,7 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-# MySQL függőségek telepítése
-RUN apt-get update && apt-get install -y default-libmysqlclient-dev
-
 COPY requirements.txt /app/
-
 RUN pip install -r /app/requirements.txt
 
 COPY . /app/
@@ -17,5 +13,4 @@ COPY . /app/
 # Django settings
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 
-# Run the application with the correct project name
 CMD exec gunicorn digiTTrain.wsgi:application --bind :$PORT --workers 2 --threads 4 --timeout 0
