@@ -1,0 +1,10 @@
+# cloudbuild.yaml
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digittrain2/digit-train-web:$COMMIT_SHA', '.']
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digittrain2/digit-train-web:$COMMIT_SHA']
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
+  args: ['gcloud', 'run', 'deploy', 'digit-train-web', '--image', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digittrain2/digit-train-web:$COMMIT_SHA', '--region', 'europe-west1', '--allow-unauthenticated']
+  env:
+  - 'ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app'
