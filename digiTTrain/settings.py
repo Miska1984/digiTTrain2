@@ -23,10 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-gd_25j*vos)xlnio1ja2m=ne=z18z)nt3f1@u@$l%(t!uif9uk"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get('DEBUG') == 'True'
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOST', '')]
-
+# Új sor a Cloud Run-hoz
+USE_X_FORWARDED_HOST = True
 
 # Application definition
 
@@ -123,5 +124,4 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
-# Új sor a Cloud Run-hoz
-USE_X_FORWARDED_HOST = True
+
