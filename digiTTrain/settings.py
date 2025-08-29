@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = "django-insecure-gd_25j*vos)xlnio1ja2m=ne=z18z)nt3f1@u@$l%(t!uif9uk"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOST', '')]
 
@@ -105,7 +105,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "hu-hu"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = 'Europe/Budapest'
 
 USE_I18N = True
 
@@ -121,3 +121,7 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Új sor a Cloud Run-hoz
+USE_X_FORWARDED_HOST = True
