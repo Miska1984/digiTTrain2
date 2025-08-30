@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Főoldal</title>
+</head>
+<body>
+    <h2>Üdvözlünk, {{ user.username }}!</h2>
+    <p>Sikeresen bejelentkeztél.</p>
+    <form action="{% url 'logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit">Kilépés</button>
+    </form>
+</body>
+</html>

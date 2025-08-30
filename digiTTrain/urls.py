@@ -17,10 +17,11 @@ Including another URLconf
 
 # digiTTrain/urls.py
 from django.contrib import admin
-from django.urls import path
-from core.views import hello_world # Importáld a hello_world függvényt
+from django.urls import path, include
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', hello_world, name='hello_world'), # Új útvonal a hello_world-höz
+    path('', include('core.urls', namespace='core')),
+    path('users/', include('users.urls')),
 ]

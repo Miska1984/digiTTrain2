@@ -1,17 +1,20 @@
-# cloudbuild.yaml
 steps:
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digittrain2/digit-train-web:$COMMIT_SHA', '.']
+  args: ['build', '-t', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digit-train-web', '.']
 - name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digittrain2/digit-train-web:$COMMIT_SHA']
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk:slim'
-  args: [
-    'gcloud', 'run', 'deploy', 'digit-train-web',
-    '--image', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digittrain2/digit-train-web:$COMMIT_SHA',
-    '--region', 'europe-west1',
-    '--allow-unauthenticated',
-    '--set-env-vars=ALLOWED_HOST=digit-train-web-195803356854.europe-west1.run.app,DEBUG=False'
-  ]
-
-options:
-  logging: CLOUD_LOGGING_ONLY
+  args: ['push', 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digit-train-web']
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  args:
+  - gcloud
+  - run
+  - deploy
+  - digit-train-web
+  - --image
+  - europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/digit-train-web
+  - --region
+  - europe-west1
+  - --platform
+  - managed
+  - --allow-unauthenticated
+  env:
+  - 'DJANGO_SETTINGS_MODULE=digiTTrain.production'

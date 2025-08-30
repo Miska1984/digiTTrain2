@@ -2,3 +2,4 @@ asgiref==3.9.1
 Django==5.2.5
 sqlparse==0.5.3
 gunicorn~=22.0
+mysqlclient~=2.2
