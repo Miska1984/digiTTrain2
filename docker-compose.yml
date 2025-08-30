@@ -1,43 +1,46 @@
-# version: '3.8'
+# docker-compose.yml
 
 services:
-  db:
-    image: mysql:8.0
-    container_name: mysql_db
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
-    ports:
-      - "3307:3306"
+  mysql-db:
+    image: mysql:8.0.43
     volumes:
-      - dbdata:/var/lib/mysql
+      - db_data:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=digittrain2
+      - MYSQL_USER=digittrain_user
+      - MYSQL_PASSWORD=password
+    ports:
+      - "3306:3306"
+    healthcheck: # Adj hozzá egy healthcheck-et a mysql-db-hez
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  phpmyadmin:
+  django-app:
+    build: .
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+    - DEBUG=True
+    - ALLOWED_HOST=turbo-space-computing-machine-5ggpxw6j7qvg34gr.app.github.dev
+    depends_on:
+      mysql-db:
+        condition: service_healthy # Várjuk meg, amíg a mysql-db készen áll
+
+  phpmyadmin-app:
     image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin_container
     ports:
       - "8080:80"
     environment:
-      PMA_HOST: db
-      PMA_PORT: 3306
-      PMA_ARBITRARY: 1
-      MYSQL_ROOT_PASSWORD: ''
+      - PMA_HOST=mysql-db # A PMA_HOST-nak is a service nevére kell mutatnia
+      - PMA_PORT=3306
     depends_on:
-      - db
-
-  app:
-    build: .
-    container_name: django_app
-    command: sh -c "sleep 5 && python manage.py runserver 0.0.0.0:8000"
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    volumes:
-      - .:/workspace
-    env_file:
-      - .env
+      - mysql-db
 
 volumes:
-  dbdata:
+  db_data:

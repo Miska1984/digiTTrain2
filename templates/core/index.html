@@ -2,12 +2,16 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Hello, World!</title>
+    <title>Kezdőoldal</title>
 </head>
 <body>
-    <h1>Hello, World!</h1>
-    <p>Akkor ez most meg jelent a Cloudon!</p>
-
-    <p>és Módosul is</p>
+    <h1>Üdvözlünk a DigiTTrain oldalon!</h1>
+    {% if user.is_authenticated %}
+        <p>Már bejelentkeztél, {{ user.username }}!</p>
+        <a href="{% url 'main_page' %}">Tovább a főoldalra</a>
+    {% else %}
+        <a href="{% url 'login' %}">Belépés</a>
+        <a href="{% url 'register' %}">Regisztráció</a>
+    {% endif %}
 </body>
 </html>

@@ -25,9 +25,13 @@ SECRET_KEY = os.environ.get('SECRET_KEY', "django-insecure-gd_25j*vos)xlnio1ja2m
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG') == 'True'
 
-ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOST', '')]
-# Új sor a Cloud Run-hoz
-USE_X_FORWARDED_HOST = True
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# Cloud Run/Codespaces specifikus beállítások
+if os.getenv('GAE_APPLICATION') or os.getenv('CODESPACES'):
+    ALLOWED_HOSTS.append(os.getenv('ALLOWED_HOST', ''))
+    ALLOWED_HOSTS.append(os.getenv('GITHUB_CODESPACES_PORT_FORWARDING_URL', '').lstrip('https://'))
+    USE_X_FORWARDED_HOST = True
 
 # Application definition
 
@@ -39,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'core',
+    'users',
 ]
 
 MIDDLEWARE = [
@@ -70,17 +75,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "digiTTrain.wsgi.application"
 
-
 # Database
+# A DATABASES beállítás most már a development.py vagy a production.py fájlból töltődik be
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
-}
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -123,5 +120,13 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Környezeti változó alapján választunk beállításokat
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
+
+if ENVIRONMENT == 'production':
+    from .production import *
+else:
+    from .development import *
 
 
+LOGIN_REDIRECT_URL = 'core:main_page'
