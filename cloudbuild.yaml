@@ -18,15 +18,17 @@ steps:
   entrypoint: gcloud
   args:
   - run
-  - deploy
-  - digit-train-web
-  - --image
-  - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest
-  - --region
-  - europe-west1
-  - --platform
-  - managed
-  - --allow-unauthenticated
+  - jobs
+  - execute
+  - migrate-job
+  - --region=europe-west1
+  # Add environment variables for the migrate job
+  - --set-env-vars
+  - "DB_HOST=<YOUR_DB_IP_ADDRESS>"
+  - "DB_USER=<YOUR_DB_USER>"
+  - "DB_PASS=<YOUR_DB_PASSWORD>"
+  - "DB_NAME=<YOUR_DB_NAME>"
+  - "DJANGO_SETTINGS_MODULE=digiTTrain.settings"
 
 options:
   logging: CLOUD_LOGGING_ONLY
