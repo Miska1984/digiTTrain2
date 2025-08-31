@@ -17,6 +17,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the current directory contents into the container
 COPY . .
 
+# Set the PYTHONPATH to include the current directory
+ENV PYTHONPATH="/app"
+
 # Expose port 8000 to the outside world
 EXPOSE 8000
 
