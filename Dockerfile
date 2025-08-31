@@ -21,7 +21,7 @@ COPY . .
 ENV PYTHONPATH="/app"
 
 # Expose port 8000 to the outside world
-EXPOSE 8000
+EXPOSE ${PORT}
 
 # Run the Django server
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "digiTTrain.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:${PORT}", "digiTTrain.wsgi:application"]
