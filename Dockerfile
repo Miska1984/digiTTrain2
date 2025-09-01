@@ -1,27 +1,28 @@
-# Use an official Python runtime as a parent image
-FROM python:3.12-slim
+steps:
+# Build image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
 
-# Set the working directory in the container
-WORKDIR /app
+# Push image
+- name: 'gcr.io/cloud-builders/docker'
+  args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-# Install system dependencies for mysqlclient
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    pkg-config \
-    libmariadb-dev-compat
+# Deploy to Cloud Run
+- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  entrypoint: gcloud
+  args:
+    - run
+    - deploy
+    - digit-train-web
+    - --image
+    - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest
+    - --region
+    - europe-west1
+    - --platform
+    - managed
+    - --allow-unauthenticated
+    - --set-env-vars
+    - DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
 
-# Install any needed packages specified in requirements.txt
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy the current directory contents into the container
-COPY . .
-
-# Set the PYTHONPATH to include the current directory
-ENV PYTHONPATH="/app"
-
-# Expose port 8000 to the outside world
-EXPOSE ${PORT}
-
-# Run the Django server
-CMD ["gunicorn", "--bind", "0.0.0.0:${PORT}", "digiTTrain.wsgi:application"]
+options:
+  logging: CLOUD_LOGGING_ONLY
