@@ -7,16 +7,36 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-  # Run migrations (Django)
+  # Create or update migrate-job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
-        gcloud run jobs execute migrate-job \
-          --region=europe-west1 \
-          --update-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,DJANGO_SETTINGS_MODULE=digiTTrain.production,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
-          --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db
+        gcloud run jobs describe migrate-job --region europe-west1 >/dev/null 2>&1 \
+        && gcloud run jobs update migrate-job \
+             --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
+             --region europe-west1 \
+             --command "python" \
+             --args "manage.py","migrate" \
+             --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app \
+             --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db \
+        || gcloud run jobs create migrate-job \
+             --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
+             --region europe-west1 \
+             --command "python" \
+             --args "manage.py","migrate" \
+             --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app \
+             --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db
+
+  # Execute migrate-job
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - run
+      - jobs
+      - execute
+      - migrate-job
+      - --region=europe-west1
 
   # Deploy Cloud Run service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -32,7 +52,7 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
-      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,DJANGO_SETTINGS_MODULE=digiTTrain.production,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db
+      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app \
       - --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db
 
 options:
