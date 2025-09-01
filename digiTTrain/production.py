@@ -13,7 +13,7 @@ DATABASES = {
         'USER': os.getenv('DB_USER'),
         'PASSWORD': os.getenv('DB_PASS'),
         # Cloud SQL unix socket elérési út
-        'HOST': os.getenv('DB_HOST', f"/cloudsql/{os.getenv('CLOUDSQL_CONNECTION_NAME')}"),
+        'HOST': f"/cloudsql/{os.getenv('CLOUDSQL_CONNECTION_NAME')}",
         'PORT': '3306',
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
