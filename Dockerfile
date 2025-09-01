@@ -1,28 +1,34 @@
-steps:
-# Build image
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
+# Használjunk hivatalos Python image-t
+FROM python:3.12-slim
 
-# Push image
-- name: 'gcr.io/cloud-builders/docker'
-  args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
+# Ne bufferezzen a Python (jobb logolás Cloud Run-ban)
+ENV PYTHONUNBUFFERED=1
 
-# Deploy to Cloud Run
-- name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-  entrypoint: gcloud
-  args:
-    - run
-    - deploy
-    - digit-train-web
-    - --image
-    - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest
-    - --region
-    - europe-west1
-    - --platform
-    - managed
-    - --allow-unauthenticated
-    - --set-env-vars
-    - DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
+# Munkakönyvtár
+WORKDIR /app
 
-options:
-  logging: CLOUD_LOGGING_ONLY
+# Rendszerfüggőségek telepítése (mysqlclient miatt kell)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    pkg-config \
+    libmariadb-dev-compat \
+    && rm -rf /var/lib/apt/lists/*
+
+# Követelmények másolása és telepítése
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Alkalmazás fájlok bemásolása
+COPY . .
+
+# PYTHONPATH beállítás (hogy a modulok jól látszódjanak)
+ENV PYTHONPATH=/app
+
+# Cloud Run port
+ENV PORT=8080
+
+# Default Django settings
+ENV DJANGO_SETTINGS_MODULE=digiTTrain.production
+
+# A Gunicorn indítja a Django appot
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "digiTTrain.wsgi:application"]
