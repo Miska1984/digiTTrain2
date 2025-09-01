@@ -14,7 +14,7 @@ steps:
   - migrate-job
   - --region=europe-west1
   # Add environment variables for the migrate job
-  - --set-env-vars
+  - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
   - "DB_NAME=digittraindb"
   - "DB_USER=root"
   - "DB_PASS=MIshek001-1984"
@@ -35,7 +35,7 @@ steps:
   - managed
   - --allow-unauthenticated
   # Add environment variables for the main service
-  - --set-env-vars
+  - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
   - "DB_NAME=digittraindb"
   - "DB_USER=root"
   - "DB_PASS=MIshek001-1984"
