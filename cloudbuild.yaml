@@ -13,7 +13,6 @@ steps:
   - execute
   - migrate-job
   - --region=europe-west1
-  # Only one line for environment variables
   - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
 
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -29,7 +28,6 @@ steps:
   - --platform
   - managed
   - --allow-unauthenticated
-  # Only one line for environment variables
   - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
 
 options:
