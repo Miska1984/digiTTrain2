@@ -1,10 +1,10 @@
 steps:
 - name: 'gcr.io/cloud-builders/docker'
   args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
-  
+
 - name: 'gcr.io/cloud-builders/docker'
   args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
-  
+
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args:
@@ -13,14 +13,9 @@ steps:
   - execute
   - migrate-job
   - --region=europe-west1
-  # Add environment variables for the migrate job
+  # Only one line for environment variables
   - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
-  - "DB_NAME=digittraindb"
-  - "DB_USER=root"
-  - "DB_PASS=MIshek001-1984"
-  - "DJANGO_SETTINGS_MODULE=digiTTrain.settings"
-  - "DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db" # <-- Ezt a sort frissítsd
-  
+
 - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
   entrypoint: gcloud
   args:
@@ -34,13 +29,8 @@ steps:
   - --platform
   - managed
   - --allow-unauthenticated
-  # Add environment variables for the main service
+  # Only one line for environment variables
   - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db
-  - "DB_NAME=digittraindb"
-  - "DB_USER=root"
-  - "DB_PASS=MIshek001-1984"
-  - "DJANGO_SETTINGS_MODULE=digiTTrain.settings"
-  - "DB_HOST=/cloudsql/digittrain-projekt:europe-west3:digitrain-mysql-db"
-  
+
 options:
   logging: CLOUD_LOGGING_ONLY
