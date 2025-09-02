@@ -6,17 +6,17 @@ import os
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
 # Adatbázis beállításai Cloud SQL-hez (socket vagy TCP)
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASS'),
-        # Cloud SQL unix socket elérési út
-        'HOST': f"/cloudsql/{os.getenv('CLOUDSQL_CONNECTION_NAME')}",
-        'PORT': '3306',
-        'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+if os.getenv('CLOUDSQL_CONNECTION_NAME'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': os.environ['DB_NAME'],
+            'USER': os.environ['DB_USER'],
+            'PASSWORD': os.environ['DB_PASS'],
+            'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
+            'PORT': os.environ.get('DB_PORT', '3306'),
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            },
+        }
     }
-}
