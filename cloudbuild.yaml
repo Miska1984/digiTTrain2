@@ -22,7 +22,7 @@ steps:
              --cpu "1" \
              --max-retries "3" \
              --parallelism "1" \
-             --task-count "1" \
+
              --command "python" \
              --args "manage.py","migrate","--verbosity=2" \
              --set-env-vars="DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db,DB_HOST=127.0.0.1,DB_PORT=3306,DEBUG=False" \
@@ -36,7 +36,7 @@ steps:
              --cpu "1" \
              --max-retries "3" \
              --parallelism "1" \
-             --task-count "1" \
+
              --command "python" \
              --args "manage.py","migrate","--verbosity=2" \
              --set-env-vars="DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db,DB_HOST=127.0.0.1,DB_PORT=3306,DEBUG=False" \
