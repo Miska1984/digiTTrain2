@@ -13,21 +13,19 @@ steps:
     args:
       - -c
       - |
-        gcloud run jobs describe migrate-job --region europe-west1 >/dev/null 2>&1 && \
         gcloud run jobs update migrate-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
           --region europe-west1 \
           --command "python" \
           --args "manage.py","migrate","--verbosity","3" \
-          --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
+          --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DB_HOST=127.0.0.1,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app \
           --add-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db \
-        || \
-        gcloud run jobs create migrate-job \
+        || gcloud run jobs create migrate-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
           --region europe-west1 \
           --command "python" \
           --args "manage.py","migrate","--verbosity","3" \
-          --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
+          --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DB_HOST=127.0.0.1,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app \
           --add-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db
 
   # Execute migrate-job
@@ -54,7 +52,7 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
-      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
+      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DB_HOST=127.0.0.1,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app \
       - --add-cloudsql-instances
       - digittrain-projekt:europe-west1:digitrain-mysql-db
 
