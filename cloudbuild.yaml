@@ -20,14 +20,16 @@ steps:
              --command "python" \
              --args "manage.py","migrate","--verbosity","3" \
              --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
-             --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db \
+             --add-volume name=cloudsql,volume-type=cloudsql-instances,volume-source=digittrain-projekt:europe-west1:digitrain-mysql-db \
+             --add-volume-mount volume=cloudsql,mount-path=/cloudsql \
         || gcloud run jobs create migrate-job \
              --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
              --region europe-west1 \
              --command "python" \
              --args "manage.py","migrate","--verbosity","3" \
              --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
-             --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db
+             --add-volume name=cloudsql,volume-type=cloudsql-instances,volume-source=digittrain-projekt:europe-west1:digitrain-mysql-db \
+             --add-volume-mount volume=cloudsql,mount-path=/cloudsql
 
   # Execute migrate-job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -40,7 +42,7 @@ steps:
       - --region=europe-west1
 
   # Deploy Cloud Run service
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - run
@@ -54,7 +56,10 @@ steps:
       - managed
       - --allow-unauthenticated
       - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
-      - --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db
+      - --add-volume
+      - name=cloudsql,volume-type=cloudsql-instances,volume-source=digittrain-projekt:europe-west1:digitrain-mysql-db
+      - --add-volume-mount
+      - volume=cloudsql,mount-path=/cloudsql
 
 options:
   logging: CLOUD_LOGGING_ONLY
