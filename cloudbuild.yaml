@@ -2,11 +2,11 @@ steps:
   # Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
-   
+
   # Push Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
-   
+
   # Create or update migrate-job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
@@ -17,39 +17,18 @@ steps:
         && gcloud run jobs update migrate-job \
              --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
              --region europe-west1 \
-             --task-timeout "3600" \
-             --memory "512Mi" \
-             --cpu "1" \
-             --max-retries "3" \
-             --parallelism "1" \
-
              --command "python" \
-             --args "manage.py","migrate","--verbosity=2" \
-             --set-env-vars="DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db,DB_HOST=127.0.0.1,DB_PORT=3306,DEBUG=False" \
+             --args "manage.py","migrate" \
+             --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
              --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db \
-             --service-account="digit-train-web@digittrain-projekt.iam.gserviceaccount.com" \
         || gcloud run jobs create migrate-job \
              --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
              --region europe-west1 \
-             --task-timeout "3600" \
-             --memory "512Mi" \
-             --cpu "1" \
-             --max-retries "3" \
-             --parallelism "1" \
-
              --command "python" \
-             --args "manage.py","migrate","--verbosity=2" \
-             --set-env-vars="DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db,DB_HOST=127.0.0.1,DB_PORT=3306,DEBUG=False" \
-             --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db \
-             --service-account="digit-train-web@digittrain-projekt.iam.gserviceaccount.com"
-   
-  # Wait a moment for the job to be ready
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - 'sleep 10'
-   
+             --args "manage.py","migrate" \
+             --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
+             --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db
+
   # Execute migrate-job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
@@ -59,8 +38,7 @@ steps:
       - execute
       - migrate-job
       - --region=europe-west1
-      - --wait
-   
+
   # Deploy Cloud Run service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
@@ -75,17 +53,8 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
-      - --memory
-      - "512Mi"
-      - --cpu
-      - "1"
-      - --concurrency
-      - "80"
-      - --max-instances
-      - "100"
-      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db,DB_HOST=127.0.0.1,DB_PORT=3306,DEBUG=False
+      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db \
       - --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db
-      - --service-account=digit-train-web@digittrain-projekt.iam.gserviceaccount.com
- 
+
 options:
   logging: CLOUD_LOGGING_ONLY
