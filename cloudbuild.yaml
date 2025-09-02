@@ -42,7 +42,7 @@ steps:
       - --region=europe-west1
 
   # Deploy Cloud Run service
-    - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - run
@@ -63,3 +63,4 @@ steps:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
