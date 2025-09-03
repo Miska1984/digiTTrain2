@@ -26,11 +26,13 @@ services:
     ports:
       - "8000:8000"
     environment:
-    - DEBUG=True
-    - ALLOWED_HOST=turbo-space-computing-machine-5ggpxw6j7qvg34gr.app.github.dev
+      - DEBUG=True
+      - ALLOWED_HOST=turbo-space-computing-machine-5ggpxw6j7qvg34gr.app.github.dev
+      - DJANGO_SETTINGS_MODULE=digiTTrain.development # Ez a kulcsfontosságú sor
     depends_on:
       mysql-db:
-        condition: service_healthy # Várjuk meg, amíg a mysql-db készen áll
+        condition: service_healthy
+
 
   phpmyadmin-app:
     image: phpmyadmin/phpmyadmin

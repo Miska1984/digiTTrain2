@@ -1,17 +1,8 @@
-<!DOCTYPE html>
-<html lang="hu">
-<head>
-    <meta charset="UTF-8">
-    <title>Kezdőoldal</title>
-</head>
-<body>
-    <h1>Üdvözlünk a DigiTTrain oldalon! És akkor működik minden módosítás!</h1>
-    {% if user.is_authenticated %}
-        <p>Már bejelentkeztél, {{ user.username }}!</p>
-        <a href="{% url 'main_page' %}">Tovább a főoldalra</a>
-    {% else %}
-        <a href="{% url 'login' %}">Belépés</a>
-        <a href="{% url 'register' %}">Regisztráció</a>
-    {% endif %}
-</body>
-</html>
+{% extends 'base_out.html' %}
+
+{% block content %}
+    <div class="text-center">
+        <h1>Üdvözlünk nálunk!</h1>
+        <p>A bejelentkezéshez és regisztrációhoz használd a fenti gombokat.</p>
+    </div>
+{% endblock %}
