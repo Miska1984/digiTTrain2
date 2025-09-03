@@ -1,15 +1,14 @@
-<!DOCTYPE html>
-<html lang="hu">
-<head>
-    <meta charset="UTF-8">
-    <title>Regisztráció</title>
-</head>
-<body>
-    <h2>Regisztráció</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Regisztráció</button>
-    </form>
-</body>
-</html>
+{% extends "base_out.html" %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card p-4 shadow" style="width: 100%; max-width: 400px;">
+        <h2 class="text-center mb-4">Regisztráció</h2>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn btn-primary w-100 mt-3">Regisztrálj</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

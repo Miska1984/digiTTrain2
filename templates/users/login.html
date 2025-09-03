@@ -1,20 +1,24 @@
-<!DOCTYPE html>
-<html lang="hu">
-<head>
-    <meta charset="UTF-8">
-    <title>Bejelentkezés</title>
-</head>
-<body>
-    <h1>Bejelentkezés</h1>
-    
-    {% if form.errors %}
-        <p>A felhasználóneved és jelszavad nem egyezik. Kérlek, próbáld újra.</p>
-    {% endif %}
+{% extends "base_out.html" %}
 
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Bejelentkezés</button>
-    </form>
-</body>
-</html>
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card p-4 shadow" style="width: 100%; max-width: 400px;">
+        <h2 class="text-center mb-4">Bejelentkezés</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="{{ form.username.id_for_label }}" class="form-label">Felhasználónév</label>
+                {{ form.username }}
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.password.id_for_label }}" class="form-label">Jelszó</label>
+                {{ form.password }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Bejelentkezés</button>
+        </form>
+        <p class="text-center mt-3">
+            Nincs még fiókod? <a href="{% url 'users:register' %}">Regisztrálj!</a>
+        </p>
+    </div>
+</div>
+{% endblock %}
