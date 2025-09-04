@@ -36,6 +36,7 @@ if os.getenv('GAE_APPLICATION') or os.getenv('CODESPACES'):
 # Application definition
 
 INSTALLED_APPS = [
+    "users.apps.UsersConfig",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -43,7 +44,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'core',
-    'users',
 ]
 
 MIDDLEWARE = [
@@ -130,3 +130,7 @@ else:
 
 
 LOGIN_REDIRECT_URL = 'core:main_page'
+
+# Egyedi User modell
+AUTH_USER_MODEL = "users.User"
+
