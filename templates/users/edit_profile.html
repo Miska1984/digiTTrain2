@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Profil szerkesztése{% endblock %}
+
+{% block content %}
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+    <div class="card p-4 shadow" style="width: 100%; max-width: 600px;">
+        <h2 class="text-center mb-4">Profil szerkesztése</h2>
+        <form method="post">
+            {% csrf_token %}
+            <h3>Felhasználói adatok</h3>
+            {{ user_form.as_p }}
+
+            <h3>Személyes adatok</h3>
+            {{ profile_form.as_p }}
+
+            <button type="submit" class="btn btn-primary w-100 mt-3">Mentés</button>
+        </form>
+        <hr>
+        <a href="{% url 'users:password_change' %}" class="btn btn-secondary w-100 mt-2">Jelszó megváltoztatása</a>
+    </div>
+</div>
+{% endblock %}

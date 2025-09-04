@@ -3,6 +3,6 @@
 {% block title %}Főoldal{% endblock %}
 
 {% block content %}
-<h2>Üdvözlünk, {{ user.username }}!</h2>
+<h2>Üdvözlünk,{{ user.profile.first_name }} {{ user.profile.last_name }} !</h2>
 <p>Sikeresen bejelentkeztél.</p>
 {% endblock %}
