@@ -32,3 +32,4 @@ GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME', 'digittrain-media-publikus-mis
 GS_AUTO_CREATE_BUCKET = False
 GS_LOCATION = 'europe-west1'
 MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
+GS_QUERYSTRING_AUTH = False
