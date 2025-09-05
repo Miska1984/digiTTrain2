@@ -24,37 +24,18 @@ def register(request):
 
 @login_required
 def edit_profile(request):
-    current_user = request.user
-    profile, created = Profile.objects.get_or_create(user=current_user)
-
-    if request.method == 'POST':
-        form = ProfileForm(request.POST, instance=profile)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'A profil sikeresen frissítve!')
-            return redirect('core:main_page')
-    else:
-        form = ProfileForm(instance=profile)
-
-    context = {
-        'form': form
-    }
-    return render(request, 'users/edit_profile.html', context)
-
-@login_required
-def edit_profile(request):
     profile, created = Profile.objects.get_or_create(user=request.user)
     
     if request.method == 'POST':
-        # Két űrlapot kell kezelni
         user_form = UserUpdateForm(request.POST, instance=request.user)
-        profile_form = ProfileForm(request.POST, instance=profile)
+        # Fontos: itt adunk át request.FILES-t is
+        profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
 
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
             messages.success(request, 'A profil sikeresen frissítve!')
-            return redirect('core:main_page')
+            return redirect('users:edit_profile')
     else:
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileForm(instance=profile)

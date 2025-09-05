@@ -30,5 +30,11 @@ ENV PORT=8080
 # Default Django settings
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.production
 
+# Változtasd meg a mappa tulajdonosát a www-data felhasználóra
+RUN chown -R www-data:www-data /app/media_root
+
+# Adjon írási jogot a mappára a www-data számára
+RUN chmod -R 775 /app/media_root
+
 # A Gunicorn indítja a Django appot
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "digiTTrain.wsgi:application"]

@@ -6,7 +6,7 @@
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="card p-4 shadow" style="width: 100%; max-width: 600px;">
         <h2 class="text-center mb-4">Profil szerkesztése</h2>
-        <form method="post">
+        <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             <h3>Felhasználói adatok</h3>
             {{ user_form.as_p }}
@@ -18,6 +18,8 @@
         </form>
         <hr>
         <a href="{% url 'users:password_change' %}" class="btn btn-secondary w-100 mt-2">Jelszó megváltoztatása</a>
+        
+        <a href="{% url 'core:main_page' %}" class="btn btn-link w-100 mt-2">Vissza a főoldalra</a>
     </div>
 </div>
 {% endblock %}

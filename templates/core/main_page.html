@@ -3,6 +3,11 @@
 {% block title %}Főoldal{% endblock %}
 
 {% block content %}
-<h2>Üdvözlünk,{{ user.profile.first_name }} {{ user.profile.last_name }} !</h2>
-<p>Sikeresen bejelentkeztél.</p>
+<div class="text-center my-4">
+    {% if user.profile.profile_picture %}
+        <img src="{{ user.profile.profile_picture.url }}" alt="Profilkép" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
+    {% endif %}
+    <h2>Üdvözlünk, {{ user.profile.first_name }} {{ user.profile.last_name }}!</h2>
+    <p>Sikeresen bejelentkeztél.</p>
+</div>
 {% endblock %}
