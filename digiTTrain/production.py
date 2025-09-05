@@ -1,6 +1,7 @@
 # digiTTrain/production.py
-from .settings import *
 import os
+from .settings import *
+
 
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
@@ -27,7 +28,7 @@ CSRF_TRUSTED_ORIGINS = ['https://digit-train-web-195803356854.europe-west1.run.a
 
 # Képfeltöltés Google Cloud Storage-ba
 DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
-GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME') # Itt már csak környezeti változóból olvassuk
-GS_AUTO_CREATE_BUCKET = False # Általában nem kell automatikusan létrehozni a bucketet
-GS_LOCATION = 'europe-west1' # Vagy a te régiód
+GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME')
+GS_AUTO_CREATE_BUCKET = False
+GS_LOCATION = 'europe-west1'
 MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'

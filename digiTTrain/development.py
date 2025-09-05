@@ -1,5 +1,10 @@
 # digiTTrain/development.py
 from .settings import *
+import os
+from pathlib import Path
+
+
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Django adatbázis beállítások a Docker Compose-hoz
 DATABASES = {
@@ -21,3 +26,6 @@ DEBUG = True
 
 # Engedélyezd a lokális hosztokat
 ALLOWED_HOSTS = ['*']
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media_root')
