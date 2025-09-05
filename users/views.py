@@ -25,23 +25,27 @@ def register(request):
 @login_required
 def edit_profile(request):
     profile, created = Profile.objects.get_or_create(user=request.user)
-    
+    if created:
+        # Ha új profil jön létre, biztosítjuk, hogy a user hozzá legyen rendelve
+        profile.user = request.user
+        profile.save()
+
     if request.method == 'POST':
         user_form = UserUpdateForm(request.POST, instance=request.user)
-        # Fontos: itt adunk át request.FILES-t is
         profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
 
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
             profile_form.save()
-            messages.success(request, 'A profil sikeresen frissítve!')
+            messages.success(request, '✅ A profil sikeresen frissítve!')
             return redirect('users:edit_profile')
+        else:
+            messages.error(request, '⚠️ Hiba történt! Ellenőrizd az űrlap adatait.')
     else:
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileForm(instance=profile)
-    
-    context = {
+
+    return render(request, 'users/edit_profile.html', {
         'user_form': user_form,
         'profile_form': profile_form
-    }
-    return render(request, 'users/edit_profile.html', context)
+    })
