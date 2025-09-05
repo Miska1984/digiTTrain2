@@ -18,11 +18,11 @@ class UserUpdateForm(forms.ModelForm):
         fields = ['username', 'email']
 
 class ProfileForm(forms.ModelForm):
-    # Itt módosítjuk a mező nevét, hogy megegyezzen a modellel
-    profile_picture = forms.ImageField(required=False)
+
 
     class Meta:
         model = Profile
+        # ***Add 'profile_picture' ide***
         fields = ['first_name', 'last_name', 'date_of_birth', 'gender', 'profile_picture']
         widgets = {
             'date_of_birth': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
