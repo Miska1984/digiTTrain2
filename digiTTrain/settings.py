@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    'storages',
     'core',
 ]
 
@@ -136,16 +137,3 @@ LOGIN_REDIRECT_URL = 'core:main_page'
 # Egyedi User modell
 AUTH_USER_MODEL = "users.User"
 
-# Képfeltöltés Google Cloud Storage-ba
-if os.environ.get('ENVIRONMENT') == 'production':
-  # Django-tárhelybeállítások a Google Cloud Storage-hoz
-  DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
-  GS_BUCKET_NAME = 'digittrain-media-miska1984'  # Itt használd a saját bucket nevedet
-  GS_AUTO_CREATE_BUCKET = True
-  GS_LOCATION = 'europe-west1' # Vagy a te régiód
-  # Az URL-ek a Google Cloud-ról fognak származni
-  MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
-else:
-  # Fejlesztői környezet
-  MEDIA_URL = '/media/'
-  MEDIA_ROOT = os.path.join(BASE_DIR, 'media_root')
