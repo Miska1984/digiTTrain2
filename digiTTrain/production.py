@@ -43,8 +43,8 @@ GS_DEFAULT_ACL = 'publicRead'  # Publikus olvasás
 GS_QUERYSTRING_AUTH = False  # Ne generáljon signed URL-eket
 
 # URL beállítások
-MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}'
-STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}'
+MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/media/'
+STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/static/'
 
 # Fájl kezelési beállítások
 GS_FILE_OVERWRITE = False  # Ne írja felül a meglévő fájlokat
