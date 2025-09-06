@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto my-10 max-w-lg p-6 bg-white rounded-lg shadow-md">
+    <h1 class="text-2xl font-bold mb-6 text-center">Új súlyadat rögzítése</h1>
+    
+    {% if message %}
+    <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-4" role="alert">
+        <p class="font-bold">Figyelem!</p>
+        <p>{{ message }}</p>
+    </div>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        {{ form.as_p }}
+        
+        <div class="flex items-center justify-between mt-6">
+            <button class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg focus:outline-none focus:shadow-outline transition duration-300" type="submit">
+                Mentés
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

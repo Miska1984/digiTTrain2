@@ -26,6 +26,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('core.urls', namespace='core')),
     path('users/', include('users.urls')),
+    path('biometric/', include('biometric_data.urls')),
 ]
 
 if settings.DEBUG:
