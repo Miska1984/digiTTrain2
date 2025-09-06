@@ -1,9 +1,9 @@
 # users/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser
-import random
-import os
-from django.utils.text import slugify
+import logging
+
+logger = logging.getLogger(__name__)
 
 class User(AbstractUser):
     """
@@ -29,19 +29,9 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
-def unique_profile_pic_path(instance, filename):
-    # Fájlnév generálása (pl. miska_abcdef123.jpeg)
-    name = slugify(instance.user.username if instance.user else instance.first_name) if instance.user or instance.first_name else 'profile'
-    ext = os.path.splitext(filename)[1]
-    # Véletlenszerű karakterek hozzáadása
-    random_string = ''.join(random.choice('abcdef0123456789') for _ in range(10))
-    return f'profile_pics/{name}_{random_string}{ext}'
-
 class Profile(models.Model):
     """
-    A profilmodell, ami a felhasználóhoz kapcsolódik, de a felhasználó fiókja
-    null is lehet. Ezzel tudunk adatokat tárolni azokról a gyerekekről,
-    akiknek még nincs saját belépési lehetőségük.
+    A profilmodell, ami a felhasználóhoz kapcsolódik
     """
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     
@@ -55,13 +45,15 @@ class Profile(models.Model):
         ('O', 'Más')
     )
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
-
-    profile_picture = models.ImageField(upload_to=unique_profile_pic_path, blank=True, null=True)
     
-
+    # Egyszerű upload path
+    profile_picture = models.ImageField(
+        upload_to='profile_pics/', 
+        blank=True, 
+        null=True
+    )
+    
     def __str__(self):
         if self.user:
             return f'{self.user.username} Profil'
         return f'Profil ({self.first_name} {self.last_name})'
-    
-
