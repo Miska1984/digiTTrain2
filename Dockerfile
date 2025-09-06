@@ -12,6 +12,10 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     pkg-config \
     libmariadb-dev-compat \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Követelmények másolása és telepítése
@@ -20,6 +24,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Alkalmazás fájlok bemásolása
 COPY . .
+
+# Tailwind CSS telepítése és buildelése
+# Ezt kell futtatni a production.py fájl betöltése előtt,
+# mivel a Tailwindnek szüksége van az összes sablonfájlra.
+RUN npm install -D tailwindcss
+RUN npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify
+
+# Statikus fájlok összegyűjtése
+# A Django `collectstatic` parancs összegyűjti az összes statikus fájlt
+# a STATIC_ROOT-ba. A production.py fájlban a STATIC_ROOT
+# GCS-re van beállítva.
+RUN python manage.py collectstatic --no-input
 
 # PYTHONPATH beállítás (hogy a modulok jól látszódjanak)
 ENV PYTHONPATH=/app
