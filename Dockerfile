@@ -34,6 +34,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # A tailwind.config.js és input.css fájloknak már létezniük kell a projekt gyökerében
 COPY tailwind.config.js ./
 COPY static/src/input.css ./static/src/
+
+
 COPY . .
 
 # Tailwind CSS buildelése
