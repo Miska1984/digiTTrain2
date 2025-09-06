@@ -36,16 +36,17 @@ def edit_profile(request):
 
         if user_form.is_valid() and profile_form.is_valid():
             user_form.save()
-            instance = profile_form.save()  # csak egyszer mentsük!
-            
-            # Debug log - Cloud Loggingban meg fog jelenni
-            print("Mentett fájl neve:", instance.profile_picture.name)
-            print("Mentett fájl URL:", instance.profile_picture.url)
+            instance = profile_form.save()
+
+            # Debug log - csak ha tényleg van feltöltött fájl
+            if instance.profile_picture:
+                print("Mentett fájl neve:", instance.profile_picture.name)
+                print("Mentett fájl URL:", instance.profile_picture.url)
+            else:
+                print("⚠️ Nincs feltöltött kép ehhez a profilhoz.")
 
             messages.success(request, '✅ A profil sikeresen frissítve!')
             return redirect('users:edit_profile')
-        else:
-            messages.error(request, '⚠️ Hiba történt! Ellenőrizd az űrlap adatait.')
     else:
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileForm(instance=profile)
