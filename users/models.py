@@ -48,7 +48,7 @@ class Profile(models.Model):
     
     # Egyszerű upload path
     profile_picture = models.ImageField(
-        upload_to='media/profile_pics/', 
+        upload_to='profile_pics/', 
         blank=True, 
         null=True
     )
