@@ -32,15 +32,11 @@ RUN npm install
 # A többi alkalmazásfájl bemásolása
 COPY . .
 
-# DEBUG: Nézzük meg, mi van a static mappában
-RUN ls -la static/
-RUN ls -la static/src/ || echo "static/src mappa nem létezik!"
-RUN find . -name "input.css" -type f
-
 # Tailwind CSS buildelése
-RUN npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
+RUN mkdir -p ./static/dist && \
+    npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
 
-# Statikus fájlok összegyűjtése
+# Statikus fájlok összegyűjtése a GCS-be
 RUN python manage.py collectstatic --no-input
 
 # PYTHONPATH beállítás
