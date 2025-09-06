@@ -32,11 +32,15 @@ RUN npm install
 # A többi alkalmazásfájl bemásolása
 COPY . .
 
+# DEBUG: Nézzük meg, mi van a static mappában
+RUN ls -la static/
+RUN ls -la static/src/ || echo "static/src mappa nem létezik!"
+RUN find . -name "input.css" -type f
+
 # Tailwind CSS buildelése
-# Ezt most már a meglévő node_modules mappából fogja futtatni
 RUN npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
 
-# Statikus fájlok összegyűjtése a GCS-be
+# Statikus fájlok összegyűjtése
 RUN python manage.py collectstatic --no-input
 
 # PYTHONPATH beállítás
@@ -49,8 +53,6 @@ ENV PORT=8080
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.production
 
 # Mappajogok beállítása
-# Bár éles környezetben a GCS-t használod,
-# ez a lépés nem okoz gondot, és segíthet a fejlesztésben.
 RUN mkdir -p /app/media_root
 RUN chown -R www-data:www-data /app/media_root
 RUN chmod -R 775 /app/media_root
