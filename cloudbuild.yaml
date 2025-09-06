@@ -52,7 +52,7 @@ steps:
       - --platform
       - managed
       - --allow-unauthenticated
-      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.production,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db-west1,GS_BUCKET_NAME=digittrain-media-publikus-miska1984
       - --add-cloudsql-instances
       - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
 
