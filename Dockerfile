@@ -13,8 +13,11 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     libmariadb-dev-compat \
     curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js és npm telepítése a Tailwindhez
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get update \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
