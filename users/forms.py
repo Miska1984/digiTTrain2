@@ -18,12 +18,15 @@ class UserUpdateForm(forms.ModelForm):
         fields = ['username', 'email']
 
 class ProfileForm(forms.ModelForm):
-
-
     class Meta:
         model = Profile
-        # ***Add 'profile_picture' ide***
+        # Itt kell szerepelnie a 'profile_picture' mezőnek
+        # Ha a `fields` lista expliciten van megadva, akkor minden mezőt fel kell sorolni.
+        # Ha `fields = '__all__'` vagy nem adod meg, akkor minden mezőt tartalmaz.
         fields = ['first_name', 'last_name', 'date_of_birth', 'gender', 'profile_picture']
         widgets = {
-            'date_of_birth': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'date_of_birth': forms.DateInput(attrs={'type': 'date'}),
+            # Ha a 'profile_picture' mezőnél szeretnél egyedi widgetet, itt megadhatod.
+            # Például:
+            # 'profile_picture': forms.ClearableFileInput(attrs={'multiple': False}),
         }
