@@ -26,32 +26,49 @@ def register(request):
 def edit_profile(request):
     profile, created = Profile.objects.get_or_create(user=request.user)
     if created:
-        # Ha új profil jön létre, biztosítjuk, hogy a user hozzá legyen rendelve
         profile.user = request.user
         profile.save()
 
-    if request.method == 'POST':
+    if request.method == "POST":
         user_form = UserUpdateForm(request.POST, instance=request.user)
         profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
 
         if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            instance = profile_form.save()
+            # ✅ commit=False, hogy belenyúlhassunk
+            instance = profile_form.save(commit=False)
 
-            # Debug log - csak ha tényleg van feltöltött fájl
-            if instance.profile_picture:
-                print("Mentett fájl neve:", instance.profile_picture.name)
-                print("Mentett fájl URL:", instance.profile_picture.url)
+            # Debug – van-e fájl ténylegesen feltöltve?
+            uploaded_file = request.FILES.get("profile_picture")
+            if uploaded_file:
+                print(f"📸 Feltöltött fájl a POST-ban: {uploaded_file.name}")
             else:
-                print("⚠️ Nincs feltöltött kép ehhez a profilhoz.")
+                print("⚠️ Nincs fájl a request.FILES-ben!")
 
-            messages.success(request, '✅ A profil sikeresen frissítve!')
-            return redirect('users:edit_profile')
+            # Mentés a storage-ba
+            instance.user = request.user
+            instance.save()  # <-- itt kell tényleg elindulnia a feltöltésnek
+
+            # Debug: nézzük meg a mentett példányt
+            if instance.profile_picture:
+                print(f"✅ Mentett fájl neve: {instance.profile_picture.name}")
+                try:
+                    print(f"🌍 Mentett fájl URL: {instance.profile_picture.url}")
+                except Exception as e:
+                    print(f"⚠️ Nem tudtam lekérni az URL-t: {e}")
+            else:
+                print("⚠️ A profilpéldányban nincs kép!")
+
+            user_form.save()
+            messages.success(request, "✅ A profil sikeresen frissítve!")
+            return redirect("users:edit_profile")
+        else:
+            print("❌ Form hiba:", user_form.errors, profile_form.errors)
+            messages.error(request, "⚠️ Hiba történt! Ellenőrizd az űrlap adatait.")
     else:
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileForm(instance=profile)
 
-    return render(request, 'users/edit_profile.html', {
-        'user_form': user_form,
-        'profile_form': profile_form
+    return render(request, "users/edit_profile.html", {
+        "user_form": user_form,
+        "profile_form": profile_form,
     })
