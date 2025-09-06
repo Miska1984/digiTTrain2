@@ -29,6 +29,11 @@ RUN npm install
 # Python függőségek telepítése
 RUN pip install --no-cache-dir -r requirements.txt
 
+# A Tailwind input fájl és a konfig fájl bemásolása
+COPY package.json .
+COPY tailwind.config.js ./
+COPY static/src/input.css ./static/src/
+
 # A többi alkalmazásfájl bemásolása
 COPY . .
 
