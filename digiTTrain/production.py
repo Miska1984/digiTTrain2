@@ -2,7 +2,7 @@
 import os
 from .settings import *
 
-
+INSTALLED_APPS += ["storages"]
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
