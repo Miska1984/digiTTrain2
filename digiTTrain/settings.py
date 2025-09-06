@@ -141,31 +141,20 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': 'format',
-        },
         'simple': {
             'format': '{levelname} {message}',
-            'style': 'format',
         },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+            'formatter': 'simple',  # Itt most a 'simple' formázót használjuk
         },
     },
     'loggers': {
-        'django': {
+        '': {  # A gyökér logger, ami mindent naplóz
             'handlers': ['console'],
             'level': 'INFO',
-            'propagate': True,
-        },
-        'storages': {
-            'handlers': ['console'],
-            'level': 'DEBUG',
-            'propagate': True,
         },
     },
 }
