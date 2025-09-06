@@ -2,6 +2,7 @@
 import os
 from .settings import *
 
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -18,21 +19,20 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'verbose', # Itt is a 'verbose' formázót használjuk
+            'formatter': 'verbose',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console'],
-            'level': 'DEBUG', # Vagy INFO, attól függően, mennyire részletes naplózást szeretnél
+            'level': 'INFO',
             'propagate': True,
         },
-        'storages': { # Storages backend naplózása
+        'storages': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
         },
-        # Itt adhatsz hozzá más loggereket is, ha szükséges
     },
 }
 
