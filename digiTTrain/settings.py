@@ -137,24 +137,3 @@ LOGIN_REDIRECT_URL = 'core:main_page'
 # Egyedi User modell
 AUTH_USER_MODEL = "users.User"
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '{levelname} {message}',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',  # Itt most a 'simple' formázót használjuk
-        },
-    },
-    'loggers': {
-        '': {  # A gyökér logger, ami mindent naplóz
-            'handlers': ['console'],
-            'level': 'INFO',
-        },
-    },
-}
