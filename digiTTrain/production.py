@@ -45,7 +45,7 @@ GS_LOCATION = 'europe-west1'
 GS_QUERYSTRING_AUTH = False  # Ne generáljon signed URL-eket
 
 # URL beállítások
-MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/media/'
+MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
 STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/static/'
 
 # Fájl kezelési beállítások
