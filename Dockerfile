@@ -30,12 +30,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN npm install
 
 # A többi alkalmazásfájl bemásolása
-# Ez a parancs bemásol minden fájlt, beleértve a tailwind.config.js és a static mappát is.
 COPY . .
 
 # Tailwind CSS buildelése
 # Ezt most már a meglévő node_modules mappából fogja futtatni
-RUN npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify
+RUN npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
 
 # Statikus fájlok összegyűjtése a GCS-be
 RUN python manage.py collectstatic --no-input
