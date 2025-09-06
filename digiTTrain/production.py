@@ -41,7 +41,7 @@ GS_PROJECT_ID = os.environ.get('GCS_PROJECT_ID', 'digittrain-projekt')
 # Bucket konfiguráció
 GS_AUTO_CREATE_BUCKET = False
 GS_LOCATION = 'europe-west1'
-GS_DEFAULT_ACL = 'publicRead'  # Publikus olvasás
+#GS_DEFAULT_ACL = 'publicRead'  # Publikus olvasás
 GS_QUERYSTRING_AUTH = False  # Ne generáljon signed URL-eket
 
 # URL beállítások
