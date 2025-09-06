@@ -26,6 +26,10 @@ COPY package.json .
 # Python függőségek telepítése
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Explicit módon másoljuk be a Tailwindhez szükséges fájlokat
+COPY tailwind.config.js ./
+COPY static/src/input.css ./static/src/
+
 # Node.js függőségek telepítése
 RUN npm install
 
