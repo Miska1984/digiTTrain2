@@ -2,6 +2,40 @@
 import os
 from .settings import *
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': 'format',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': 'format',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose', # Itt is a 'verbose' formázót használjuk
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'DEBUG', # Vagy INFO, attól függően, mennyire részletes naplózást szeretnél
+            'propagate': True,
+        },
+        'storages': { # Storages backend naplózása
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        # Itt adhatsz hozzá más loggereket is, ha szükséges
+    },
+}
+
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
 CLOUDSQL_CONNECTION_NAME = os.getenv("CLOUDSQL_CONNECTION_NAME")
