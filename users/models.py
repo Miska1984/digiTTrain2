@@ -51,7 +51,7 @@ class Profile(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
     
     # Egyszerű upload path
-    profile_picture = models.ImageField(default='profile_pics/default.jpg', upload_to=get_profile_picture_upload_path)
+    profile_picture = models.ImageField(default='media/profile_pics/default.jpg', upload_to=get_profile_picture_upload_path)
     
     def __str__(self):
         if self.user:
