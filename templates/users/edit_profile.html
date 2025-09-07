@@ -1,27 +1,67 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Profil szerkesztése{% endblock %}
 
 {% block content %}
-<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card p-4 shadow" style="width: 100%; max-width: 600px;">
-        <h2 class="text-center mb-4">Profil szerkesztése</h2>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <h3>Felhasználói adatok</h3>
-            {{ user_form.as_p }}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card p-4 shadow-sm">
+                <h2 class="text-center mb-4 fw-bold">Profil szerkesztése</h2>
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <h5 class="mb-3 fw-bold">Felhasználói adatok</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ user_form.username.label_tag }}
+                            {{ user_form.username }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="{{ user_form.email.id_for_label }}">E-mail cím:</label>
+                            {{ user_form.email }}
+                        </div>
+                    </div>
+                    
+                    <h5 class="mt-4 mb-3 fw-bold">Személyes adatok</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            {{ profile_form.first_name.label_tag }}
+                            {{ profile_form.first_name }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ profile_form.last_name.label_tag }}
+                            {{ profile_form.last_name }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ profile_form.date_of_birth.label_tag }}
+                            {{ profile_form.date_of_birth }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            {{ profile_form.gender.label_tag }}
+                            {{ profile_form.gender }}
+                        </div>
+                    </div>
 
-            <h3>Személyes adatok</h3>
-            {{ profile_form.as_p }}
+                    <h5 class="mt-4 mb-3 fw-bold">Profilkép</h5>
+                    <div class="mb-3">
+                        {% if profile_form.profile_picture.value %}
+                            <p class="mb-2">Jelenlegi kép: <a href="{{ profile_form.profile_picture.value.url }}" target="_blank">{{ profile_form.profile_picture.value }}</a></p>
+                        {% endif %}
+                        {{ profile_form.profile_picture.label_tag }}
+                        {{ profile_form.profile_picture }}
+                        <small class="form-text text-muted">Válasszon ki egy fájlt a feltöltéshez.</small>
+                    </div>
 
-            <button type="submit" class="btn btn-primary w-100 mt-3">Mentés</button>
-        </form>
-        <hr>
-        <a href="{% url 'users:password_change' %}" class="btn btn-secondary w-100 mt-2">Jelszó megváltoztatása</a>
-        
-        <a href="{% url 'core:main_page' %}" class="btn btn-link w-100 mt-2">Vissza a főoldalra</a>
+                    <button type="submit" class="btn btn-primary w-100 mt-4">Mentés</button>
+                </form>
+
+                <hr class="my-4">
+                <a href="{% url 'users:password_change' %}" class="btn btn-outline-secondary w-100">Jelszó megváltoztatása</a>
+                <a href="{% url 'core:main_page' %}" class="btn btn-link w-100 mt-2">Vissza a főoldalra</a>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
-
-

@@ -106,7 +106,7 @@ def edit_profile(request):
     # inicializáljuk az űrlapokat a jelenlegi adatokkal
     else:
         user_form = UserUpdateForm(instance=request.user)
-        profile_form = ProfileForm(instance=profile) # A korábbi kép is betöltődik ide
+        profile_form = ProfileForm(instance=request.user.profile) # A korábbi kép is betöltődik ide
 
     # Az űrlapok és a felhasználó kontextusban átadása a template-nek
     return render(request, "users/edit_profile.html", {
