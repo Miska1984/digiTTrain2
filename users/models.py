@@ -29,6 +29,10 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+def get_profile_picture_upload_path(instance, filename):
+    # A fájlnév a felhasználó ID-ja lesz
+    return f'profile_pics/{instance.user.id}_{filename}'
+
 class Profile(models.Model):
     """
     A profilmodell, ami a felhasználóhoz kapcsolódik
@@ -47,7 +51,7 @@ class Profile(models.Model):
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
     
     # Egyszerű upload path
-    profile_picture = models.ImageField(default='profile_pics/default.jpg', upload_to='profile_pics/')
+    profile_picture = models.ImageField(default='profile_pics/default.jpg', upload_to=get_profile_picture_upload_path)
     
     def __str__(self):
         if self.user:
