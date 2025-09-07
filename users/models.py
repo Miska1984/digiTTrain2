@@ -1,7 +1,10 @@
 # users/models.py
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.conf import settings
 import logging
+import os
+
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +32,17 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
-def get_profile_picture_upload_path(instance, filename):
-    # A fájlnév a felhasználó ID-ja lesz
-    return f'profile_pics/{instance.user.id}_{filename}'
+def profile_picture_upload_path(instance, filename):
+    # A fájlnév a felhasználónevet és az eredeti fájlnevet fogja tartalmazni
+    # a Cloud Storage útvonala pedig 'media/profile_pics/' lesz
+    return os.path.join('media', 'profile_pics', f'{instance.user.username}_{filename}')
 
 class Profile(models.Model):
-    """
-    A profilmodell, ami a felhasználóhoz kapcsolódik
-    """
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
-    
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=50, blank=True)
     last_name = models.CharField(max_length=50, blank=True)
     date_of_birth = models.DateField(null=True, blank=True)
-    
+
     GENDER_CHOICES = (
         ('M', 'Férfi'),
         ('F', 'Nő'),
@@ -50,10 +50,7 @@ class Profile(models.Model):
     )
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
     
-    # Egyszerű upload path
-    profile_picture = models.ImageField(default='media/profile_pics/default.jpg', upload_to=get_profile_picture_upload_path)
-    
+    profile_picture = models.ImageField(default='profile_pics/default.jpg', upload_to=profile_picture_upload_path)
+
     def __str__(self):
-        if self.user:
-            return f'{self.user.username} Profil'
-        return f'Profil ({self.first_name} {self.last_name})'
+        return f'{self.user.username} Profile'
