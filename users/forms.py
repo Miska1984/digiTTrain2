@@ -18,14 +18,35 @@ class UserUpdateForm(forms.ModelForm):
         fields = ['username', 'email']
 
 class ProfileForm(forms.ModelForm):
-    first_name = forms.CharField(label="Vezetéknév", required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    last_name = forms.CharField(label="Keresztnév", required=False, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    date_of_birth = forms.DateField(label="Születési dátum", required=False, widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}))
-    gender = forms.ChoiceField(label="Nem", required=False, choices=Profile.GENDER_CHOICES, widget=forms.Select(attrs={'class': 'form-select'}))
+    first_name = forms.CharField(
+        label="Vezetéknév", required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    last_name = forms.CharField(
+        label="Keresztnév", required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    date_of_birth = forms.DateField(
+        label="Születési dátum",
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        input_formats=['%Y-%m-%d'],   # fontos!
+    )
+    gender = forms.ChoiceField(
+        label="Nem", required=False,
+        choices=Profile.GENDER_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'})
+    )
 
     class Meta:
         model = Profile
         fields = ['first_name', 'last_name', 'date_of_birth', 'gender', 'profile_picture']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ha van date_of_birth, állítsuk be helyesen az initial értéket
+        if self.instance and self.instance.date_of_birth:
+            self.initial['date_of_birth'] = self.instance.date_of_birth.strftime('%Y-%m-%d')
 
 class ClubForm(forms.ModelForm):
     # A sports mező most a Sport modellre mutat

@@ -33,7 +33,7 @@ class User(AbstractUser):
         return self.username
 
 def profile_picture_upload_path(instance, filename):
-    path = os.path.join("media/profile_pics", f"{instance.user.username}_{filename}")
+    path = os.path.join("profile_pics", f"{instance.user.username}_{filename}")
     print(f"📂 Fájlfeltöltési útvonal generálva: {path}")
     return path
 
