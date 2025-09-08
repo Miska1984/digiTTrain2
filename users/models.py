@@ -33,7 +33,9 @@ class User(AbstractUser):
         return self.username
 
 def profile_picture_upload_path(instance, filename):
-    return os.path.join("media/profile_pics", f"{instance.user.username}_{filename}")
+    path = os.path.join("media/profile_pics", f"{instance.user.username}_{filename}")
+    print(f"📂 Fájlfeltöltési útvonal generálva: {path}")
+    return path
 
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -56,7 +58,10 @@ class Profile(models.Model):
     @property
     def profile_picture_url(self):
         if self.profile_picture:
-            return self.profile_picture.url
+            url = self.profile_picture.url
+            print(f"🔗 Kép URL lekérve: {url}")
+            return url
+        print("⚠️ Nincs kép, default-ot adunk vissza")
         return settings.STATIC_URL + "images/default.jpg"  # legyen egy default kép a staticban
     
 class Role(models.Model):
