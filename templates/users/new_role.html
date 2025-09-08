@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Új szerepkör felvétele{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card p-4 shadow-sm">
+                <h2 class="text-center mb-4 fw-bold">Új szerepkör felvétele</h2>
+                <form method="post" id="role-form">
+                    {% csrf_token %}
+                    
+                    {{ form.as_p }}
+
+                    <div id="dynamic-content" class="mt-4">
+                        </div>
+                    
+                </form>
+                
+                <a href="{% url 'core:main_page' %}" class="btn btn-link w-100 mt-2">Vissza a főoldalra</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function() {
+    // ITT A VÁLTOZÁS: az 'id_role' helyett 'role-selection'
+    const roleSelect = document.getElementById('role-selection');
+    const dynamicContentDiv = document.getElementById('dynamic-content');
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    roleSelect.addEventListener('change', function() {
+        const selectedRoleId = this.value;
+        if (selectedRoleId) {
+            fetch(`/users/get-next-step-form/${selectedRoleId}/`, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                dynamicContentDiv.innerHTML = data.html_form;
+                
+                if (document.getElementById('club-creation-form')) {
+                    const clubCreationForm = document.getElementById('club-creation-form');
+                    clubCreationForm.addEventListener('submit', function(event) {
+                        event.preventDefault();
+                        const formData = new FormData(clubCreationForm);
+
+                        fetch('{% url "users:club_create_ajax" %}', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRFToken': csrfToken
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                window.location.href = data.redirect_url;
+                            } else {
+                                dynamicContentDiv.innerHTML = data.html_form;
+                                alert(data.error);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Hiba történt a klub létrehozása során:', error);
+                            alert('Hiba történt a klub létrehozása során.');
+                        });
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Hiba történt az űrlap betöltésekor:', error);
+                dynamicContentDiv.innerHTML = '<p class="text-danger">Hiba történt. Kérjük, próbálja újra.</p>';
+            });
+        } else {
+            dynamicContentDiv.innerHTML = '';
+        }
+    });
+});
+
+</script>
+{% endblock %}

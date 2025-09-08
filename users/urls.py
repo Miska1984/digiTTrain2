@@ -15,4 +15,10 @@ urlpatterns = [
     # Jelszómódosító URL-ek
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='users/password_change.html'), name='password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='users/password_change_done.html'), name='password_change_done'),
+
+    # AJAX URL-ek a dinamikus űrlapokhoz és a műveletekhez
+    path('role/new/', views.new_role_view, name='new_role'),
+    path('get-next-step-form/<int:role_id>/', views.get_next_step_form, name='get_next_step_form'),
+    path('club/create-ajax/', views.club_create_ajax_view, name='club_create_ajax'),
+    path('club/join-ajax/', views.club_join_ajax_view, name='club_join_ajax'), # <-- ÚJ URL
 ]
