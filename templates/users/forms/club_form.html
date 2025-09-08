@@ -1,0 +1,9 @@
+<h5 class="fw-bold">Saját egyesület létrehozása</h5>
+<p>Kérjük, adja meg az új egyesület adatait:</p>
+<form method="post" enctype="multipart/form-data" id="club-creation-form">
+    {% csrf_token %}
+    
+    {{ form.as_p }}
+
+    <button type="submit" class="btn btn-success w-100 mt-4">Egyesület létrehozása</saját>
+</form>

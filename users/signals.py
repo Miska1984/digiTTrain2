@@ -10,10 +10,3 @@ User = get_user_model()
 def create_profile(sender, instance, created, **kwargs):
     if created:
         Profile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_profile(sender, instance, **kwargs):
-    # Itt a feltétel, ami megakadályozza a hibát
-    # A `hasattr` ellenőrzi, hogy a felhasználó objektumnak van-e `profile` attribútuma
-    if hasattr(instance, 'profile'):
-        instance.profile.save()

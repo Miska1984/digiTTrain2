@@ -2,7 +2,7 @@
 import os
 from .settings import *
 
-
+INSTALLED_APPS += ["storages"]
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
@@ -28,19 +28,19 @@ CSRF_TRUSTED_ORIGINS = ['https://digit-train-web-195803356854.europe-west1.run.a
 
 # ===== GOOGLE CLOUD STORAGE BEÁLLÍTÁSOK =====
 # Fontos: django-storages backend használata
-DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
 STATICFILES_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
 
 # GCS alapvető beállítások
-GS_BUCKET_NAME = os.environ.get('GS_BUCKET_NAME', 'digittrain-media-publikus-miska1984')
-GS_PROJECT_ID = os.environ.get('GS_PROJECT_ID', 'digittrain-projekt')
+GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "digittrain-media-publikus-miska1984")
+GS_PROJECT_ID = os.environ.get("GS_PROJECT_ID", "digittrain-projekt")
 
 # KRITIKUS: Automatikus authentikáció beállítása
 # Cloud Run környezetben automatikusan működik, ha a service account megfelelő jogokkal rendelkezik
 
 # Bucket konfiguráció
 GS_AUTO_CREATE_BUCKET = False
-GS_LOCATION = 'europe-west1'
+GS_LOCATION = os.environ.get("GS_LOCATION", "europe-west1")
 GS_DEFAULT_ACL = 'publicRead'  # Publikus olvasás
 GS_QUERYSTRING_AUTH = False  # Ne generáljon signed URL-eket
 

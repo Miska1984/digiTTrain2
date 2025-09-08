@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'crispy_forms',
     'crispy_bootstrap5',
-    'storages',
     'core',
     'biometric_data',
 ]
@@ -121,7 +120,7 @@ STATIC_URL = "static/"
 STATIC_ROOT = os.path.join(BASE_DIR, 'static_root')
 
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static/dist'),
+    os.path.join(BASE_DIR, 'static'),
 ]
 
 # Default primary key field type
