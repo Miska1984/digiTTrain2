@@ -32,21 +32,47 @@ def register(request):
 def edit_profile(request):
     profile, created = Profile.objects.get_or_create(user=request.user)
 
+    if created:
+        print(f"🆕 Új profil jött létre a userhez: {request.user.username}")
+
     if request.method == "POST":
+        print("📩 POST kérés érkezett a profil szerkesztéshez")
+
         user_form = UserUpdateForm(request.POST, instance=request.user)
         profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
 
         if user_form.is_valid() and profile_form.is_valid():
+            print("✅ Mindkét űrlap valid")
+
+            # Először a user mentése
             user_form.save()
+            print(f"👤 User mentve: {request.user.username}")
+
+            # Majd a profil mentése (fájlokkal együtt)
             profile = profile_form.save(commit=False)
             profile.user = request.user
+
+            if "profile_picture" in request.FILES:
+                uploaded_file = request.FILES["profile_picture"]
+                print(f"📸 Feltöltött fájl: {uploaded_file.name} ({uploaded_file.size} bájt)")
+            else:
+                print("ℹ️ Nem érkezett új profilkép a POST-ban")
+
             profile.save()
+            print(f"💾 Profil mentve adatbázisba. Kép útvonal: {profile.profile_picture.name}")
+
+            if profile.profile_picture:
+                print(f"🌍 Publikus URL: {profile.profile_picture.url}")
 
             messages.success(request, "✅ A profil sikeresen frissítve!")
             return redirect("users:edit_profile")
         else:
+            print("❌ Hiba az űrlap validációban:")
+            print("   User form errors:", user_form.errors)
+            print("   Profile form errors:", profile_form.errors)
             messages.error(request, "⚠️ Hiba történt! Ellenőrizd az űrlap adatait.")
     else:
+        print("📤 GET kérés: űrlap inicializálása")
         user_form = UserUpdateForm(instance=request.user)
         profile_form = ProfileForm(instance=profile)
 
@@ -54,6 +80,7 @@ def edit_profile(request):
         "user_form": user_form,
         "profile_form": profile_form,
     })
+
 
 @login_required
 def new_role_view(request):
