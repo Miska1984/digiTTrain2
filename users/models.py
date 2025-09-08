@@ -33,8 +33,7 @@ class User(AbstractUser):
         return self.username
 
 def profile_picture_upload_path(instance, filename):
-    # A fájlt a user neve + eredeti név alapján tároljuk
-    return os.path.join("profile_pics", f"{instance.user.username}_{filename}")
+    return os.path.join("media/profile_pics", f"{instance.user.username}_{filename}")
 
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
