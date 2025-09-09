@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -13,7 +14,9 @@
         <div class="container">
             <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
                 <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
-                    <li><a href="{% url 'core:main_page' %}" class="nav-link px-2 text-white">Főoldal</a></li>
+                    <a class="navbar-brand" href="{% url 'core:main_page' %}">
+                        <img src="{% static 'images/your_logo.png' %}" alt="Logo" style="height: 40px;">
+                    </a>
                     <li class="nav-item dropdown">
                         <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="biometricDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Vezérlőpult

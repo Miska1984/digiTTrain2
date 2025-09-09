@@ -55,3 +55,7 @@ GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 # Helyi media/static felülírása
 MEDIA_ROOT = ''  # Ürítjük ki, mert GCS-t használunk
 STATIC_ROOT = ''  # Ürítjük ki, mert GCS-t használunk
+
+GS_MEDIA_PREFIX = 'media/'
+GS_STATIC_PREFIX = 'static/'
+
