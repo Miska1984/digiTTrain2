@@ -39,14 +39,14 @@ GS_PROJECT_ID = os.environ.get("GS_PROJECT_ID", "digittrain-projekt")
 # Cloud Run környezetben automatikusan működik, ha a service account megfelelő jogokkal rendelkezik
 
 # Bucket konfiguráció
-GS_LOCATION = "media"  # Ez lesz a prefix minden fájlhoz
+# GS_LOCATION = "media"  # Ez lesz a prefix minden fájlhoz
 GS_DEFAULT_ACL = 'publicRead'
 GS_QUERYSTRING_AUTH = False
 GS_FILE_OVERWRITE = False
 GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 
 # URL beállítások
-MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/media/'
+MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
 STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/static/'
 
 # Fájl kezelési beállítások

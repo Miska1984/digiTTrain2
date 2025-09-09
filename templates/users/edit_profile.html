@@ -46,8 +46,9 @@
 
                     <h5 class="mt-4 mb-3 fw-bold">Profilkép</h5>
                     <div class="mb-3">
-                        {% if profile_form.profile_picture.value %}
-                            <p class="mb-2">Jelenlegi kép: <a href="{{ profile_form.profile_picture.value.url }}" target="_blank">{{ profile_form.profile_picture.value }}</a></p>
+                        {% if profile.profile_picture %}
+                            <p class="mb-2">Jelenlegi kép: <a href="{{ profile.profile_picture.url }}" target="_blank">{{ profile.profile_picture.url }}</a></p>
+                            <img src="{{ profile.profile_picture.url }}" alt="{{ profile.user.username }} profilképe" class="img-thumbnail mt-2" style="max-width: 200px;">
                         {% endif %}
 
                         {% if profile_form.profile_picture.value %}
@@ -58,7 +59,7 @@
                                 </label>
                             </div>
                         {% endif %}
-                        
+
                         <div class="mb-3">
                             <label for="{{ profile_form.profile_picture.id_for_label }}" class="form-label">Módosítás:</label>
                             {{ profile_form.profile_picture }}
