@@ -1,7 +1,9 @@
 # digiTTrain/production.py
 import os
-from .settings import *
+from .settings import * # Ezt a sort emelje feljebb!
 
+# Most, hogy az INSTALLED_APPS importálva lett a settings.py-ból,
+# biztonsággal kiegészíthetjük a "storages" csomaggal.
 INSTALLED_APPS += ["storages"]
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
@@ -56,6 +58,5 @@ GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 # Helyi media/static felülírása
 MEDIA_ROOT = ''  # Ürítjük ki, mert GCS-t használunk
 STATIC_ROOT = ''  # Ürítjük ki, mert GCS-t használunk
-
 
 
