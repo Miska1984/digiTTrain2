@@ -52,7 +52,7 @@ MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
 STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/static/'
 
 # Fájl kezelési beállítások
-GS_FILE_OVERWRITE = False  # Ne írja felül a meglévő fájlokat
+GS_FILE_OVERWRITE = True  # Ne írja felül a meglévő fájlokat
 GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 
 # Helyi media/static felülírása
