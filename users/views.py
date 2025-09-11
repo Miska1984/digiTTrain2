@@ -58,18 +58,25 @@ def edit_profile(request):
             else:
                 print("ℹ️ Nem érkezett új profilkép a POST-ban")
 
-            profile.save()
-            print(f"💾 Profil mentve adatbázisba. Kép útvonal: {profile.profile_picture.name}")
+            try:
+                profile.save()
+                print(f"💾 Profil mentve adatbázisba. Kép útvonal: {profile.profile_picture.name}")
 
-            if profile.profile_picture:
-                print(f"🌍 Publikus URL: {profile.profile_picture.url}")
+                if profile.profile_picture:
+                    print(f"🌍 Publikus URL: {profile.profile_picture.url}")
+                
+                messages.success(request, "✅ A profil sikeresen frissítve!")
+                return redirect("users:edit_profile")
 
-            messages.success(request, "✅ A profil sikeresen frissítve!")
-            return redirect("users:edit_profile")
+            except Exception as e:
+                print(f"❌ HIBA TÖRTÉNT A FÁJL MENTÉSEKOR: {e}")
+                messages.error(request, f"⚠️ Hiba történt a fájl feltöltésekor: {e}")
+                return redirect("users:edit_profile")
+                
         else:
             print("❌ Hiba az űrlap validációban:")
-            print("   User form errors:", user_form.errors)
-            print("   Profile form errors:", profile_form.errors)
+            print("   User form errors:", user_form.errors)
+            print("   Profile form errors:", profile_form.errors)
             messages.error(request, "⚠️ Hiba történt! Ellenőrizd az űrlap adatait.")
     else:
         print("📤 GET kérés: űrlap inicializálása")
