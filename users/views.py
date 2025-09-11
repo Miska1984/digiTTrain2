@@ -31,24 +31,19 @@ def register(request):
 @login_required
 def edit_profile(request):
     profile, created = Profile.objects.get_or_create(user=request.user)
-
     if created:
         print(f"🆕 Új profil jött létre a userhez: {request.user.username}")
 
     if request.method == "POST":
         print("📩 POST kérés érkezett a profil szerkesztéshez")
-
         user_form = UserUpdateForm(request.POST, instance=request.user)
         profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
 
         if user_form.is_valid() and profile_form.is_valid():
             print("✅ Mindkét űrlap valid")
-
-            # Először a user mentése
             user_form.save()
             print(f"👤 User mentve: {request.user.username}")
-
-            # Majd a profil mentése (fájlokkal együtt)
+            
             profile = profile_form.save(commit=False)
             profile.user = request.user
 
@@ -75,8 +70,8 @@ def edit_profile(request):
                 
         else:
             print("❌ Hiba az űrlap validációban:")
-            print("   User form errors:", user_form.errors)
-            print("   Profile form errors:", profile_form.errors)
+            print("   User form errors:", user_form.errors)
+            print("   Profile form errors:", profile_form.errors)
             messages.error(request, "⚠️ Hiba történt! Ellenőrizd az űrlap adatait.")
     else:
         print("📤 GET kérés: űrlap inicializálása")
