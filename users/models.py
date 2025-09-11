@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 import logging
 import os
+import uuid
 
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,9 @@ class User(AbstractUser):
         return self.username
 
 def profile_picture_upload_path(instance, filename):
-    path = os.path.join("profile_pics", f"{instance.user.username}_{filename}")
+    # Generálunk egy egyedi UUID-t a fájlnévhez, így biztosan nem lesz ütközés
+    unique_filename = f"{uuid.uuid4().hex}_{filename}"
+    path = os.path.join("profile_pics", unique_filename)
     print(f"📂 Fájlfeltöltési útvonal generálva: {path}")
     return path
 
