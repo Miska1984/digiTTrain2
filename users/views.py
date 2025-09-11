@@ -88,7 +88,6 @@ def edit_profile(request):
         "profile_form": profile_form,
     })
 
-
 @login_required
 def new_role_view(request):
     form = RoleSelectionForm()
