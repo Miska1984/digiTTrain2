@@ -40,10 +40,10 @@ COPY . .
 RUN mkdir -p ./static/dist && \
     npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
 
-ENV DJANGO_SETTINGS_MODULE="digiTTrain.settings"
+# Állítsuk be a környezetet a beállításokhoz
 ENV ENVIRONMENT="production"
 
-# Statikus fájlok összegyűjtése
+# Statikus fájlok összegyűjtése (a production.py-ban lévő STATIC_ROOT-ot fogja használni)
 RUN python manage.py collectstatic --no-input
 
 # PYTHONPATH beállítás
@@ -53,7 +53,7 @@ ENV PYTHONPATH=/app
 ENV PORT=8080
 
 # Default Django settings
-ENV DJANGO_SETTINGS_MODULE=digiTTrain.production
+ENV DJANGO_SETTINGS_MODULE="digiTTrain.settings"
 
 # Mappajogok beállítása
 RUN mkdir -p /app/media_root

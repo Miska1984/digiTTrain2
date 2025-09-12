@@ -2,6 +2,8 @@
 import os
 from .base import *
 
+# Győződjön meg róla, hogy ez a sor a legelső, amivel a base.py-t bővíti
+# INSTALLED_APPS += ["storages"] # A storages a base.py-ban van már
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
@@ -21,17 +23,17 @@ DATABASES = {
     }
 }
 
-
 CSRF_TRUSTED_ORIGINS = [
     'https://digit-train-web-195803356854.europe-west1.run.app'
 ]
 
-# ===== GOOGLE CLOUD STORAGE =====
+# ===== GOOGLE CLOUD STORAGE BEÁLLÍTÁSOK =====
 DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
 STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
 
 GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "digittrain-media-publikus-miska1984")
 GS_PROJECT_ID = os.environ.get("GS_PROJECT_ID", "digittrain-projekt")
+
 GS_DEFAULT_ACL = "publicRead"
 GS_QUERYSTRING_AUTH = False
 GS_FILE_OVERWRITE = False
@@ -40,5 +42,6 @@ GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
 STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
 
-MEDIA_ROOT = ""
-STATIC_ROOT = ""
+# Állítsa be a STATIC_ROOT-ot egy ideiglenes mappára
+STATIC_ROOT = "/app/staticfiles_temp"
+MEDIA_ROOT = "/app/mediafiles_temp"
