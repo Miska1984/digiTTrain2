@@ -40,6 +40,9 @@ COPY . .
 RUN mkdir -p ./static/dist && \
     npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
 
+ENV DJANGO_SETTINGS_MODULE="digiTTrain.settings"
+ENV ENVIRONMENT="production"
+
 # Statikus fájlok összegyűjtése
 RUN python manage.py collectstatic --no-input
 
