@@ -2,7 +2,7 @@
 import os
 from .base import *
 
-ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development')
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development').strip().lower()
 
 if ENVIRONMENT == 'production':
     from .production import *
