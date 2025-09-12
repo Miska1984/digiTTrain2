@@ -1,9 +1,9 @@
 # digiTTrain/production.py
 import os
-from .base import *
+
 
 # Győződjön meg róla, hogy ez a sor a legelső, amivel a base.py-t bővíti
-# INSTALLED_APPS += ["storages"] # A storages a base.py-ban van már
+
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
