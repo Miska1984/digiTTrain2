@@ -1,10 +1,7 @@
 # digiTTrain/production.py
 import os
-from .settings import * # Ezt a sort emelje feljebb!
 
-# Most, hogy az INSTALLED_APPS importálva lett a settings.py-ból,
-# biztonsággal kiegészíthetjük a "storages" csomaggal.
-INSTALLED_APPS += ["storages"]
+
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
@@ -24,39 +21,24 @@ DATABASES = {
     }
 }
 
-# ADD THIS LINE
-CSRF_TRUSTED_ORIGINS = ['https://digit-train-web-195803356854.europe-west1.run.app']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://digit-train-web-195803356854.europe-west1.run.app'
+]
 
-# ===== GOOGLE CLOUD STORAGE BEÁLLÍTÁSOK =====
-# Fontos: django-storages backend használata
+# ===== GOOGLE CLOUD STORAGE =====
 DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
-STATICFILES_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
 
-# GCS alapvető beállítások
 GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "digittrain-media-publikus-miska1984")
 GS_PROJECT_ID = os.environ.get("GS_PROJECT_ID", "digittrain-projekt")
-
-# KRITIKUS: Automatikus authentikáció beállítása
-# Cloud Run környezetben automatikusan működik, ha a service account megfelelő jogokkal rendelkezik
-
-# Bucket konfiguráció
-# GS_LOCATION = "media"  # Ez lesz a prefix minden fájlhoz
-GS_DEFAULT_ACL = 'publicRead'
+GS_DEFAULT_ACL = "publicRead"
 GS_QUERYSTRING_AUTH = False
 GS_FILE_OVERWRITE = False
 GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 
-# URL beállítások
-MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'
-STATIC_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/static/'
+MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
+STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
 
-# Fájl kezelési beállítások
-GS_FILE_OVERWRITE = True  # Ne írja felül a meglévő fájlokat
-GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
-
-# Helyi media/static felülírása
-MEDIA_ROOT = ''  # Ürítjük ki, mert GCS-t használunk
-STATIC_ROOT = ''  # Ürítjük ki, mert GCS-t használunk
-
-
+MEDIA_ROOT = ""
+STATIC_ROOT = ""
