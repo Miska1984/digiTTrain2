@@ -2,6 +2,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
+from django.core.files.storage import default_storage
 import logging
 import os
 import uuid
@@ -37,6 +38,7 @@ def profile_picture_upload_path(instance, filename):
     # Generálunk egy egyedi UUID-t a fájlnévhez, így biztosan nem lesz ütközés
     unique_filename = f"{uuid.uuid4().hex}_{filename}"
     path = os.path.join("profile_pics", unique_filename)
+    logger.info(f"📂 Fájlfeltöltési útvonal generálva: {path}")
     print(f"📂 Fájlfeltöltési útvonal generálva: {path}")
     return path
 
@@ -52,8 +54,27 @@ class Profile(models.Model):
     )
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
 
-    # NINCS default, külön property-ben adjuk vissza a default.jpg-t
-    profile_picture = models.ImageField(upload_to=profile_picture_upload_path, blank=True, null=True)
+    # EXPLICIT storage backend megadása!
+    profile_picture = models.ImageField(
+        upload_to=profile_picture_upload_path, 
+        blank=True, 
+        null=True,
+        storage=default_storage  # Explicit storage backend!
+    )
+
+    def save(self, *args, **kwargs):
+        """Override save method a részletes logginghoz"""
+        if self.profile_picture:
+            logger.info(f"💾 Profile mentése - fájl: {self.profile_picture.name}")
+            logger.info(f"🔍 Storage backend: {self.profile_picture.storage.__class__}")
+            print(f"💾 Profile mentése - fájl: {self.profile_picture.name}")
+            print(f"🔍 Storage backend: {self.profile_picture.storage.__class__}")
+        
+        super().save(*args, **kwargs)
+        
+        if self.profile_picture:
+            logger.info(f"✅ Profile mentve - fájl URL: {self.profile_picture.url}")
+            print(f"✅ Profile mentve - fájl URL: {self.profile_picture.url}")
 
     def __str__(self):
         return f"{self.user.username} Profile"
@@ -61,11 +82,19 @@ class Profile(models.Model):
     @property
     def profile_picture_url(self):
         if self.profile_picture:
-            url = self.profile_picture.url
-            print(f"🔗 Kép URL lekérve: {url}")
-            return url
+            try:
+                url = self.profile_picture.url
+                logger.info(f"🔗 Kép URL lekérve: {url}")
+                print(f"🔗 Kép URL lekérve: {url}")
+                return url
+            except Exception as e:
+                logger.error(f"❌ Hiba a kép URL lekérésekor: {str(e)}")
+                print(f"❌ Hiba a kép URL lekérésekor: {str(e)}")
+                return settings.STATIC_URL + "images/default.jpg"
+        logger.info("⚠️ Nincs kép, default-ot adunk vissza")
         print("⚠️ Nincs kép, default-ot adunk vissza")
         return settings.STATIC_URL + "images/default.jpg"  # legyen egy default kép a staticban
+    
     
 class Role(models.Model):
     # A szerepkörök listáját a kódban tároljuk

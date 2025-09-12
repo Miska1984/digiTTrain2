@@ -5,6 +5,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model, login
+from django.core.files.storage import default_storage
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST # ÚJ
@@ -44,27 +45,60 @@ def edit_profile(request):
             user_form.save()
             print(f"👤 User mentve: {request.user.username}")
             
-            profile = profile_form.save(commit=False)
-            profile.user = request.user
-
+            # Részletes debug info a fájlról
             if "profile_picture" in request.FILES:
                 uploaded_file = request.FILES["profile_picture"]
                 print(f"📸 Feltöltött fájl: {uploaded_file.name} ({uploaded_file.size} bájt)")
+                print(f"📸 Fájl típusa: {uploaded_file.content_type}")
+                print(f"🔍 Default storage: {default_storage.__class__}")
+                
+                # Teszteljük a storage-t közvetlenül
+                try:
+                    test_name = default_storage.save(f"test/{uploaded_file.name}", uploaded_file)
+                    print(f"🧪 Test mentés sikeres: {test_name}")
+                    test_exists = default_storage.exists(test_name)
+                    print(f"🔍 Test fájl létezik: {test_exists}")
+                    if test_exists:
+                        test_url = default_storage.url(test_name)
+                        print(f"🌍 Test fájl URL: {test_url}")
+                        # Töröljük a test fájlt
+                        default_storage.delete(test_name)
+                        print(f"🗑️ Test fájl törölve")
+                except Exception as e:
+                    print(f"❌ Test storage hiba: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                
+                # Reset file pointer
+                uploaded_file.seek(0)
             else:
                 print("ℹ️ Nem érkezett új profilkép a POST-ban")
 
             try:
+                # Mentsük el a profilt
+                profile = profile_form.save(commit=False)
+                profile.user = request.user
+                
+                print(f"💾 Profile mentése előtt - van fájl: {bool(profile.profile_picture)}")
+                
                 profile.save()
-                print(f"💾 Profil mentve adatbázisba. Kép útvonal: {profile.profile_picture.name}")
+                
+                print(f"💾 Profil mentve adatbázisba. Kép útvonal: {profile.profile_picture.name if profile.profile_picture else 'Nincs'}")
 
                 if profile.profile_picture:
                     print(f"🌍 Publikus URL: {profile.profile_picture.url}")
+                    
+                    # Ellenőrizzük, hogy létezik-e a fájl a storage-ban
+                    exists = default_storage.exists(profile.profile_picture.name)
+                    print(f"🔍 Fájl létezik a storage-ban: {exists}")
                 
                 messages.success(request, "✅ A profil sikeresen frissítve!")
                 return redirect("users:edit_profile")
 
             except Exception as e:
                 print(f"❌ HIBA TÖRTÉNT A FÁJL MENTÉSEKOR: {e}")
+                import traceback
+                traceback.print_exc()
                 messages.error(request, f"⚠️ Hiba történt a fájl feltöltésekor: {e}")
                 return redirect("users:edit_profile")
                 
