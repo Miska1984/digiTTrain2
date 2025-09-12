@@ -4,6 +4,10 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Development-specifikus beállítások
+DEBUG = True
+ALLOWED_HOSTS = ["*"]
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -17,9 +21,6 @@ DATABASES = {
         },
     }
 }
-
-DEBUG = True
-ALLOWED_HOSTS = ["*"]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media_root")

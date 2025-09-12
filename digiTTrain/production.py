@@ -1,9 +1,8 @@
 # digiTTrain/production.py
 import os
 
-
-# Győződjön meg róla, hogy ez a sor a legelső, amivel a base.py-t bővíti
-
+# Production-specifikus beállítások
+DEBUG = False
 
 ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
 
