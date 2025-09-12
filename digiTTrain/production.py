@@ -1,6 +1,9 @@
 # digiTTrain/production.py
 import os
 
+# Először mindig betöltjük az alapbeállításokat
+from .base import *
+
 # Production-specifikus beállítások
 DEBUG = False
 

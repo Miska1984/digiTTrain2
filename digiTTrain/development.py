@@ -2,6 +2,9 @@
 import os
 from pathlib import Path
 
+# Először mindig betöltjük az alapbeállításokat
+from .base import *
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Development-specifikus beállítások
