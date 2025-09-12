@@ -135,3 +135,22 @@ LOGIN_REDIRECT_URL = 'core:main_page'
 # Egyedi User modell
 AUTH_USER_MODEL = "users.User"
 
+
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+ENVIRONMENT = os.environ.get('ENVIRONMENT', 'development').strip().lower()
+DJANGO_SETTINGS_MODULE = os.environ.get('DJANGO_SETTINGS_MODULE', 'Not set')
+
+logger.info("🔧 Django settings inicializálva")
+logger.info(f"🌍 ENVIRONMENT: {ENVIRONMENT}")
+logger.info(f"⚙️ DJANGO_SETTINGS_MODULE: {DJANGO_SETTINGS_MODULE}")
+
+try:
+    from django.conf import settings
+    logger.info(f"📦 DEFAULT_FILE_STORAGE: {settings.DEFAULT_FILE_STORAGE}")
+    logger.info(f"📦 STATICFILES_STORAGE: {settings.STATICFILES_STORAGE}")
+except Exception as e:
+    logger.warning(f"Nem tudtam lekérni a storage backendeket: {e}")
