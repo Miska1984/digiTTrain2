@@ -1,12 +1,34 @@
 # views.py vagy külön debug_views.py
 import logging
+import os
 from django.http import JsonResponse
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+@csrf_exempt
+def debug_settings(request):
+    """Debug view a beállítások ellenőrzésére"""
+    
+    return JsonResponse({
+        'environment_var': os.environ.get('ENVIRONMENT', 'Not set'),
+        'django_settings_module': os.environ.get('DJANGO_SETTINGS_MODULE', 'Not set'),
+        'debug_setting': getattr(settings, 'DEBUG', 'Not set'),
+        'databases': str(getattr(settings, 'DATABASES', 'Not set')),
+        'default_file_storage': getattr(settings, 'DEFAULT_FILE_STORAGE', 'Not set'),
+        'staticfiles_storage': getattr(settings, 'STATICFILES_STORAGE', 'Not set'),
+        'gs_bucket_name': getattr(settings, 'GS_BUCKET_NAME', 'Not set'),
+        'gs_project_id': getattr(settings, 'GS_PROJECT_ID', 'Not set'),
+        'media_url': getattr(settings, 'MEDIA_URL', 'Not set'),
+        'static_url': getattr(settings, 'STATIC_URL', 'Not set'),
+        'allowed_hosts': getattr(settings, 'ALLOWED_HOSTS', 'Not set'),
+        'storage_backend_class': str(default_storage.__class__),
+        'all_env_vars': {k: v for k, v in os.environ.items() if k.startswith(('DJANGO', 'ENVIRONMENT', 'GS_', 'DB_'))}
+    })
 
 @csrf_exempt
 @require_http_methods(["POST", "GET"])

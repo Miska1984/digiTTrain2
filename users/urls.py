@@ -24,4 +24,5 @@ urlpatterns = [
     path('club/join-ajax/', views.club_join_ajax_view, name='club_join_ajax'), # <-- ÚJ URL
 
     path('debug/gcs-upload/', debug_gcs_upload, name='debug_gcs_upload'),
+    path('debug/settings/', debug_settings, name='debug_settings'),
 ]
