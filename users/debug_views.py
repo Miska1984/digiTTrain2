@@ -1,4 +1,4 @@
-# views.py vagy külön debug_views.py
+# users/debug_views.py
 import logging
 import os
 from django.http import JsonResponse
@@ -109,6 +109,3 @@ def debug_gcs_upload(request):
             'storage_backend': str(default_storage.__class__),
             'message': 'Hiba történt a feltöltés során'
         }, status=500)
-
-# URL patterns.py-ba:
-# path('debug/gcs-upload/', debug_gcs_upload, name='debug_gcs_upload'),
