@@ -2,6 +2,7 @@
 from django.urls import path
 from . import views
 from django.contrib.auth import views as auth_views
+from .debug_views import debug_gcs_upload
 
 app_name = 'users'
 
@@ -21,4 +22,6 @@ urlpatterns = [
     path('get-next-step-form/<int:role_id>/', views.get_next_step_form, name='get_next_step_form'),
     path('club/create-ajax/', views.club_create_ajax_view, name='club_create_ajax'),
     path('club/join-ajax/', views.club_join_ajax_view, name='club_join_ajax'), # <-- ÚJ URL
+
+    path('debug/gcs-upload/', debug_gcs_upload, name='debug_gcs_upload'),
 ]
