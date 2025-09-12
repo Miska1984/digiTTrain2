@@ -44,7 +44,7 @@ RUN mkdir -p ./static/dist && \
 ENV ENVIRONMENT="production"
 
 # Statikus fájlok összegyűjtése (a production.py-ban lévő STATIC_ROOT-ot fogja használni)
-RUN python manage.py collectstatic --no-input
+RUN python manage.py collectstatic --no-input --settings=digiTTrain.settings
 
 # PYTHONPATH beállítás
 ENV PYTHONPATH=/app
@@ -52,7 +52,7 @@ ENV PYTHONPATH=/app
 # Cloud Run port
 ENV PORT=8080
 
-# Default Django settings
+# FONTOS: Settings module javítása
 ENV DJANGO_SETTINGS_MODULE="digiTTrain.settings"
 
 # Mappajogok beállítása
