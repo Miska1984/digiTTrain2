@@ -58,11 +58,24 @@ logger.setLevel(logging.DEBUG)
 # Custom storage classok
 from storages.backends import gcloud
 
+# Custom storage classok részletesebb hibakezeléssel
 class MediaStorage(gcloud.GoogleCloudStorage):
     bucket_name = GS_BUCKET_NAME
     default_acl = 'publicRead'
     querystring_auth = False
-    location = ''  # nincs prefix a media fájlokhoz
+    location = ''
+    
+    def _save(self, name, content):
+        try:
+            print(f"Próbálkozás fájl mentésével: {name}")
+            print(f"Bucket: {self.bucket_name}")
+            result = super()._save(name, content)
+            print(f"Sikeres mentés: {result}")
+            return result
+        except Exception as e:
+            print(f"Storage mentési hiba: {str(e)}")
+            print(f"Hiba típusa: {type(e).__name__}")
+            raise
 
 class StaticStorage(gcloud.GoogleCloudStorage):
     bucket_name = GS_BUCKET_NAME
