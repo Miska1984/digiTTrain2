@@ -1,11 +1,9 @@
 # digiTTrain/production.py
 import os
 import sys
+from .base import *
 
 print(">>> [DEBUG] Production settings loaded <<<", file=sys.stderr)
-
-# Először mindig betöltjük az alapbeállításokat
-from .base import *
 
 # Production-specifikus beállítások
 DEBUG = False
@@ -33,28 +31,17 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # ===== GOOGLE CLOUD STORAGE BEÁLLÍTÁSOK =====
-# FONTOS: Két külön storage backend kell!
-DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
-STATICFILES_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
-
 GS_BUCKET_NAME = os.environ.get("GS_BUCKET_NAME", "digittrain-media-publikus-miska1984")
 GS_PROJECT_ID = os.environ.get("GS_PROJECT_ID", "digittrain-projekt")
+GS_LOCATION = os.environ.get("GS_LOCATION", "europe-west1")
 
-# Hitelesítés beállítása
 GS_AUTO_CREATE_BUCKET = False
 GS_DEFAULT_ACL = "publicRead"
 GS_QUERYSTRING_AUTH = False
 GS_FILE_OVERWRITE = False
 GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 
-# Location beállítás
-GS_LOCATION = os.environ.get("GS_LOCATION", "europe-west1")
-
-# KRITIKUS: Custom storage osztályok definiálása
-GS_MEDIA_BUCKET_NAME = GS_BUCKET_NAME
-GS_STATIC_BUCKET_NAME = GS_BUCKET_NAME
-
-# URL-ek pontos beállítása
+# URL-ek
 MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
 STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
 
@@ -62,28 +49,34 @@ STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
 STATIC_ROOT = "/app/staticfiles_temp"
 MEDIA_ROOT = "/app/mediafiles_temp"
 
-# Részletes logging a hibakereséshez
+# Logging a hibakereséshez
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('storages')
 logger.setLevel(logging.DEBUG)
 
-# Storage backend explicit importálása
+# Custom storage classok
 from storages.backends import gcloud
 
-# Custom storage class a jobb kontroll érdekében
 class MediaStorage(gcloud.GoogleCloudStorage):
     bucket_name = GS_BUCKET_NAME
     default_acl = 'publicRead'
     querystring_auth = False
-    location = ''  # Ne legyen prefix a media fájlokhoz
+    location = ''  # nincs prefix a media fájlokhoz
 
 class StaticStorage(gcloud.GoogleCloudStorage):
     bucket_name = GS_BUCKET_NAME
-    default_acl = 'publicRead' 
+    default_acl = 'publicRead'
     querystring_auth = False
-    location = 'static'  # Static fájlok a /static/ mappába
+    location = 'static'  # minden static fájl a /static/ alá kerül
 
-# Storage backend újradefiniálása
+# Storage backend végleges beállítása
 DEFAULT_FILE_STORAGE = 'digiTTrain.production.MediaStorage'
 STATICFILES_STORAGE = 'digiTTrain.production.StaticStorage'
+
+print(
+    ">>> [DEBUG] Using storage backends:",
+    DEFAULT_FILE_STORAGE,
+    STATICFILES_STORAGE,
+    file=sys.stderr
+)
