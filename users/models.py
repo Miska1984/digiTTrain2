@@ -9,7 +9,7 @@ import uuid
 
 
 logger = logging.getLogger(__name__)
-logger.info("📦 Aktív DEFAULT_FILE_STORAGE: %s", settings.DEFAULT_FILE_STORAGE)
+logger.info("📦 Aktív storage backend: %s", default_storage.__class__)
 
 class User(AbstractUser):
     """
