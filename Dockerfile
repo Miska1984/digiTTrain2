@@ -43,8 +43,14 @@ RUN mkdir -p ./static/dist && \
 # Állítsuk be a környezetet a beállításokhoz
 ENV ENVIRONMENT="production"
 
-# Statikus fájlok összegyűjtése (a production.py-ban lévő STATIC_ROOT-ot fogja használni)
-RUN python manage.py collectstatic --no-input --settings=digiTTrain.settings
+# BUILD MODE beállítás a collectstatic-hoz (helyi storage használata build közben)
+ENV BUILD_MODE=true
+
+# Statikus fájlok összegyűjtése (build közben helyi storage-ba)
+RUN python manage.py collectstatic --no-input --verbosity=2 --settings=digiTTrain.settings
+
+# BUILD MODE kikapcsolása runtime-hoz (GCS használata)
+ENV BUILD_MODE=false
 
 # PYTHONPATH beállítás
 ENV PYTHONPATH=/app
@@ -55,10 +61,10 @@ ENV PORT=8080
 # FONTOS: Settings module javítása
 ENV DJANGO_SETTINGS_MODULE="digiTTrain.settings"
 
-# Mappajogok beállítása
-RUN mkdir -p /app/media_root
-RUN chown -R www-data:www-data /app/media_root
-RUN chmod -R 775 /app/media_root
+# Mappajogok beállítása (bár GCS esetén ez nem lesz releváns)
+RUN mkdir -p /app/media_root /app/staticfiles_temp
+RUN chown -R www-data:www-data /app/media_root /app/staticfiles_temp
+RUN chmod -R 775 /app/media_root /app/staticfiles_temp
 
 # A Gunicorn indítja a Django appot
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "digiTTrain.wsgi:application"]

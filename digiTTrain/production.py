@@ -70,18 +70,40 @@ class StaticStorage(gcloud.GoogleCloudStorage):
     querystring_auth = False
     location = 'static'  # minden static fájl a /static/ alá kerül
 
-# Storage backend végleges beállítása
-STORAGES = {
-    "default": {
-        "BACKEND": "digiTTrain.production.MediaStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "digiTTrain.production.StaticStorage", 
-    },
-}
+# ===== STORAGE KONFIGURÁCIÓ BUILD MODE TÁMOGATÁSSAL =====
+BUILD_MODE = os.getenv('BUILD_MODE', 'false').lower() == 'true'
+
+if BUILD_MODE:
+    # Build közben használjon local storage-t
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    print(">>> [DEBUG] BUILD MODE: Using local storage for collectstatic <<<", file=sys.stderr)
+    
+    # Build közben helyi útvonalak
+    STATIC_URL = "/static/"
+    MEDIA_URL = "/media/"
+    
+else:
+    # Runtime-ban használja a GCS-t
+    STORAGES = {
+        "default": {
+            "BACKEND": "digiTTrain.production.MediaStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "digiTTrain.production.StaticStorage",
+        },
+    }
+    print(">>> [DEBUG] RUNTIME MODE: Using GCS storage <<<", file=sys.stderr)
 
 print(
-    ">>> [DEBUG] Using STORAGES configuration:",
+    ">>> [DEBUG] Active storage configuration:",
+    f"BUILD_MODE={BUILD_MODE},",
     "default:", STORAGES["default"]["BACKEND"],
     "staticfiles:", STORAGES["staticfiles"]["BACKEND"],
     file=sys.stderr
