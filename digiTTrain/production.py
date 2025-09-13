@@ -71,12 +71,18 @@ class StaticStorage(gcloud.GoogleCloudStorage):
     location = 'static'  # minden static fájl a /static/ alá kerül
 
 # Storage backend végleges beállítása
-DEFAULT_FILE_STORAGE = 'digiTTrain.production.MediaStorage'
-STATICFILES_STORAGE = 'digiTTrain.production.StaticStorage'
+STORAGES = {
+    "default": {
+        "BACKEND": "digiTTrain.production.MediaStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "digiTTrain.production.StaticStorage", 
+    },
+}
 
 print(
-    ">>> [DEBUG] Using storage backends:",
-    DEFAULT_FILE_STORAGE,
-    STATICFILES_STORAGE,
+    ">>> [DEBUG] Using STORAGES configuration:",
+    "default:", STORAGES["default"]["BACKEND"],
+    "staticfiles:", STORAGES["staticfiles"]["BACKEND"],
     file=sys.stderr
 )
