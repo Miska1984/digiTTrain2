@@ -61,7 +61,7 @@ from storages.backends import gcloud
 # Custom storage classok részletesebb hibakezeléssel
 class MediaStorage(gcloud.GoogleCloudStorage):
     bucket_name = GS_BUCKET_NAME
-    default_acl = 'publicRead'
+    default_acl = None
     querystring_auth = False
     location = ''
     
@@ -79,7 +79,7 @@ class MediaStorage(gcloud.GoogleCloudStorage):
 
 class StaticStorage(gcloud.GoogleCloudStorage):
     bucket_name = GS_BUCKET_NAME
-    default_acl = 'publicRead'
+    default_acl = None
     querystring_auth = False
     location = 'static'  # minden static fájl a /static/ alá kerül
 
