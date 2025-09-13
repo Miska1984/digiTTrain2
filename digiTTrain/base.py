@@ -149,8 +149,8 @@ logger.info(f"⚙️ DJANGO_SETTINGS_MODULE: {DJANGO_SETTINGS_MODULE}")
 
 # ===== ALAPÉRTELMEZETT STORAGE BEÁLLÍTÁSOK =====
 # Ezek mindig léteznek, így elkerülhető a "nincs attribútum" hiba
-DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
-STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+# DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+# STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
-logger.info(f"📦 (BASE) DEFAULT_FILE_STORAGE: {DEFAULT_FILE_STORAGE}")
-logger.info(f"📦 (BASE) STATICFILES_STORAGE: {STATICFILES_STORAGE}")
+# logger.info(f"📦 (BASE) DEFAULT_FILE_STORAGE: {DEFAULT_FILE_STORAGE}")
+# logger.info(f"📦 (BASE) STATICFILES_STORAGE: {STATICFILES_STORAGE}")
