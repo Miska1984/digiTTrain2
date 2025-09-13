@@ -133,11 +133,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_REDIRECT_URL = 'core:main_page'
 
 # Egyedi User modell
+# Egyedi User modell
 AUTH_USER_MODEL = "users.User"
 
-
 import logging
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -148,9 +147,10 @@ logger.info("🔧 Django settings inicializálva")
 logger.info(f"🌍 ENVIRONMENT: {ENVIRONMENT}")
 logger.info(f"⚙️ DJANGO_SETTINGS_MODULE: {DJANGO_SETTINGS_MODULE}")
 
-try:
-    from django.conf import settings
-    logger.info(f"📦 DEFAULT_FILE_STORAGE: {settings.DEFAULT_FILE_STORAGE}")
-    logger.info(f"📦 STATICFILES_STORAGE: {settings.STATICFILES_STORAGE}")
-except Exception as e:
-    logger.warning(f"Nem tudtam lekérni a storage backendeket: {e}")
+# ===== ALAPÉRTELMEZETT STORAGE BEÁLLÍTÁSOK =====
+# Ezek mindig léteznek, így elkerülhető a "nincs attribútum" hiba
+DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
+
+logger.info(f"📦 (BASE) DEFAULT_FILE_STORAGE: {DEFAULT_FILE_STORAGE}")
+logger.info(f"📦 (BASE) STATICFILES_STORAGE: {STATICFILES_STORAGE}")
