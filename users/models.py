@@ -60,7 +60,6 @@ class Profile(models.Model):
         upload_to=profile_picture_upload_path, 
         blank=True, 
         null=True,
-        storage=default_storage  # Explicit storage backend!
     )
 
     def save(self, *args, **kwargs):
