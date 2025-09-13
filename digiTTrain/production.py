@@ -1,5 +1,8 @@
 # digiTTrain/production.py
 import os
+import sys
+
+print(">>> [DEBUG] Production settings loaded <<<", file=sys.stderr)
 
 # Először mindig betöltjük az alapbeállításokat
 from .base import *
