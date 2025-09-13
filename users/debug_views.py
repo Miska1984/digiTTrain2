@@ -1,6 +1,7 @@
 # users/debug_views.py
 import logging
 import os
+import sys
 from django.http import JsonResponse
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
@@ -9,6 +10,14 @@ from django.views.decorators.http import require_http_methods
 from django.conf import settings
 
 logger = logging.getLogger(__name__)
+
+def gcs_upload_debug(request):
+    return JsonResponse({
+        "message": "POST egy fájlt ide a teszteléshez",
+        "DJANGO_SETTINGS_MODULE": sys.modules.get("django.conf").settings.__class__.__name__,
+        "storage_backend": settings.DEFAULT_FILE_STORAGE,
+        "bucket_name": getattr(settings, "GS_BUCKET_NAME", "N/A"),
+    })
 
 @csrf_exempt
 def debug_settings(request):
