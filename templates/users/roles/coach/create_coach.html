@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edző szerepkör szerkesztése{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Edző szerepkör adatok szerkesztése</h2>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <h3 class="h6 text-muted mb-3">Edző szerepkör</h3>
+                        <hr>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.club.id_for_label }}" class="form-label">Klub</label>
+                                {{ form.club }}
+                                {% for error in form.club.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ form.sport.id_for_label }}" class="form-label">Sportág</label>
+                                {{ form.sport }}
+                                {% for error in form.sport.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-12">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">Megjegyzések</label>
+                                {{ form.notes }}
+                                {% for error in form.notes.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <button type="submit" class="btn btn-primary">Mentés</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const clubSelect = document.getElementById("id_club");
+    const sportSelect = document.getElementById("id_sport");
+
+    clubSelect.addEventListener("change", function () {
+        const clubId = this.value;
+        sportSelect.innerHTML = '<option value="">Betöltés...</option>';
+
+        if (clubId) {
+            fetch(`/users/roles/coach/get-sports/${clubId}/`)
+                .then(response => response.json())
+                .then(data => {
+                    sportSelect.innerHTML = "";
+                    if (data.sports.length === 0) {
+                        const option = document.createElement("option");
+                        option.text = "Nincs elérhető sportág";
+                        option.value = "";
+                        sportSelect.add(option);
+                    } else {
+                        data.sports.forEach(sport => {
+                            const option = document.createElement("option");
+                            option.value = sport.id;
+                            option.text = sport.name;
+                            sportSelect.add(option);
+                        });
+                    }
+                });
+        } else {
+            sportSelect.innerHTML = '<option value="">Előbb válassz klubot</option>';
+        }
+    });
+});
+</script>
+{% endblock %}

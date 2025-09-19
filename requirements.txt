@@ -26,3 +26,5 @@ requests==2.32.5
 rsa==4.9.1
 sqlparse==0.5.3
 urllib3==2.5.0
+django-healthchecks
+django-formtools

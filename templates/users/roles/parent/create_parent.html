@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Egyedi stílus a form-select elemekhez */
+    .form-select {
+        min-width: 250px; /* Alapértelmezett minimális szélesség, a teljes névhez igazítva */
+    }
+    
+    /* A coach mezőhöz egyedi szélesség, ha szükséges */
+    #id_coach {
+        width: 300px;
+    }
+</style>
+<div class="container mt-4">
+    <h2>Szülői szerepkör létrehozása</h2>
+    
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger" role="alert">
+        {% for error in form.non_field_errors %}
+        {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <form method="post" enctype="multipart/form-data" id="parentForm">
+        {% csrf_token %}
+        <div class="mb-3">
+            {{ form.club.label_tag }}
+            {{ form.club }}
+            {% if form.club.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in form.club.errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.sport.label_tag }}
+            {{ form.sport }}
+            {% if form.sport.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in form.sport.errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.coach.label_tag }}
+            {{ form.coach }}
+            {% if form.coach.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in form.coach.errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="mb-3">
+            {{ form.notes.label_tag }}
+            {{ form.notes }}
+            {% if form.notes.errors %}
+            <div class="invalid-feedback d-block">
+                {% for error in form.notes.errors %}
+                {{ error }}
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        <button type="submit" class="btn btn-primary">Mentés</button>
+    </form>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    let clubField = document.getElementById("id_club");
+    let sportField = document.getElementById("id_sport");
+    let coachField = document.getElementById("id_coach");
+    
+    // ... a JavaScript kód változatlan ...
+    // Klub változás → sportokat frissít
+    clubField.addEventListener("change", function() {
+        let clubId = this.value;
+        sportField.innerHTML = "<option value=''>Válassz sportágat...</option>";
+        coachField.innerHTML = "<option value=''>Válassz edzőt...</option>";
+        
+        if (clubId) {
+            fetch(`/users/roles/parent/get_sports_by_club/?club_id=${clubId}`)
+            .then(response => response.json())
+            .then(data => {
+                data.sports.forEach(sport => {
+                    let option = new Option(sport.name, sport.id);
+                    sportField.add(option);
+                });
+            });
+        }
+    });
+    
+    // Sport változás → edzőket frissít
+    sportField.addEventListener("change", function() {
+        let clubId = clubField.value;
+        let sportId = this.value;
+        coachField.innerHTML = "<option value=''>Válassz edzőt...</option>";
+        
+        if (clubId && sportId) {
+            fetch(`/users/roles/parent/get_coaches_by_club_and_sport/?club_id=${clubId}&sport_id=${sportId}`)
+            .then(response => response.json())
+            .then(data => {
+                data.coaches.forEach(coach => {
+                    let option = new Option(coach.name, coach.id);
+                    coachField.add(option);
+                });
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

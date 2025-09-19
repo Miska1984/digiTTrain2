@@ -6,16 +6,25 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model, login
 from django.core.files.storage import default_storage
+from django.db import transaction
 from django.http import JsonResponse
 from django.template.loader import render_to_string
-from django.views.decorators.http import require_POST # ÚJ
+from django.views.decorators.http import require_POST
+from django.views.generic import TemplateView
+from formtools.wizard.views import SessionWizardView
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 import os
-from .forms import UserRegistrationForm, ProfileForm, UserUpdateForm, ClubForm, RoleSelectionForm, ClubSportSelectionForm
-from .models import Profile, Club, UserRole, Role, Sport
+import json
+import logging
+from .forms import (
+    UserRegistrationForm, ProfileForm, UserUpdateForm
+)
+from .models import Profile, UserRole
 
+logger = logging.getLogger(__name__)
 
-User = get_user_model()
-
+# Meglévő view-k (register, edit_profile stb.) - ezek változatlanok maradnak
 def register(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
@@ -42,7 +51,7 @@ def edit_profile(request):
         print(f"📋 Meglévő profil betöltve: {request.user.username}")
 
     if request.method == "POST":
-        print("\n📥 POST kérés érkezett a profil szerkesztéshez")
+        print("\n🔥 POST kérés érkezett a profil szerkesztéshez")
         print(f"🔍 Request.FILES tartalma: {list(request.FILES.keys())}")
         print(f"🔍 Request.POST tartalma: {dict(request.POST)}")
         
@@ -53,8 +62,8 @@ def edit_profile(request):
         user_form = UserUpdateForm(request.POST, instance=request.user)
         profile_form = ProfileForm(request.POST, request.FILES, instance=profile)
 
-        print(f"📝 User form valid: {user_form.is_valid()}")
-        print(f"📝 Profile form valid: {profile_form.is_valid()}")
+        print(f"🔍 User form valid: {user_form.is_valid()}")
+        print(f"🔍 Profile form valid: {profile_form.is_valid()}")
         
         if not user_form.is_valid():
             print(f"❌ User form hibák: {user_form.errors}")
@@ -94,11 +103,11 @@ def edit_profile(request):
                 
                 # Eredmény ellenőrzése
                 if profile.profile_picture:
-                    print(f"📁 Mentett fájl név: {profile.profile_picture.name}")
+                    print(f"🔍 Mentett fájl név: {profile.profile_picture.name}")
                     
                     try:
                         file_url = profile.profile_picture.url
-                        print(f"🌍 Generált URL: {file_url}")
+                        print(f"🌐 Generált URL: {file_url}")
                     except Exception as url_error:
                         print(f"❌ URL generálási hiba: {str(url_error)}")
                     
@@ -110,7 +119,7 @@ def edit_profile(request):
                         if exists:
                             try:
                                 file_size = default_storage.size(profile.profile_picture.name)
-                                print(f"📏 Fájl mérete: {file_size} bájt")
+                                print(f"🔍 Fájl mérete: {file_size} bájt")
                             except Exception as size_error:
                                 print(f"❌ Méret lekérési hiba: {str(size_error)}")
                         else:
@@ -147,7 +156,7 @@ def edit_profile(request):
         if profile.profile_picture:
             print(f"🖼️ Jelenlegi profilkép: {profile.profile_picture.name}")
             try:
-                print(f"🌍 Jelenlegi URL: {profile.profile_picture.url}")
+                print(f"🌐 Jelenlegi URL: {profile.profile_picture.url}")
             except Exception as e:
                 print(f"❌ URL lekérési hiba: {str(e)}")
         else:
@@ -163,76 +172,17 @@ def edit_profile(request):
     })
 
 @login_required
-def new_role_view(request):
-    form = RoleSelectionForm()
-    context = {
-        'form': form
-    }
-    return render(request, 'users/new_role.html', context)
-
-@login_required
-@require_POST
-def club_create_ajax_view(request):
-    club_form = ClubForm(request.POST, request.FILES)
-    if club_form.is_valid():
-        club = club_form.save(commit=False)
-        club.creator = request.user
-        club.save()
-
-        try:
-            role = Role.objects.get(name='Egyesületi vezető')
-            UserRole.objects.create(
-                user=request.user,
-                role=role,
-                club=club,
-                sport=None
-            )
-            return JsonResponse({'success': True, 'redirect_url': str(reverse_lazy('core:main_page'))})
-        except Role.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'A "Egyesületi vezető" szerepkör nem található.'})
-    else:
-        html_form = render_to_string('users/forms/club_form.html', {'form': club_form}, request=request)
-        return JsonResponse({'success': False, 'html_form': html_form, 'error': 'Kérjük, javítsa a hibákat.'})
-
-@login_required
-@require_POST
-def club_join_ajax_view(request):
+def role_dashboard(request):
     """
-    Ez a nézet kezeli a meglévő klubhoz és sportághoz való csatlakozást.
+    A felhasználó szerepkör vezérlőpultját megjelenítő nézet.
+    Megjeleníti a meglévő szerepköröket és a hozzáadásukhoz szükséges gombokat.
     """
-    club_sport_form = ClubSportSelectionForm(request.POST)
-    if club_sport_form.is_valid():
-        club = club_sport_form.cleaned_data['club']
-        sport = club_sport_form.cleaned_data['sport']
-
-        # Alapértelmezett szerepkör, pl. 'Sportoló'
-        try:
-            role = Role.objects.get(name='Sportoló')
-            UserRole.objects.create(
-                user=request.user,
-                role=role,
-                club=club,
-                sport=sport
-            )
-            return JsonResponse({'success': True, 'redirect_url': str(reverse_lazy('core:main_page'))})
-        except Role.DoesNotExist:
-            return JsonResponse({'success': False, 'error': 'A "Sportoló" szerepkör nem található.'})
-    else:
-        html_form = render_to_string('users/forms/club_sport_form.html', {'form': club_sport_form}, request=request)
-        return JsonResponse({'success': False, 'html_form': html_form, 'error': 'Kérjük, javítsa a hibákat.'})
-
-@login_required
-def get_next_step_form(request, role_id):
-    role = get_object_or_404(Role, pk=role_id)
+    # Lekérdezzük az aktuális felhasználóhoz tartozó összes UserRole-t
+    user_roles = UserRole.objects.filter(user=request.user)
     
-    context = {}
-    if role.name == 'Egyesületi vezető':
-        form = ClubForm()
-        context['form'] = form
-        html_form = render_to_string('users/forms/club_form.html', context, request=request)
-    else:
-        form = ClubSportSelectionForm()
-        context['form'] = form
-        html_form = render_to_string('users/forms/club_sport_form.html', context, request=request)
+    context = {
+        'user_roles': user_roles,
+    }
+    
+    return render(request, 'users/roles/role_dashboard.html', context)
 
-    return JsonResponse({'html_form': html_form})

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Jóváhagyásra váró szerepkörök{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="mb-4">Saját, függőben lévő szerepkörök</h2>
+
+    {% if my_pending_roles %}
+        <div class="table-responsive mb-5">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Szerepkör</th>
+                        <th>Klub</th>
+                        <th>Sportág</th>
+                        <th>Megjegyzések</th>
+                        <th>Műveletek</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role in my_pending_roles %}
+                        <tr>
+                            <td>{{ role.role.name }}</td>
+                            <td>{{ role.club.short_name }}</td>
+                            <td>{{ role.sport.name }}</td>
+                            <td>{{ role.notes|default:"—" }}</td>
+                            <td>
+                                <form method="post" action="{% url 'users:cancel_role' role.id %}" onsubmit="return confirm('Biztosan visszavonja a kérést?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-warning btn-sm">Visszavonás</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info mb-5">
+            Jelenleg nincs függőben lévő szerepkör igénylése.
+        </div>
+    {% endif %}
+
+    <h2 class="mb-4">Jóváhagyásra váró szerepkörök (feletteseknek)</h2>
+    
+    {% if pending_roles_for_approval %}
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Felhasználó Név</th>
+                        <th>Szerepkör</th>
+                        <th>Klub</th>
+                        <th>Sportág</th>
+                        <th>Megjegyzések</th>
+                        <th>Műveletek</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for role in pending_roles_for_approval %}
+                        <tr>
+                            <td>
+                                {% if role.user.profile.first_name and role.user.profile.last_name %}
+                                    {{ role.user.profile.first_name }} {{ role.user.profile.last_name }}
+                                {% else %}
+                                    {{ role.user.username }}
+                                {% endif %}
+                            </td>
+                            <td>{{ role.role.name }}</td>
+                            <td>{{ role.club.short_name }}</td>
+                            <td>{{ role.sport.name }}</td>
+                            <td>{{ role.notes|default:"—" }}</td>
+                            <td>
+                                <div class="d-flex gap-2">
+                                    <form method="post" action="{% url 'users:approve_role' role.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-success btn-sm">Jóváhagyás</button>
+                                    </form>
+                                    <form method="post" action="{% url 'users:reject_role' role.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-danger btn-sm">Elutasítás</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            Jelenleg nincs jóváhagyásra váró szerepkör.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

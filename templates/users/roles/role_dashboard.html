@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Szerepkörök{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h2 class="mb-4">Szerepkörök kezelése</h2>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4 mb-5">
+        <div class="col">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-person-circle h1 text-primary"></i>
+                    <h5 class="card-title mt-2">Egyesületi vezető</h5>
+                    <p class="card-text text-muted">Hozzon létre egy új klubot és legyen annak vezetője.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'users:create_club_leader' %}" class="btn btn-primary">➕ Hozzáadás</a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-person-circle h1 text-success"></i>
+                    <h5 class="card-title mt-2">Edző</h5>
+                    <p class="card-text text-muted">Adjon hozzá egy új edzői szerepkört magának.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'users:create_coach_role' %}" class="btn btn-success">➕ Hozzáadás </a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-person-circle h1 text-info"></i>
+                    <h5 class="card-title mt-2">Sportoló</h5>
+                    <p class="card-text text-muted">Regisztráljon sportolóként egy klubhoz.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'users:create_athlete' %}" class="btn btn-info">➕ Hozzáadás</a>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card h-100 text-center">
+                <div class="card-body">
+                    <i class="bi bi-person-circle h1 text-warning"></i>
+                    <h5 class="card-title mt-2">Szülő</h5>
+                    <p class="card-text text-muted">Adjon hozzá egy szülői szerepkört.</p>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'users:create_parent' %}" class="btn btn-warning">➕ Hozzáadás</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h3 class="mb-3">Jelenlegi szerepkörök</h3>
+    {% if user_roles %}
+        <div class="list-group">
+            {% for role in user_roles %}
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ role.role.name }}</strong>
+                            <br>
+                            {% if role.club %}
+                                <small class="text-muted">{{ role.club.name }}</small>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <button class="btn btn-outline-secondary btn-sm me-2" type="button" data-bs-toggle="collapse" data-bs-target="#details-{{ role.id }}" aria-expanded="false" aria-controls="details-{{ role.id }}">
+                                <i class="bi bi-eye"></i> Részletek
+                            </button>
+                            {% if role.role.name == "Egyesületi vezető" %}
+                                <a href="{% url 'users:edit_club_leader_role' role.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil-square"></i> Szerkesztés</a>
+                            {% elif role.role.name == "Edző" %}
+                                <a href="{% url 'users:edit_coach_role' role.id %}" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil-square"></i> Szerkesztés</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="collapse mt-3" id="details-{{ role.id }}">
+                        <div class="card card-body bg-light">
+                            <div class="row align-items-center">
+                                <div class="col-md-auto text-center mb-3 mb-md-0">
+                                    {% if role.club.logo %}
+                                        <img src="{{ role.club.logo.url }}" alt="Klub logója" class="img-fluid rounded-circle" style="max-width: 80px; height: auto;">
+                                    {% else %}
+                                        <i class="bi bi-house-door h2 text-muted"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-9">
+                                    <h6 class="mb-1"><strong>Klub adatok:</strong></h6>
+                                    <ul class="list-unstyled mb-2">
+                                        <li><strong>Rövid név:</strong> {{ role.club.short_name }}</li>
+                                    </ul>
+                                    <h6 class="mb-1"><strong>Sportágak:</strong></h6>
+                                    {% if role.club.sports.all %}
+                                        <ul class="list-unstyled d-flex flex-wrap">
+                                            {% for sport in role.club.sports.all %}
+                                                <li class="badge bg-secondary me-2 mb-1">{{ sport.name }}</li>
+                                            {% endfor %}
+                                        </ul>
+                                    {% else %}
+                                        <p class="text-muted small">Nincs hozzárendelt sportág.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            Jelenleg nincsenek aktív szerepköreid.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
