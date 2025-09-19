@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Szülői szerepkör adatok{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Szülői szerepkör adatok</h2>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert {% if message.tags %}alert-{{ message.tags }}{% else %}alert-info{% endif %} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <h3 class="h6 text-muted mb-3">Szülői szerepkör</h3>
+                    <hr>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Klub</label>
+                            <p class="form-control-plaintext">{{ role.club.name }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Sportág</label>
+                            <p class="form-control-plaintext">{{ role.sport.name }}</p>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Megjegyzések</label>
+                            <p class="form-control-plaintext">{{ role.notes|default_if_none:"Nincs megjegyzés" }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer d-flex justify-content-end">
+                    <a href="{% url 'core:main_page' %}" class="btn btn-secondary me-2">Mégse</a>
+                    <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        {% if has_children %}
+                            <button type="submit" name="delete_role" class="btn btn-danger" disabled>Törlés</button>
+                        {% else %}
+                            <button type="submit" name="delete_role" class="btn btn-danger">Törlés</button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

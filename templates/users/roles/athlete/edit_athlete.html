@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sportoló szerepkör szerkesztése{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5>Sportoló szerepkör szerkesztése</h5>
+                    <a href="{% url 'core:main_page' %}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Vissza
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <p><strong>Szerepkör:</strong> {{ role.role.name }}</p>
+                    <p><strong>Egyesület:</strong> {{ role.club.name }}</p>
+                    <p><strong>Sportág:</strong> {{ role.sport.name }}</p>
+                    <p><strong>Státusz:</strong> 
+                        {% if role.status == 'pending' %}
+                            <span class="badge bg-warning text-dark">Várakozik</span>
+                        {% elif role.status == 'approved' %}
+                            <span class="badge bg-success">Jóváhagyva</span>
+                        {% else %}
+                            <span class="badge bg-danger">Elutasítva</span>
+                        {% endif %}
+                    </p>
+                    {% if role.notes %}
+                        <p><strong>Megjegyzés:</strong> {{ role.notes }}</p>
+                    {% endif %}
+                    {% if role.coach %}
+                        <p><strong>Edző:</strong> {{ role.coach.profile.get_full_name }}</p>
+                    {% endif %}
+                    {% if role.parent %}
+                        <p><strong>Szülő:</strong> {{ role.parent.profile.get_full_name }}</p>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <h6 class="text-danger">Szerepkör törlése</h6>
+                    <p>Figyelem! A szerepkör törlése végleges és nem visszavonható.</p>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" name="delete_role" class="btn btn-danger" 
+                                onclick="return confirm('Biztosan törölni szeretnéd a sportoló szerepkört? Ez a művelet nem visszavonható.');">
+                            <i class="bi bi-trash"></i> Szerepkör törlése
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

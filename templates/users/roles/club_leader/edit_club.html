@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Klub szerkesztése{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="h5 mb-0">Klub adatok szerkesztése</h2>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <h3 class="h6 text-muted mb-3">Klub adatai</h3>
+                        <hr>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ club_form.name.id_for_label }}" class="form-label">Klub neve</label>
+                                {{ club_form.name }}
+                                {% for error in club_form.name.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label for="{{ club_form.short_name.id_for_label }}" class="form-label">Rövid név</label>
+                                {{ club_form.short_name }}
+                                {% for error in club_form.short_name.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-12">
+                                <label for="{{ club_form.address.id_for_label }}" class="form-label">Cím</label>
+                                {{ club_form.address }}
+                                {% for error in club_form.address.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-12">
+                                <label for="{{ club_form.logo.id_for_label }}" class="form-label">Logó</label>
+                                {{ club_form.logo }}
+                                {% for error in club_form.logo.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
+
+                        <div class="col-12">
+                            <label class="form-label d-block">Sportágak</label>
+                            {% for checkbox in club_form.sports %}
+                                <div class="form-check form-check-inline">
+                                    {% if checkbox.choice_value in locked_sport_ids %} 
+                                        <input type="checkbox" class="form-check-input" name="{{ checkbox.name }}" value="{{ checkbox.value }}" checked disabled>
+                                        <label class="form-check-label text-muted" for="{{ checkbox.id_for_label }}">
+                                            {{ checkbox.choice_label }} (nem módosítható)
+                                        </label>
+                                    {% else %}
+                                        {{ checkbox.tag }}
+                                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">
+                                            {{ checkbox.choice_label }}
+                                        </label>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                            {% for error in club_form.sports.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{% url 'core:main_page' %}" class="btn btn-secondary me-2">Mégse</a>
+                            <button type="submit" name="delete_role" class="btn btn-danger me-2">Szerepkör és klub törlése</button>
+                            <button type="submit" class="btn btn-primary">Mentés</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

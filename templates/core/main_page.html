@@ -1,13 +1,237 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}Főoldal{% endblock %}
 
 {% block content %}
-<div class="text-center my-4">
-    {% if user.profile.profile_picture %}
-        <img src="{{ user.profile.profile_picture.url }}" alt="Profilkép" class="rounded-circle" style="width: 150px; height: 150px; object-fit: cover;">
-    {% endif %}
-    <h2>Üdvözlünk, {{ user.profile.first_name }} {{ user.profile.last_name }}!</h2>
-    <p>Sikeresen bejelentkeztél.</p>
+<div class="container">
+    <div class="row">
+        <div class="col-md-3 border-end pe-4">
+            <div class="text-center mb-4">
+                <a href="{% url 'core:main_page' %}">
+                    <img src="{% static 'images/your_logo.png' %}" alt="Logo" style="height: 50px;" class="mb-3">
+                </a>
+            </div>
+            <div class="card mb-4">
+                <div class="card-body text-center">
+                    {% if user.profile.profile_picture %}
+                        <img src="{{ user.profile.profile_picture.url }}" alt="Profilkép" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover;">
+                    {% else %}
+                        <i class="bi bi-person-circle h1 mb-3 text-muted"></i>
+                    {% endif %}
+                    <h5>
+                        {% if user.profile.first_name or user.profile.last_name %}
+                            {{ user.profile.first_name }} {{ user.profile.last_name }}
+                        {% else %}
+                            {{ user.username }}
+                        {% endif %}
+                    </h5>
+                    <p class="text-muted small">{{ user.email }}</p>
+                    {% if user.profile.date_of_birth %}
+                        <p class="small">Szül.: {{ user.profile.date_of_birth|date:"Y. m. d." }}</p>
+                    {% endif %}
+                    <a href="{% url 'users:edit_profile' %}" class="btn btn-outline-primary btn-sm mt-2">Profil szerkesztése</a>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    Szerepkörök
+                </div>
+                <ul class="list-group list-group-flush">
+                    {% if user_roles %}
+                        {% for role in user_roles %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-2">
+                                            {% if role.club.logo %}
+                                                <img src="{{ role.club.logo.url }}" alt="{{ role.club.name }} logo" 
+                                                        class="me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                                            {% endif %}
+                                            <strong>{{ role.role.name }}</strong>
+                                        </div>
+                                        <small class="text-muted d-block">
+                                            {{ role.club.short_name }} /
+                                            {% if role.role.name == "Egyesületi vezető" %}
+                                                {% for sport in role.club.sports.all %}
+                                                    {{ sport.name }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            {% else %}
+                                                {{ role.sport.name }}
+                                            {% endif %}
+                                        </small>
+                                        {% if role.status == 'pending' %}
+                                            <small class="text-warning">
+                                                <i class="bi bi-clock"></i> Várakozik jóváhagyásra
+                                            </small>
+                                        {% elif role.status == 'approved' %}
+                                            <small class="text-success">
+                                                <i class="bi bi-check-circle"></i> Jóváhagyva
+                                            </small>
+                                        {% elif role.status == 'rejected' %}
+                                            <small class="text-danger">
+                                                <i class="bi bi-x-circle"></i> Elutasítva
+                                            </small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="ms-2">
+                                        {% if role.role.name == "Egyesületi vezető" %}
+                                            <a href="{% url 'users:edit_club_leader_role' role.id %}" 
+                                                class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                        {% elif role.role.name == "Edző" %}
+                                            <a href="{% url 'users:edit_coach_role' role.id %}" 
+                                                class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                        {% elif role.role.name == "Szülő" %}
+                                            <a href="{% url 'users:edit_parent' role.id %}" 
+                                                class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                        {% elif role.role.name == "Sportoló" %}
+                                            <a href="{% url 'users:edit_athlete' role.id %}" 
+                                                class="btn btn-outline-secondary btn-sm">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </a>
+                                        {% else %}
+                                            <button class="btn btn-outline-secondary btn-sm" disabled>
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    {% else %}
+                        <li class="list-group-item text-muted text-center py-4">
+                            <i class="bi bi-person-plus h3 d-block mb-2"></i>
+                            Még nincs szerepköröd.
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+
+        <div class="col-md-9 ps-4">
+            <h2>Üdvözlünk, 
+                {% if user.profile.first_name %}
+                    {{ user.profile.first_name }} {{ user.profile.last_name }}
+                {% else %}
+                    {{ user.username }}
+                {% endif %}!
+            </h2>
+            <p>Itt tekintheted meg a profilodat és a szerepköreidet.</p>
+            
+            {% if pending_roles_count > 0 %}
+            <div class="alert alert-info mt-4">
+                <i class="bi bi-info-circle-fill"></i> <strong>Jóváhagyási feladatod van!</strong> Jelenleg {{ pending_roles_count }} kérelem vár jóváhagyásra.
+                <a href="{% url 'users:pending_roles' %}" class="alert-link">Itt találod őket.</a>
+            </div>
+            {% endif %}
+
+            {% if pending_child_approvals_count > 0 %}
+            <div class="alert alert-warning mt-4">
+                <i class="bi bi-exclamation-triangle-fill"></i> <strong>Gyermeked jóváhagyásra vár!</strong> A gyermeked szerepkör-igénylése jóváhagyásra vár tőled.
+                <a href="{% url 'users:pending_roles' %}" class="alert-link">Kattints ide a jóváhagyáshoz.</a>
+            </div>
+            {% endif %}
+
+            <div class="row mt-4">
+                {% if not user_roles %}
+                    <div class="col-12">
+                        <div class="alert alert-warning" role="alert">
+                            <h5 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle"></i> Még nincs szerepköröd
+                            </h5>
+                            <p>Még nem rendeltél magadhoz szerepkört. A szerepkörök segítségével hozzáférhetsz a különböző funkciókhoz.</p>
+                            <hr>
+                            <p class="mb-0">
+                                Menj a <strong>Vezérlőpult → Szerepkörök</strong> menüpontra szerepkör felvételéhez.
+                            </p>
+                        </div>
+                    </div>
+                {% else %}
+                    {% for role in user_roles %}
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 {% if role.status == 'pending' %}border-warning{% elif role.status == 'rejected' %}border-danger{% endif %}">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center mb-3">
+                                        {% if role.club.logo %}
+                                            <img src="{{ role.club.logo.url }}" alt="{{ role.club.name }} logo" 
+                                                    class="me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                        {% else %}
+                                            <i class="bi bi-house-door h2 me-3 text-muted"></i>
+                                        {% endif %}
+                                        <div>
+                                            <h6 class="card-title mb-0">{{ role.club.name }}</h6>
+                                            <small class="text-muted">
+                                                {{ role.role.name }} /
+                                                {% if role.role.name == "Egyesületi vezető" %}
+                                                    {% for sport in role.club.sports.all %}
+                                                        {{ sport.name }}{% if not forloop.last %}, {% endif %}
+                                                    {% endfor %}
+                                                {% else %}
+                                                    {{ role.sport.name }}
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr>
+        
+                                    <p class="card-text small mb-2">
+                                        <strong>Státusz: </strong>
+                                        {% if role.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-clock"></i> Várakozik</span>
+                                        {% elif role.status == 'approved' %}
+                                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Jóváhagyva</span>
+                                        {% elif role.status == 'rejected' %}
+                                            <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Elutasítva</span>
+                                        {% endif %}
+                                    </p>
+        
+                                    {% if role.club.address %}
+                                        <p class="card-text small mb-2">
+                                            <i class="bi bi-geo-alt"></i> {{ role.club.address }}
+                                        </p>
+                                    {% endif %}
+                                    
+                                    {% if role.notes %}
+                                        <p class="card-text small mb-2">
+                                            <i class="bi bi-chat-text"></i> {{ role.notes }}
+                                        </p>
+                                    {% endif %}
+                                    
+                                    {% if role.coach %}
+                                        <p class="card-text small mb-0">
+                                            <i class="bi bi-person-badge"></i> 
+                                            Edző: {{ role.coach.profile.first_name }} {{ role.coach.profile.last_name }}
+                                        </p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            {% if debug %}
+                <div class="mt-4">
+                    <details>
+                        <summary>Debug információk</summary>
+                        <pre class="mt-2">
+user_roles count: {{ user_roles|length }}
+{% for role in user_roles %}
+Role {{ forloop.counter }}: {{ role.role.name }} - {{ role.club.name }} - Status: {{ role.status }}
+{% endfor %}
+                        </pre>
+                    </details>
+                </div>
+            {% endif %}
+        </div>
+    </div>
 </div>
 {% endblock %}

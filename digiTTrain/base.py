@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
+    'django_healthchecks',
     "django.contrib.staticfiles",
     'crispy_forms',
     'crispy_bootstrap5',
@@ -147,6 +148,9 @@ logger.info("🔧 Django settings inicializálva")
 logger.info(f"🌍 ENVIRONMENT: {ENVIRONMENT}")
 logger.info(f"⚙️ DJANGO_SETTINGS_MODULE: {DJANGO_SETTINGS_MODULE}")
 
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
+CRISPY_TEMPLATE_PACK = "bootstrap5"
+
 # ===== ALAPÉRTELMEZETT STORAGE BEÁLLÍTÁSOK =====
 # Ezek mindig léteznek, így elkerülhető a "nincs attribútum" hiba
 # DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
@@ -154,3 +158,7 @@ logger.info(f"⚙️ DJANGO_SETTINGS_MODULE: {DJANGO_SETTINGS_MODULE}")
 
 # logger.info(f"📦 (BASE) DEFAULT_FILE_STORAGE: {DEFAULT_FILE_STORAGE}")
 # logger.info(f"📦 (BASE) STATICFILES_STORAGE: {STATICFILES_STORAGE}")
+
+MIGRATION_MODULES = {
+    "django_healthchecks": None,
+}

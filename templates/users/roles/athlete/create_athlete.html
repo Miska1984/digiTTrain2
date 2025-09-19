@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% load static %}
+
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Sportoló szerepkör igénylése</h2>
+    <form method="post" id="athlete-form">
+         {% if form.errors %}
+            <div class="alert alert-danger">
+                <strong>Hiba a beküldésnél:</strong>
+                <ul>
+                    {% for field, errors in form.errors.items %}
+                        <li>{{ field }}: {{ errors|join:", " }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="club-select" class="form-label">Egyesület</label>
+            {{ form.club }}
+        </div>
+        <div class="mb-3">
+            <label for="sport-select" class="form-label">Sportág</label>
+            {{ form.sport }}
+        </div>
+        <div class="mb-3">
+            <label for="coach-select" class="form-label">Edző</label>
+            {{ form.coach }}
+        </div>
+        <div class="mb-3" id="parent-field" {% if not kiskoru %}style="display: none;"{% endif %}>
+            <label for="parent-select" class="form-label">Szülő</label>
+            {{ form.parent }}
+        </div>
+        <div class="mb-3">
+            <label for="id_notes" class="form-label">Megjegyzés</label>
+            {{ form.notes }}
+        </div>
+        <button type="submit" class="btn btn-primary">Beküldés</button>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+$(document).ready(function(){
+    // A kiskorúsági állapotot a Django template-ből kapjuk meg
+    const isUnderage = "{{ kiskoru|yesno:'true,false' }}" === "true";
+
+    // Kezdetben elrejtjük a szülő mezőt, ha a felhasználó nagykorú
+    if (!isUnderage) {
+        $("#parent-field").hide();
+    }
+
+    $("#club-select").change(function(){
+        let clubId = $(this).val();
+        // Minden függőlegest ürítünk
+        $("#sport-select").empty().append('<option value="">Válassz sportágat</option>');
+        $("#coach-select").empty().append('<option value="">Válassz edzőt</option>');
+        $("#parent-select").empty().append('<option value="">Válassz szülőt</option>');
+        
+        // Elrejtjük a szülő mezőt, ha nagykorú
+        if (!isUnderage) {
+            $("#parent-field").hide();
+        }
+
+        if(clubId){
+            $.get("{% url 'users:get_sports_by_club' %}", {club_id: clubId}, function(data){
+                let sportSelect = $("#sport-select");
+                data.forEach(function(item){
+                    sportSelect.append(`<option value="${item.id}">${item.name}</option>`);
+                });
+            });
+        }
+    });
+
+    $("#sport-select").change(function(){
+        let clubId = $("#club-select").val();
+        let sportId = $(this).val();
+        // Edző és szülő mezők ürítése
+        $("#coach-select").empty().append('<option value="">Válassz edzőt</option>');
+        $("#parent-select").empty().append('<option value="">Válassz szülőt</option>');
+        
+        if(clubId && sportId){
+            $.get("{% url 'users:get_coaches_by_club_and_sport' %}", {club_id: clubId, sport_id: sportId}, function(data){
+                let coachSelect = $("#coach-select");
+                data.forEach(function(item){
+                    coachSelect.append(`<option value="${item.id}">${item.name}</option>`);
+                });
+            });
+        }
+    });
+
+    $("#coach-select").change(function(){
+        let clubId = $("#club-select").val();
+        let sportId = $("#sport-select").val();
+        let coachId = $(this).val();
+        
+        // Szülő mező ürítése
+        $("#parent-select").empty().append('<option value="">Válassz szülőt</option>');
+
+        // Ha kiskorú, akkor a szülő mező mindig látható, és töltjük az adatokat
+        if(isUnderage) {
+            $("#parent-field").show();
+            if(clubId && sportId && coachId) {
+                $.get("{% url 'users:get_parents_by_club_sport_and_coach' %}", {
+                    club_id: clubId,
+                    sport_id: sportId,
+                    coach_id: coachId
+                }, function(data){
+                    let parentSelect = $("#parent-select");
+                    data.forEach(function(item){
+                        parentSelect.append(`<option value="${item.id}">${item.name}</option>`);
+                    });
+                });
+            }
+        } else {
+            // Ha nagykorú, a szülő mező továbbra is rejtett
+            $("#parent-field").hide();
+        }
+    });
+});
+</script>
+{% endblock %}
