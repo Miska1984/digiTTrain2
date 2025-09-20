@@ -88,6 +88,7 @@
 {% endblock %}
 
 {% block content %}
+{% csrf_token %}
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
@@ -229,12 +230,18 @@
 {% block extra_js %}
 <script>
 $(document).ready(function() {
+    console.log('JavaScript loaded, jQuery version:', $.fn.jquery);
+    console.log('Toggle switches found:', $('.permission-toggle').length);
+    
     $('.permission-toggle').change(function() {
+        console.log('Toggle clicked!');
         const checkbox = $(this);
         const dataOwnerId = checkbox.data('data-owner');
         const targetUserId = checkbox.data('target-user');
         const appName = checkbox.data('app-name');
         const tableName = checkbox.data('table-name');
+        
+        console.log('AJAX data:', { dataOwnerId, targetUserId, appName, tableName });
         
         // Loading állapot
         checkbox.prop('disabled', true);

@@ -17,14 +17,14 @@ steps:
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
           --region europe-west1 \
           --command "python" \
-          --args "manage.py","migrate" \
+          --args "manage.py","migrate","users","0001_initial","--fake","data_sharing","0001_initial","--fake" \
           --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db-west1,ENVIRONMENT=production \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
         || gcloud run jobs create migrate-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
           --region europe-west1 \
           --command "python" \
-          --args "manage.py","migrate" \
+          --args "manage.py","migrate","users","0001_initial","--fake","data_sharing","0001_initial","--fake" \
           --set-env-vars=DB_NAME=digittraindb,DB_USER=root,DB_PASS=MIshek001-1984,DJANGO_SETTINGS_MODULE=digiTTrain.settings,ALLOWED_HOSTS=digit-train-web-195803356854.europe-west1.run.app,CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db-west1,ENVIRONMENT=production \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
 
