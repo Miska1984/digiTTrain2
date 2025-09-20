@@ -17,9 +17,9 @@
             <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
                 <ul class="nav col-12 col-lg-auto me-lg-auto mb-2 justify-content-center mb-md-0">
                     <a class="navbar-brand" href="{% url 'core:main_page' %}">
-                        <img src="{% static 'images/your_logo.png' %}" alt="Logo" style="height: 40px;">
+                        <img src="{% static 'images/your_logo.png' %}" alt="Logo" style="height: 50px;">
                     </a>
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown me-3">
                         <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="biometricDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Vezérlőpult
                         </a>
@@ -29,18 +29,18 @@
                             <li><a class="dropdown-item" href="{% url 'data_sharing:sharing_center' %}">Megoszátsi központ</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown me-3">
                         <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="biometricDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Biometria
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="biometricDropdown">
                             <li><a class="dropdown-item" href="{% url 'biometric_data:list_weight' %}">Testsúly adatok</a></li>
-                            <li><a class="dropdown-item" href="#">Alvás adatok</a></li>
-                            <li><a class="dropdown-item" href="#">HRV adatok</a></li>
-                            <li><a class="dropdown-item" href="#">Edzés intenzitás felmérés</a></li>
+                            <li><a class="dropdown-item" href="#">Alvás adatok (munkaterület)</a></li>
+                            <li><a class="dropdown-item" href="#">HRV adatok (munkaterület)</a></li>
+                            <li><a class="dropdown-item" href="#">Edzés intenzitás felmérés (munkaterület)</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown me-3">
                         <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="biometricDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Sportoló Nézetek
                         </a>
@@ -51,7 +51,7 @@
                             <li><a class="dropdown-item" href="#">Ide nem tudom még mi kerül3</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown me-3">
                         <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="biometricDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Szülő Nézetek
                         </a>
@@ -62,7 +62,7 @@
                             <li><a class="dropdown-item" href="#">Ide nem tudom még mi kerül3</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown me-3">
                         <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="biometricDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Edző Nézetek
                         </a>
@@ -73,7 +73,7 @@
                             <li><a class="dropdown-item" href="#">Ide nem tudom még mi kerül3</a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
+                    <li class="nav-item dropdown me-3">
                         <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="biometricDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Egyesületi Vezető Nézetek
                         </a>
