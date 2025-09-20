@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Megosztási Központ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .sharing-matrix {
+        overflow-x: auto;
+    }
+    
+    .sharing-matrix table {
+        min-width: 600px;
+    }
+    
+    .role-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .matrix-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 30px;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        border-top: none;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 50px;
+        height: 24px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 24px;
+    }
+    
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+        background-color: #28a745;
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 40px;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="mb-4">
+                <i class="fas fa-share-alt me-2"></i>
+                Adatmegosztási Központ
+            </h1>
+            
+            {% if is_parent %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Szülőként kezelheted a gyermeked adatainak megosztási beállításait.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if matrices_data %}
+        {% for matrix in matrices_data %}
+            <div class="matrix-card p-0 mb-4">
+                <div class="role-header">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-1">
+                                {% if matrix.is_parent_managing %}
+                                    <i class="fas fa-child me-2"></i>
+                                    {{ matrix.child_name }} adatainak kezelése
+                                {% else %}
+                                    <i class="fas fa-user-athlete me-2"></i>
+                                    Saját adatok kezelése
+                                {% endif %}
+                            </h4>
+                            <div class="d-flex flex-wrap gap-3">
+                                <span><i class="fas fa-building me-1"></i>{{ matrix.sport_role.club.name }}</span>
+                                <span><i class="fas fa-running me-1"></i>{{ matrix.sport_role.sport.name }}</span>
+                                {% if matrix.sport_role.coach %}
+                                    <span><i class="fas fa-user-tie me-1"></i>Edző: {{ matrix.sport_role.coach.username }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <small class="opacity-75">
+                                <i class="fas fa-calendar me-1"></i>
+                                Szerepkör létrehozva: {{ matrix.sport_role.created_at|date:"Y.m.d" }}
+                            </small>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if matrix.target_users %}
+                    <div class="p-4">
+                        <div class="sharing-matrix">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 300px;">Adattípus</th>
+                                        {% for target in matrix.target_users %}
+                                            <th class="text-center" style="width: 150px;">
+                                                <div>
+                                                    <i class="fas fa-{% if target.role_type == 'coach' %}user-tie{% else %}crown{% endif %} me-1"></i>
+                                                    {{ target.role_display }}
+                                                </div>
+                                                <small class="text-muted">{{ target.user.username }}</small>
+                                            </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in matrix.matrix_rows %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                                                    <div>
+                                                        <strong>{{ row.display_name }}</strong>
+                                                        <br>
+                                                        <small class="text-muted">{{ row.app_name }}.{{ row.table_name }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            {% for target in matrix.target_users %}
+                                                <td class="text-center">
+                                                    <label class="toggle-switch">
+                                                        <input type="checkbox" 
+                                                               class="permission-toggle"
+                                                               data-data-owner="{{ matrix.data_owner.id }}"
+                                                               data-target-user="{{ target.user.id }}"
+                                                               data-app-name="{{ row.app_name }}"
+                                                               data-table-name="{{ row.table_name }}"
+                                                               {% if row.permissions|default_if_none:False %}
+                                                                   {% for user_id, enabled in row.permissions.items %}
+                                                                       {% if user_id == target.user.id and enabled %}checked{% endif %}
+                                                                   {% endfor %}
+                                                               {% endif %}>
+                                                        <span class="slider"></span>
+                                                    </label>
+                                                </td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="{{ matrix.target_users|length|add:1 }}" class="text-center text-muted py-4">
+                                                <i class="fas fa-inbox me-2"></i>
+                                                Nincs megosztható adattípus konfigurálva.
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="p-4">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Nincs olyan személy (edző vagy egyesületi vezető), akivel meg tudnád osztani az adataidat ebben a szerepkörben.
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="no-data">
+            <i class="fas fa-user-slash fa-3x mb-3 text-muted"></i>
+            <h4>Nincs megosztható szerepkör</h4>
+            <p class="text-muted">
+                {% if is_parent %}
+                    Nincs olyan gyereked, akinek jóváhagyott sportoló szerepköre van.
+                {% else %}
+                    Nincs jóváhagyott sportoló szerepköröd, ezért nem tudsz adatokat megosztani.
+                {% endif %}
+            </p>
+            <a href="{% url 'core:main_page' %}" class="btn btn-primary">
+                <i class="fas fa-home me-2"></i>Vissza a főoldalra
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+$(document).ready(function() {
+    $('.permission-toggle').change(function() {
+        const checkbox = $(this);
+        const dataOwnerId = checkbox.data('data-owner');
+        const targetUserId = checkbox.data('target-user');
+        const appName = checkbox.data('app-name');
+        const tableName = checkbox.data('table-name');
+        
+        // Loading állapot
+        checkbox.prop('disabled', true);
+        
+        $.ajax({
+            url: "{% url 'data_sharing:toggle_permission' %}",
+            method: 'POST',
+            data: {
+                'data_owner_id': dataOwnerId,
+                'target_user_id': targetUserId,
+                'app_name': appName,
+                'table_name': tableName,
+                'csrfmiddlewaretoken': $('[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    checkbox.prop('checked', response.enabled);
+                    
+                    // Toast üzenet
+                    const toastHtml = `
+                        <div class="toast align-items-center text-white ${response.enabled ? 'bg-success' : 'bg-warning'} border-0" role="alert">
+                            <div class="d-flex">
+                                <div class="toast-body">
+                                    <i class="fas fa-${response.enabled ? 'check' : 'times'} me-2"></i>
+                                    Megosztás ${response.enabled ? 'bekapcsolva' : 'kikapcsolva'}
+                                </div>
+                                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    // Toast container létrehozása ha nincs
+                    if ($('.toast-container').length === 0) {
+                        $('body').append('<div class="toast-container position-fixed top-0 end-0 p-3"></div>');
+                    }
+                    
+                    const $toast = $(toastHtml);
+                    $('.toast-container').append($toast);
+                    const toast = new bootstrap.Toast($toast[0]);
+                    toast.show();
+                    
+                    // Toast eltávolítása miután elrejtetjük
+                    $toast.on('hidden.bs.toast', function() {
+                        $(this).remove();
+                    });
+                } else {
+                    alert('Hiba történt: ' + response.error);
+                    // Visszaállítjuk az eredeti állapotot
+                    checkbox.prop('checked', !checkbox.prop('checked'));
+                }
+            },
+            error: function() {
+                alert('Hiba történt a kérés feldolgozása során.');
+                // Visszaállítjuk az eredeti állapotot
+                checkbox.prop('checked', !checkbox.prop('checked'));
+            },
+            complete: function() {
+                checkbox.prop('disabled', false);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

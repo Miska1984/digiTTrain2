@@ -1,0 +1,233 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Megosztott Adatok{% endblock %}
+
+{% block extra_css %}
+<style>
+    .shared-data-card {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        transition: transform 0.2s;
+    }
+    
+    .shared-data-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .user-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-radius: 10px 10px 0 0;
+        padding: 20px;
+    }
+    
+    .data-type-item {
+        padding: 15px 20px;
+        border-bottom: 1px solid #f8f9fa;
+        transition: background-color 0.2s;
+    }
+    
+    .data-type-item:last-child {
+        border-bottom: none;
+    }
+    
+    .data-type-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .data-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        margin-right: 15px;
+    }
+    
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .view-data-btn {
+        border-radius: 20px;
+        padding: 8px 20px;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+    
+    .view-data-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-eye me-2 text-primary"></i>
+                    Velem megosztott adatok
+                </h1>
+                <a href="{% url 'data_sharing:sharing_center' %}" class="btn btn-outline-primary">
+                    <i class="fas fa-cog me-2"></i>
+                    Saját megosztások kezelése
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    {% if shared_data_by_user %}
+        <div class="row">
+            {% for username, data in shared_data_by_user.items %}
+                <div class="col-lg-6 col-xl-4 mb-4">
+                    <div class="shared-data-card">
+                        <div class="user-header">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <i class="fas fa-user-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-1">{{ data.user.username }}</h5>
+                                    <small class="opacity-75">
+                                        {% if data.user.profile.first_name or data.user.profile.last_name %}
+                                            {{ data.user.profile.first_name }} {{ data.user.profile.last_name }}
+                                        {% else %}
+                                            Sportoló
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body p-0">
+                            {% for table in data.shared_tables %}
+                                <div class="data-type-item">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div class="d-flex align-items-center">
+                                            <div class="data-icon">
+                                                <i class="fas fa-chart-line"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-1">{{ table.display_name }}</h6>
+                                                <small class="text-muted">{{ table.app_name }}</small>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-primary view-data-btn" 
+                                                    onclick="viewSharedData('{{ data.user.id }}', '{{ table.app_name }}', '{{ table.table_name }}')">
+                                                <i class="fas fa-eye me-1"></i>
+                                                Megtekintés
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="card-footer bg-light">
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                {{ data.shared_tables|length }} adattípus megosztva
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="no-data">
+            <i class="fas fa-inbox fa-4x mb-4 text-muted"></i>
+            <h3>Nincs megosztott adat</h3>
+            <p class="lead text-muted mb-4">
+                Még senki nem osztott meg veled biometriai adatokat.
+            </p>
+            <div class="alert alert-info d-inline-block">
+                <i class="fas fa-lightbulb me-2"></i>
+                <strong>Tipp:</strong> A sportolók a "Megosztási központ" menüpontban tudják beállítani, 
+                hogy mely adataikat osztják meg veled.
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Modal a részletes adatok megtekintéséhez -->
+<div class="modal fade" id="dataModal" tabindex="-1" aria-labelledby="dataModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="dataModalLabel">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Megosztott adatok
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalContent">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Betöltés...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Adatok betöltése...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Bezárás
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewSharedData(userId, appName, tableName) {
+    // Modal megnyitása
+    const modal = new bootstrap.Modal(document.getElementById('dataModal'));
+    modal.show();
+    
+    // TODO: Itt fog történni az adatok betöltése
+    // Ezt majd akkor implementáljuk, amikor elkészülnek a konkrét biometriai nézetek
+    
+    const modalContent = document.getElementById('modalContent');
+    
+    // Placeholder tartalom
+    modalContent.innerHTML = `
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Fejlesztés alatt!</strong><br>
+            Itt fog megjelenni a <strong>${tableName}</strong> tábla adatainak vizualizációja 
+            <strong>${userId}</strong> felhasználótól.
+        </div>
+        <div class="text-muted">
+            <p><strong>App:</strong> ${appName}</p>
+            <p><strong>Tábla:</strong> ${tableName}</p>
+            <p><strong>Felhasználó ID:</strong> ${userId}</p>
+        </div>
+    `;
+}
+
+// Ha már vannak konkrét URLs a biometriai adatok megtekintéséhez, 
+// akkor használhatjuk ezt a megközelítést:
+/*
+function viewSharedData(userId, appName, tableName) {
+    // Például átirányítás a konkrét biometriai nézetre
+    const url = `/${appName}/${tableName}/?user_id=${userId}&shared=true`;
+    window.location.href = url;
+}
+*/
+</script>
+{% endblock %}

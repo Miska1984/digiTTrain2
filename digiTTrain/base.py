@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "storages",
     'core',
     'biometric_data',
+    'data_sharing',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +61,13 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+SHAREABLE_DATA_MODELS = {
+    'biometric_data': ['WeightData'],
+    # Később bővül:
+    # 'performance_analysis': ['HandGripData', 'SprintData'],
+    # 'video_analysis': ['MovementAnalysis'],
+}
 
 ROOT_URLCONF = "digiTTrain.urls"
 
