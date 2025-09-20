@@ -27,6 +27,7 @@ urlpatterns = [
     path('', include('core.urls', namespace='core')),
     path('users/', include('users.urls')),
     path('biometric/', include('biometric_data.urls')),
+    path('data-sharing/', include('data_sharing.urls')),
 ]
 
 if settings.DEBUG:
