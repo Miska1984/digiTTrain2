@@ -177,11 +177,9 @@
                                                                data-target-user="{{ target.user.id }}"
                                                                data-app-name="{{ row.app_name }}"
                                                                data-table-name="{{ row.table_name }}"
-                                                               {% if row.permissions|default_if_none:False %}
-                                                                   {% for user_id, enabled in row.permissions.items %}
-                                                                       {% if user_id == target.user.id and enabled %}checked{% endif %}
-                                                                   {% endfor %}
-                                                               {% endif %}>
+                                                               {% for user_id, enabled in row.permissions.items %}
+                                                                   {% if user_id|stringformat:"s" == target.user.id|stringformat:"s" and enabled %}checked{% endif %}
+                                                               {% endfor %}>
                                                         <span class="slider"></span>
                                                     </label>
                                                 </td>

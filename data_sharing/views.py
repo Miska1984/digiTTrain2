@@ -124,9 +124,9 @@ def _build_sharing_matrix(data_owner, sport_role):
                         app_name=app_name,
                         table_name=table_name
                     )
-                    row_data['permissions'][target['user'].id] = permission.enabled
+                    row_data['permissions'][str(target['user'].id)] = permission.enabled
                 except BiometricSharingPermission.DoesNotExist:
-                    row_data['permissions'][target['user'].id] = False
+                    row_data['permissions'][str(target['user'].id)] = False
             
             matrix_rows.append(row_data)
     
