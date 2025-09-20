@@ -130,6 +130,11 @@ def _build_sharing_matrix(data_owner, sport_role):
             
             matrix_rows.append(row_data)
     
+    print(f"DEBUG - Matrix data for {data_owner.username}:")
+    for row in matrix_rows:
+        print(f"  {row['table_name']}: {row['permissions']}")
+    
+
     return {
         'sport_role': sport_role,
         'data_owner': data_owner,
