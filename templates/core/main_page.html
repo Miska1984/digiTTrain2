@@ -7,11 +7,6 @@
 <div class="container">
     <div class="row">
         <div class="col-md-3 border-end pe-4">
-            <div class="text-center mb-4">
-                <a href="{% url 'core:main_page' %}">
-                    <img src="{% static 'images/your_logo.png' %}" alt="Logo" style="height: 50px;" class="mb-3">
-                </a>
-            </div>
             <div class="card mb-4">
                 <div class="card-body text-center">
                     {% if user.profile.profile_picture %}
