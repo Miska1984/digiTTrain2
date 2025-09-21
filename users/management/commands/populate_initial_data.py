@@ -9,7 +9,7 @@ class Command(BaseCommand):
         # Szerepkörök feltöltése
         self.stdout.write(self.style.NOTICE("Szerepkörök feltöltése..."))
         for name, _ in Role.ROLE_CHOICES:
-            role, created = Role.objects.get_or_create(name=name)
+            role, created = Role.objects.get_or_create(name=name, defaults={'description': ''})
             if created:
                 self.stdout.write(self.style.SUCCESS(f"✅ Szerepkör hozzáadva: '{name}'"))
             else:
