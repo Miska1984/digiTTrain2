@@ -1,6 +1,7 @@
 # core/views.py
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from users.models import UserRole, Role, Club, Sport
 import logging
 
@@ -18,8 +19,19 @@ def main_page(request):
     user = request.user
     
     # Lekérdezzük a felhasználóhoz tartozó összes szerepkört
-    user_roles = UserRole.objects.filter(user=user).select_related('role', 'club', 'sport')
+    # Nem használunk prefetch_related-et, mivel az hibát okoz a UserRole-on.
+    user_roles = UserRole.objects.filter(user=user).select_related('role', 'club', 'sport', 'coach', 'parent')
 
+    # Lekérdezzük a bejelentkezett szülőhöz tartozó gyerekek szerepköreit
+    # Külön lekérdezés a parent mező alapján, ami a User objektumhoz kapcsolódik
+    child_roles = UserRole.objects.filter(parent=user).select_related('user__profile', 'role')
+
+    # Hozzáadjuk a gyermekek listáját a szülő UserRole objektumhoz
+    for role in user_roles:
+        if role.role.name == "Szülő":
+            role.children = child_roles
+            break
+            
     # A jóváhagyásra váró szerepkörök számának meghatározása
     pending_roles_count = 0
     
@@ -36,7 +48,7 @@ def main_page(request):
         club_ids = [role.club.id for role in club_leader_roles]
         # A klubvezető az edzői, sportolói és szülői szerepköröket hagyhatja jóvá
         pending_query |= UserRole.objects.filter(
-            status="pending",
+            Q(status="pending") | Q(status="pending", approved_by_parent=True),
             club__id__in=club_ids,
         )
 

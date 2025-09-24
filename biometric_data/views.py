@@ -1,15 +1,8 @@
 # biometric_data/views.py
 from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from .forms import WeightDataForm
-from .models import WeightData
-from datetime import date
-
-# biometric_data/views.py
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .forms import WeightDataForm
-from .models import WeightData
+from .forms import WeightDataForm, HRVandSleepDataForm, WorkoutFeedbackForm, RunningPerformanceForm
+from .models import WeightData, HRVandSleepData, WorkoutFeedback, RunningPerformance
 from datetime import date
 import json # Fontos: importálni kell a json könyvtárat
 
@@ -73,3 +66,65 @@ def list_weight(request):
         'title': 'Súlykontroll Adatlapom'
     }
     return render(request, 'biometric_data/list_weight.html', context)
+
+@login_required
+def add_hrv_and_sleep(request):
+    if request.method == 'POST':
+        form = HRVandSleepDataForm(request.POST)
+        if form.is_valid():
+            data = form.save(commit=False)
+            data.user = request.user
+            data.save()
+            return redirect('core:main_page')
+    else:
+        form = HRVandSleepDataForm()
+    
+    context = {'form': form, 'title': 'Új HRV és Alvás Adat Felvétele'}
+    return render(request, 'biometric_data/add_hrv_and_sleep.html', context)
+
+@login_required
+def add_workout_feedback(request):
+    if request.method == 'POST':
+        form = WorkoutFeedbackForm(request.POST)
+        if form.is_valid():
+            data = form.save(commit=False)
+            data.user = request.user
+            data.save()
+            return redirect('core:main_page')
+    else:
+        form = WorkoutFeedbackForm()
+    
+    context = {'form': form, 'title': 'Új Edzésvisszajelzés Felvétele'}
+    return render(request, 'biometric_data/add_workout_feedback.html', context)
+
+@login_required
+def add_running_performance(request):
+    if request.method == 'POST':
+        form = RunningPerformanceForm(request.POST)
+        if form.is_valid():
+            data = form.save(commit=False)
+            data.user = request.user
+            data.save()
+            return redirect('core:main_page')
+    else:
+        form = RunningPerformanceForm()
+    
+    context = {'form': form, 'title': 'Új Futóteljesítmény Felvétele'}
+    return render(request, 'biometric_data/add_running_performance.html', context)
+
+@login_required
+def list_biometric_data(request):
+    # Egyetlen nézet, ami listázza az összes biometriai adatot
+    weight_data = WeightData.objects.filter(user=request.user).order_by('-workout_date')
+    hrv_sleep_data = HRVandSleepData.objects.filter(user=request.user).order_by('-recorded_at')
+    workout_feedback_data = WorkoutFeedback.objects.filter(user=request.user).order_by('-workout_date')
+    running_performance_data = RunningPerformance.objects.filter(user=request.user).order_by('-run_date')
+
+    context = {
+        'weight_data': weight_data,
+        'hrv_sleep_data': hrv_sleep_data,
+        'workout_feedback_data': workout_feedback_data,
+        'running_performance_data': running_performance_data,
+        'title': 'Biometriai Adatok'
+    }
+    return render(request, 'biometric_data/list_biometric_data.html', context)

@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block title %}Sportoló részletei{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1>
+        <i class="fas fa-user me-2"></i>
+        {{ athlete.profile.first_name }} {{ athlete.profile.last_name }}
+    </h1>
+    <p class="text-muted">
+        {{ role.sport.name }} @ {{ role.club.name }}
+    </p>
+
+    <h3 class="mt-4">Megosztott adattípusok</h3>
+    {% if shared_tables %}
+        <ul class="list-group">
+            {% for table in shared_tables %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="fas fa-database me-2"></i>{{ table.display_name }}
+                        <small class="text-muted">({{ table.app_name }}.{{ table.table_name }})</small>
+                    </span>
+                    <a href="/{{ table.app_name }}/{{ table.table_name }}/?user_id={{ athlete.id }}" class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-eye"></i> Megtekintés
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="alert alert-info">Ez a sportoló még nem osztott meg veled adatokat.</div>
+    {% endif %}
+</div>
+{% endblock %}
