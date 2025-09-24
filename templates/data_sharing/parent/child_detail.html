@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Gyermek adatai – {{ child.profile.first_name }} {{ child.profile.last_name }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">
+        <i class="fas fa-child me-2 text-primary"></i>
+        {{ child.profile.first_name }} {{ child.profile.last_name }} ({{ child.username }})
+    </h2>
+
+    {% if shared_tables %}
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">
+                <i class="fas fa-share-alt me-2"></i> Megosztott adatok
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Adattípus</th>
+                            <th>App</th>
+                            <th>Tábla</th>
+                            <th>Megosztva kivel</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for table in shared_tables %}
+                            <tr>
+                                <td>
+                                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                                    {{ table.display_name }}
+                                </td>
+                                <td>{{ table.app_name }}</td>
+                                <td>{{ table.table_name }}</td>
+                                <td>
+                                    <i class="fas fa-user me-1 text-secondary"></i>
+                                    {% if table.shared_with.profile.first_name or table.shared_with.profile.last_name %}
+                                        {{ table.shared_with.profile.first_name }} {{ table.shared_with.profile.last_name }}
+                                    {% else %}
+                                        {{ table.shared_with.username }}
+                                    {% endif %}
+                                    <br>
+                                    <small class="text-muted">
+                                        ({{ table.shared_with_role }})
+                                    </small>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox me-2"></i> Nincs megosztott adat
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Nincs megosztott adat ehhez a gyermekhez.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

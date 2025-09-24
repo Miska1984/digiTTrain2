@@ -42,10 +42,11 @@
                                         <div class="d-flex align-items-center mb-2">
                                             {% if role.club.logo %}
                                                 <img src="{{ role.club.logo.url }}" alt="{{ role.club.name }} logo" 
-                                                        class="me-2" style="width: 30px; height: 30px; object-fit: cover;">
+                                                     class="me-2" style="width: 30px; height: 30px; object-fit: cover;">
                                             {% endif %}
                                             <strong>{{ role.role.name }}</strong>
                                         </div>
+                                        {% comment %} ... ez a kódblokk a main_page.html-ben található for ciklus belsejében ... {% endcomment %}
                                         <small class="text-muted d-block">
                                             {{ role.club.short_name }} /
                                             {% if role.role.name == "Egyesületi vezető" %}
@@ -56,6 +57,39 @@
                                                 {{ role.sport.name }}
                                             {% endif %}
                                         </small>
+                                        {% if role.role.name == "Sportoló" %}
+                                            {% if role.coach and role.coach.profile %}
+                                            <p class="card-text small mb-0 mt-2">
+                                                <i class="bi bi-person-badge"></i> 
+                                                <strong>Edző:</strong>
+                                                {{ role.coach.profile.first_name }} {{ role.coach.profile.last_name }}
+                                            </p>
+                                            {% endif %}
+                                            {% if role.parent and role.parent.profile %}
+                                            <p class="card-text small mb-0">
+                                                <i class="bi bi-person-heart"></i>
+                                                <strong>Szülő:</strong>
+                                                {{ role.parent.profile.first_name }} {{ role.parent.profile.last_name }}
+                                            </p>
+                                            {% endif %}
+                                        {% elif role.role.name == "Szülő" %}
+                                            {% if role.coach and role.coach.profile %}
+                                            <p class="card-text small mb-0 mt-2">
+                                                <i class="bi bi-person-badge"></i>
+                                                <strong>Edző:</strong>
+                                                {{ role.coach.profile.first_name }} {{ role.coach.profile.last_name }}
+                                            </p>
+                                            {% endif %}
+                                            {% if role.children %}
+                                            <p class="card-text small mb-0 mt-2">
+                                                <i class="bi bi-person-heart"></i>
+                                                <strong>Gyermeked:</strong>
+                                                {% for child_role in role.children %}
+                                                    {{ child_role.user.profile.first_name }} {{ child_role.user.profile.last_name }}{% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                            </p>
+                                            {% endif %}
+                                        {% endif %}
                                         {% if role.status == 'pending' %}
                                             <small class="text-warning">
                                                 <i class="bi bi-clock"></i> Várakozik jóváhagyásra
@@ -141,7 +175,7 @@
                             <h5 class="alert-heading">
                                 <i class="bi bi-exclamation-triangle"></i> Még nincs szerepköröd
                             </h5>
-                            <p>Még nem rendeltél magadhoz szerepkört. A szerepkörök segítségével hozzáférhetsz a különböző funkciókhoz.</p>
+                            <p>Még nem rendeltél magadhoz szerepköröket. A szerepkörök segítségével hozzáférhetsz a különböző funkciókhoz.</p>
                             <hr>
                             <p class="mb-0">
                                 Menj a <strong>Vezérlőpult → Szerepkörök</strong> menüpontra szerepkör felvételéhez.
@@ -156,7 +190,7 @@
                                     <div class="d-flex align-items-center mb-3">
                                         {% if role.club.logo %}
                                             <img src="{{ role.club.logo.url }}" alt="{{ role.club.name }} logo" 
-                                                    class="me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                                     class="me-3" style="width: 50px; height: 50px; object-fit: cover;">
                                         {% else %}
                                             <i class="bi bi-house-door h2 me-3 text-muted"></i>
                                         {% endif %}
@@ -176,7 +210,7 @@
                                     </div>
                                     
                                     <hr>
-        
+                                    
                                     <p class="card-text small mb-2">
                                         <strong>Státusz: </strong>
                                         {% if role.status == 'pending' %}
@@ -187,7 +221,7 @@
                                             <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Elutasítva</span>
                                         {% endif %}
                                     </p>
-        
+                                    
                                     {% if role.club.address %}
                                         <p class="card-text small mb-2">
                                             <i class="bi bi-geo-alt"></i> {{ role.club.address }}
@@ -205,6 +239,15 @@
                                             <i class="bi bi-person-badge"></i> 
                                             Edző: {{ role.coach.profile.first_name }} {{ role.coach.profile.last_name }}
                                         </p>
+                                    {% endif %}
+                                    {% if role.children %}
+                                    <p class="card-text small mb-0 mt-2">
+                                        <i class="bi bi-person-heart"></i>
+                                        <strong>Gyermeked:</strong>
+                                        {% for child_role in role.children %}
+                                            {{ child_role.user.profile.first_name }} {{ child_role.user.profile.last_name }}{% if not forloop.last %}, {% endif %}
+                                        {% endfor %}
+                                    </p>
                                     {% endif %}
                                 </div>
                             </div>

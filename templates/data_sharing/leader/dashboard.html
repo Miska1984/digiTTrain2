@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block title %}Egyesületi Vezető Dashboard{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="fas fa-crown me-2"></i>{{ club.name }} – Sportágak</h1>
+
+    {% if sports %}
+        <ul class="list-group mt-4">
+            {% for sport in sports %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <span><i class="fas fa-running me-2"></i>{{ sport.name }}</span>
+                    <a href="{% url 'data_sharing:sport_detail' sport.id %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye me-1"></i> Megtekintés
+                    </a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="alert alert-info mt-4">Nincs sportág ebben a klubban.</div>
+    {% endif %}
+</div>
+{% endblock %}

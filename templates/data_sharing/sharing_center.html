@@ -124,8 +124,11 @@
                             <div class="d-flex flex-wrap gap-3">
                                 <span><i class="fas fa-building me-1"></i>{{ matrix.sport_role.club.name }}</span>
                                 <span><i class="fas fa-running me-1"></i>{{ matrix.sport_role.sport.name }}</span>
-                                {% if matrix.sport_role.coach %}
-                                    <span><i class="fas fa-user-tie me-1"></i>Edző: {{ matrix.sport_role.coach.username }}</span>
+                                {% if matrix.sport_role.coach and matrix.sport_role.coach.profile %}
+                                    <span>
+                                        <i class="fas fa-user-tie me-1"></i>
+                                        Edző: {{ matrix.sport_role.coach.profile.first_name }} {{ matrix.sport_role.coach.profile.last_name }}
+                                    </span>
                                 {% endif %}
                             </div>
                         </div>
@@ -151,7 +154,7 @@
                                                     <i class="fas fa-{% if target.role_type == 'coach' %}user-tie{% else %}crown{% endif %} me-1"></i>
                                                     {{ target.role_display }}
                                                 </div>
-                                                <small class="text-muted">{{ target.user.username }}</small>
+                                                <small class="text-muted">{{ target.display_name }}</small>
                                             </th>
                                         {% endfor %}
                                     </tr>
