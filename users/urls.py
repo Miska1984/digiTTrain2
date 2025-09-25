@@ -7,6 +7,7 @@ from users.views import register, edit_profile
 from users.role_views import club_leader, all_roles, coach, parent, athlete
 from users.role_views.base import pending_roles, approve_role, reject_role, cancel_role
 from django.contrib.auth import views as auth_views
+from django.urls import path, reverse_lazy 
 from .debug_views import debug_gcs_upload
 from .debug_views import debug_gcs_upload, debug_settings 
 
@@ -39,8 +40,12 @@ urlpatterns = [
         auth_views.PasswordResetDoneView.as_view(template_name="users/password_reset_sent.html"),
         name="password_reset_done"),
     path('reset/<uidb64>/<token>/', 
-        auth_views.PasswordResetConfirmView.as_view(template_name="users/password_reset_form.html"),
-        name="password_reset_confirm"),
+    auth_views.PasswordResetConfirmView.as_view(
+        template_name="users/password_reset_form.html",
+        # 2. Add hozzá ezt a success_url paramétert:
+        success_url=reverse_lazy('users:password_reset_complete') 
+    ),
+    name="password_reset_confirm"),
     path('reset_password_complete/', 
         auth_views.PasswordResetCompleteView.as_view(template_name="users/password_reset_done.html"),
         name="password_reset_complete"),
