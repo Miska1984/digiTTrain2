@@ -12,7 +12,6 @@ urlpatterns = [
 
     # Szülői nézetek
     path('parent/', parent.parent_dashboard, name='parent_dashboard'),
-    path('parent/child/<int:child_id>/', parent.child_detail, name='child_detail'),
 
     # Edzői nézetek
     path('coach/', coach.coach_dashboard, name='coach_dashboard'),

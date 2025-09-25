@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     'django_healthchecks',
     "django.contrib.staticfiles",
+    'django.contrib.sites', 
     'crispy_forms',
     'crispy_bootstrap5',
     "storages",
@@ -63,10 +64,12 @@ MIDDLEWARE = [
 ]
 
 SHAREABLE_DATA_MODELS = {
-    'biometric_data': ['WeightData'],
-    # Később bővül:
-    # 'performance_analysis': ['HandGripData', 'SprintData'],
-    # 'video_analysis': ['MovementAnalysis'],
+    'biometric_data': [
+        'WeightData',
+        'HRVandSleepData',
+        'WorkoutFeedback',
+        'RunningPerformance',
+    ],
 }
 
 ROOT_URLCONF = "digiTTrain.urls"
@@ -170,3 +173,21 @@ CRISPY_TEMPLATE_PACK = "bootstrap5"
 MIGRATION_MODULES = {
     "django_healthchecks": None,
 }
+
+# ÚJ: A Sites keretrendszer beállítása
+SITE_ID = 1
+
+# A levelező beállítások hozzáadása
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+# 🚨 BIZTONSÁG: Jelszó betöltése környezeti változóból.
+# Az os.environ.get('EMAIL_PASSWORD', '...') a régi kódban szereplő jelszót használja fallbackként a helyi/fejlesztői teszteléshez.
+EMAIL_HOST_USER = os.environ.get('EMAIL_USER', 'digittrain.2025@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_PASSWORD', 'nikq tpau pwyk nbvl')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+SERVER_EMAIL = EMAIL_HOST_USER
+
+FORM_RENDERER = 'django.forms.renderers.DjangoTemplates'
+

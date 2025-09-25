@@ -1,7 +1,8 @@
-# digiTTrain/users/urls.py
+# users/urls.py
 from django.urls import path
 from . import views
 from . import role_views
+from .forms import CustomPasswordResetForm, CustomLoginForm
 from users.views import register, edit_profile
 from users.role_views import club_leader, all_roles, coach, parent, athlete
 from users.role_views.base import pending_roles, approve_role, reject_role, cancel_role
@@ -13,7 +14,10 @@ app_name = 'users'
 
 urlpatterns = [
     path('register/', views.register, name='register'),
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
+    path('login/', auth_views.LoginView.as_view(
+        template_name='users/login.html',
+        authentication_form=CustomLoginForm 
+    ), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='core:hello_world'), name='logout'),
     path('profile/edit/', views.edit_profile, name='edit_profile'),
     
@@ -21,6 +25,26 @@ urlpatterns = [
     path('password_change/', auth_views.PasswordChangeView.as_view(template_name='users/password_change.html'), name='password_change'),
     path('password_change/done/', auth_views.PasswordChangeDoneView.as_view(template_name='users/password_change_done.html'), name='password_change_done'),
     
+    # Jelszó-visszaállítás URL-ek (elfelejtett jelszóhoz)
+    path('reset_password/', 
+        auth_views.PasswordResetView.as_view(
+            template_name="users/password_reset.html", 
+            email_template_name='users/password_reset_email.html', 
+            subject_template_name='users/password_reset_subject.txt',
+            form_class=CustomPasswordResetForm,
+            success_url='/users/reset_password_sent/'
+        ),
+        name="password_reset"),
+    path('reset_password_sent/', 
+        auth_views.PasswordResetDoneView.as_view(template_name="users/password_reset_sent.html"),
+        name="password_reset_done"),
+    path('reset/<uidb64>/<token>/', 
+        auth_views.PasswordResetConfirmView.as_view(template_name="users/password_reset_form.html"),
+        name="password_reset_confirm"),
+    path('reset_password_complete/', 
+        auth_views.PasswordResetCompleteView.as_view(template_name="users/password_reset_done.html"),
+        name="password_reset_complete"),
+
     path('roles/', views.role_dashboard, name='role_dashboard'),
 
     # Jóváhagyási folyamat

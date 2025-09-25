@@ -1,40 +1,36 @@
+# data_sharing/sharing_views/leader.py
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from users.models import UserRole, Sport
 from data_sharing.models import BiometricSharingPermission
-from django.apps import apps
 from users.utils import has_role
+from data_sharing.utils import get_model_display_name
 
-def _get_model_display_name(app_name, table_name):
-    try:
-        model = apps.get_model(app_label=app_name, model_name=table_name)
-        return model._meta.verbose_name
-    except LookupError:
-        return table_name
 
 @login_required
 def leader_dashboard(request):
     """
-    Egyesületi vezető dashboard – csak akkor látható, ha tényleg van vezetői szerepköröd.
+    Egyesületi vezető dashboard – csak vezetői szerepkörrel.
     """
     leader = request.user
     if not has_role(leader, "Egyesületi vezető"):
-        messages.error(request, "Nincs egyesületi vezetői szerepköröd.")
+        messages.error(request, "Hozzáférés megtagadva, nincs egyesületi vezetői szerepköröd.")
         return redirect("core:main_page")
 
     leader_roles = UserRole.objects.filter(user=leader, role__name="Egyesületi vezető", status="approved")
     club = leader_roles.first().club
     sports = club.sports.all()
 
-    context = {
-        "club": club,
-        "sports": sports,
-    }
+    context = {"club": club, "sports": sports}
     return render(request, "data_sharing/leader/dashboard.html", context)
+
 
 @login_required
 def sport_detail(request, sport_id):
+    """
+    Egy adott sportág részletes adatai – csak vezető nézheti meg.
+    """
     leader = request.user
     if not has_role(leader, "Egyesületi vezető"):
         messages.error(request, "Hozzáférés megtagadva, nincs egyesületi vezetői szerepköröd.")
@@ -53,7 +49,6 @@ def sport_detail(request, sport_id):
 
     athletes_with_data = []
     for role in athlete_roles:
-        # mindig sportoló -> user
         permissions = BiometricSharingPermission.objects.filter(
             user=role.user,
             target_user=leader,
@@ -62,7 +57,7 @@ def sport_detail(request, sport_id):
         shared_tables = [{
             "app_name": perm.app_name,
             "table_name": perm.table_name,
-            "display_name": _get_model_display_name(perm.app_name, perm.table_name),
+            "display_name": get_model_display_name(perm.app_name, perm.table_name),
         } for perm in permissions]
 
         athletes_with_data.append({
@@ -71,9 +66,5 @@ def sport_detail(request, sport_id):
             "shared_tables": shared_tables,
         })
 
-    context = {
-        "club": club,
-        "sport": sport,
-        "athletes_with_data": athletes_with_data,
-    }
+    context = {"club": club, "sport": sport, "athletes_with_data": athletes_with_data}
     return render(request, "data_sharing/leader/sport_detail.html", context)
