@@ -1,6 +1,6 @@
 # digiTTrain/users/forms.py
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import UserCreationForm, PasswordResetForm, AuthenticationForm
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from django.db.models import Q
@@ -21,6 +21,31 @@ class UserUpdateForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ['username', 'email']
+
+class CustomLoginForm(AuthenticationForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        self.fields['username'].widget = forms.TextInput(attrs={
+            'class': 'form-control', # ✅ Ez biztosítja a Bootstrap stílust
+            'placeholder': 'Felhasználónév',
+        })
+        
+        self.fields['password'].widget = forms.PasswordInput(attrs={
+            'class': 'form-control', # ✅ Ez biztosítja a Bootstrap stílust
+            'placeholder': 'Jelszó',
+        })
+
+class CustomPasswordResetForm(PasswordResetForm):
+    # A PasswordResetForm egyetlen mezője az 'email'
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Hozzáadjuk a form-control osztályt a beviteli mezőhöz
+        self.fields['email'].widget.attrs.update({
+            'class': 'form-control',
+            'placeholder': 'Adja meg email címét', # Segít a felhasználónak
+            'aria-label': 'Email cím',
+        })
 
 class ProfileForm(forms.ModelForm):
     first_name = forms.CharField(
