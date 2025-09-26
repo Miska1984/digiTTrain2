@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django_healthchecks',
     "django.contrib.staticfiles",
     'django.contrib.sites', 
+    'django.contrib.humanize',
     'crispy_forms',
     'crispy_bootstrap5',
     "storages",

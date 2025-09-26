@@ -1,14 +1,37 @@
 {% extends 'base.html' %}
+{% load crispy_forms_tags %}
 
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <h2>{{ title }}</h2>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn btn-primary">Mentés</button>
-    </form>
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-success text-white">
+                    <h2 class="card-title mb-0">{{ title }}</h2>
+                    <p class="mb-0 small">Kérjük, rögzítse az elvégzett futóedzés adatait.</p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {# -------------------- 1. Futóteljesítmény (Running Performance) -------------------- #}
+                        <div class="mb-5 p-4 border rounded border-success">
+                            <h4 class="fw-bold text-success mb-3">Futás Részletes Adatai</h4>
+                            <p class="text-muted small">Minden egyes futóedzés külön rögzítésre kerül.</p>
+                            
+                            {# Itt az egész formot egyszerre rendereljük, hogy ne legyen Crispy Forms hiba #}
+                            {{ running_form|crispy }}
+                        </div>
+
+                        <button type="submit" class="btn btn-success mt-4 w-100 btn-lg">
+                            <i class="bi bi-save me-2"></i> Futóedzés Rögzítése
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 {% endblock %}

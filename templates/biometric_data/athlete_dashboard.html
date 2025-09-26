@@ -1,0 +1,495 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %} 
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4 text-primary fw-bold">{{ title }}</h1>
+
+{% for role in athlete_roles %}
+    {# A border-bottom-X színe jelzi a szerepkör különbségét, ha több is van #}
+    <div class="card mb-4 shadow-lg border-bottom-{{ forloop.counter|divisibleby:2|yesno:'success,primary' }} border-5">
+        <div class="card-body">
+            <div class="row align-items-center">
+                
+                {# 1. SPORTOLÓ PROFILKÉP ÉS SZEREPKÖR (3 oszlop) #}
+                <div class="col-12 col-lg-3 d-flex align-items-center mb-3 mb-lg-0 border-end">
+                    
+                    {# Kép #}
+                    <div class="me-3 flex-shrink-0">
+                        <img src="{{ user.profile.profile_picture_url }}" alt="Sportoló Kép" class="rounded-circle" style="width: 80px; height: 80px; object-fit: cover; border: 4px solid #007bff;">
+                    </div>
+                    
+                    {# Szöveges adatok #}
+                    <div class="flex-grow-1">
+                        <h5 class="fw-bold mb-0">{{ user.profile.first_name }} {{ user.profile.last_name }}</h5>
+                        <p class="small text-primary fw-bold mb-0">SZEREPKÖR: {{ role.role.name }}</p>
+                        
+                        {# Életkor és Nem JAVÍTVA #}
+                        <p class="small text-muted mb-0">
+                            {{ user.profile.get_gender_display|default:'Nincs nem' }} / 
+                            {% if user.profile.age_years is not None %}
+                                {{ user.profile.age_years }} éves
+                            {% else %}
+                                Életkor nincs
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+
+                {# 2. EDZŐ ÉS SZÜLŐ INFORMÁCIÓK (6 oszlop) JAVÍTVA #}
+                <div class="col-12 col-lg-6 mb-3 mb-lg-0 border-end">
+                    <div class="row">
+                        
+                        {# Edző #}
+                        <div class="col-12 col-md-6 d-flex align-items-center mb-2 mb-md-0">
+                            {% with coach_profile=role.coach.profile %}
+                                <img src="{{ coach_profile.profile_picture_url }}" alt="Edző Kép" class="rounded-circle me-3" style="width: 45px; height: 45px; object-fit: cover; border: 2px solid #198754;">
+                                <div>
+                                    <p class="small text-success fw-bold mb-0">EDZŐ</p>
+                                    {# JAVÍTOTT RÉSZ: A profil mezőkből olvassuk ki a teljes nevet #}
+                                    <h6 class="mb-0">
+                                        {% if coach_profile.first_name or coach_profile.last_name %}
+                                            {{ coach_profile.first_name }} {{ coach_profile.last_name }}
+                                        {% else %}
+                                            {{ role.coach.username }}
+                                        {% endif %}
+                                    </h6>
+                                </div>
+                            {% endwith %}
+                        </div>
+
+                        {# Szülő / Kapcsolattartó #}
+                        <div class="col-12 col-md-6 d-flex align-items-center">
+                            {% if role.parent %}
+                                {% with parent_profile=role.parent.profile %}
+                                    <img src="{{ parent_profile.profile_picture_url }}" alt="Szülő Kép" class="rounded-circle me-3" style="width: 45px; height: 45px; object-fit: cover; border: 2px solid #ffc107;">
+                                    <div>
+                                        <p class="small text-warning fw-bold mb-0">SZÜLŐ / KAPCSOLATTARTÓ</p>
+                                        {# JAVÍTOTT RÉSZ: A profil mezőkből olvassuk ki a teljes nevet #}
+                                        <h6 class="mb-0">
+                                            {% if parent_profile.first_name or parent_profile.last_name %}
+                                                {{ parent_profile.first_name }} {{ parent_profile.last_name }}
+                                            {% else %}
+                                                {{ role.parent.username }}
+                                            {% endif %}
+                                        </h6>
+                                    </div>
+                                {% endwith %}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {# 3. EGYESÜLET ÉS SPORTÁG (3 oszlop) #}
+                <div class="col-12 col-lg-3 d-flex align-items-center">
+                    {% if role.club and role.club.logo %}
+                        <img src="{{ role.club.logo.url }}" alt="Egyesület Logó" class="img-fluid me-3" style="max-height: 60px; width: auto;">
+                    {% else %}
+                        <i class="bi bi-building fs-2 me-3 text-info"></i>
+                    {% endif %}
+                    
+                    <div>
+                        <p class="small text-muted fw-bold mb-0">EGYESÜLET: {{ role.club.short_name|default:role.club.name }}</p>
+                        <p class="small text-muted fw-bold mb-0">SPORTÁG: {{ role.sport.name }}</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+{% empty %}
+    <div class="alert alert-danger" role="alert">
+        Nincs aktív és jóváhagyott **Sportoló** szerepköröd a rendszerben. Kérlek, vedd fel a kapcsolatot az edződdel vagy az egyesületi vezetővel.
+    </div>
+{% endfor %}
+
+    {# -------------------- B. ADAT SZEKCIÓK (IDE JÖNNEK A GRAFIKONOK ÉS FEEDBACK) -------------------- #}
+    <hr class="my-5"> 
+    
+    <div class="row">
+        
+        {# -------------------- 1. SÚLY ÉS TESTÖSSZETÉTEL (WeightData) -------------------- #}
+        <div class="col-lg-6 mb-4">
+            {# ... A korábbi kód folytatódik ... #}
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white fw-bold">Testsúly és Testösszetétel Elemzés</div>
+                <div class="card-body">
+                    <canvas id="weightChart"></canvas>
+                    <hr>
+                    <h5 class="text-primary mt-3">Következtetés:</h5>
+                    <p class="alert alert-info" id="weightFeedbackArea">
+                        {{ weight_feedback|safe }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {# -------------------- 2. HRV, ALVÁS, KÖZÉRZET (HRVandSleepData) -------------------- #}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white fw-bold">HRV és Reggeli Állapot (Regeneráció)</div>
+                <div class="card-body">
+                    <canvas id="hrvSleepChart"></canvas>
+                    <hr>
+                    <h5 class="text-success mt-3">Következtetés:</h5>
+                    <p class="alert alert-success" id="hrvSleepFeedbackArea">
+                        {{ hrv_sleep_feedback|safe }}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        {# -------------------- 3. MAROKERŐ ÉS INTENZITÁS (WorkoutFeedback) -------------------- #}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark fw-bold">Marokerő és Edzésintenzitás Elemzés</div>
+                <div class="card-body">
+                    <canvas id="gripIntensityChart"></canvas>
+                    <hr>
+                    <h5 class="text-warning mt-3">Következtetés:</h5>
+                    <p class="alert alert-warning" id="gripFeedbackArea">
+                        {{ grip_timing_feedback|safe }}
+                    </p>
+                    <p class="small text-muted mt-3">
+                        {# Az időzítési feedback a views.py-ban van beépítve. #}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {# -------------------- 4. FUTÓTELJESÍTMÉNY (Running Performance) -------------------- #}
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white fw-bold">Futóteljesítmény Elemzés</div>
+                <div class="card-body">
+                    <canvas id="runningChart"></canvas>
+                    <hr>
+                    <h5 class="text-danger mt-3">Következtetés:</h5>
+                    <p class="alert alert-danger" id="runningFeedbackArea">
+                        {{ running_feedback|safe }}
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+    // ----------------------------------------------------------------------------------
+    // A. JSON ADATOK KINYERÉSE (MIND A NÉGY GRAFIKONHOZ)
+    // ----------------------------------------------------------------------------------
+
+    // Segédfüggvény a JSON adatok biztonságos beolvasásához
+    function getChartData(jsonVarName) {
+        const jsonString = document.getElementById(jsonVarName).textContent.trim().replace(/&quot;/g, '"');
+        if (jsonString) {
+            try {
+                return JSON.parse(jsonString);
+            } catch (e) {
+                console.error(`Hiba a(z) ${jsonVarName} JSON elemzésekor:`, e);
+                return null;
+            }
+        }
+        return null;
+    }
+
+    // A Views.py-ból érkező JSON adatok kinyerése
+    // Ezeket a hidden <span>/<div> elemekbe kell tenni a views.py-ban, 
+    // ha a Django nem engedi közvetlenül átadni a változókat. 
+    // (A korábbi megközelítés is jó, de a biztonságosabb kinyeréshez feltételezzük, hogy itt vannak.)
+    
+    // Ezzel a megoldással élünk, hogy biztosan működjön az escape-eléssel:
+    // A Views.py-ban így kell átadni: context['weight_chart_data_json'] = json.dumps(chart_data)
+
+    const weightChartData = JSON.parse('{{ weight_chart_data_json|safe }}'.replace(/&quot;/g, '"'));
+    const hrvSleepChartData = JSON.parse('{{ hrv_sleep_chart_data_json|safe }}'.replace(/&quot;/g, '"'));
+    const gripIntensityChartData = JSON.parse('{{ grip_intensity_chart_data_json|safe }}'.replace(/&quot;/g, '"'));
+    const runningChartData = JSON.parse('{{ running_chart_data_json|safe }}'.replace(/&quot;/g, '"'));
+
+
+    // ----------------------------------------------------------------------------------
+    // B. TESTSÚLY GRAFIKON (WeightData)
+    // ----------------------------------------------------------------------------------
+
+    if (weightChartData && weightChartData.labels && weightChartData.labels.length > 0) {
+        const ctxWeight = document.getElementById('weightChart').getContext('2d');
+        new Chart(ctxWeight, {
+            type: 'bar', // Kezdő típust oszlopra állítjuk
+            data: {
+                labels: weightChartData.labels,
+                datasets: [
+                    {
+                        label: 'Reggeli Súly (kg)',
+                        data: weightChartData.weights,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                        type: 'line', // Fő súly adat vonalként
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Testzsír (%)',
+                        data: weightChartData.body_fat_data,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                        yAxisID: 'y2',
+                        type: 'line',
+                        tension: 0.2
+                    },
+                    {
+                        label: 'Izom (%)',
+                        data: weightChartData.muscle_data,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        yAxisID: 'y2',
+                        type: 'line',
+                        tension: 0.2
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Súly (kg)' }
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false }, // Ne rajzoljon rácsot ezen a tengelyen
+                        title: { display: true, text: 'Arány (%)' }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('weightChart').parentNode.innerHTML = '<p class="text-center text-muted">Nincs elegendő adat a Testsúly grafikon megjelenítéséhez.</p>';
+    }
+
+    // ----------------------------------------------------------------------------------
+    // C. HRV és ALVÁS GRAFIKON (HRVandSleepData)
+    // ----------------------------------------------------------------------------------
+    
+    if (hrvSleepChartData && hrvSleepChartData.labels && hrvSleepChartData.labels.length > 0) {
+        const ctxHrvSleep = document.getElementById('hrvSleepChart').getContext('2d');
+        new Chart(ctxHrvSleep, {
+            type: 'line',
+            data: {
+                labels: hrvSleepChartData.labels,
+                datasets: [
+                    {
+                        label: 'HRV (ms)',
+                        data: hrvSleepChartData.hrv_data,
+                        borderColor: 'rgb(25, 135, 84)', // Success zöld
+                        backgroundColor: 'rgba(25, 135, 84, 0.3)',
+                        fill: true,
+                        tension: 0.3,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Alvás Minőség (1-10)',
+                        data: hrvSleepChartData.sleep_quality_data,
+                        borderColor: 'rgb(108, 117, 125)', // Szürke
+                        backgroundColor: 'rgba(108, 117, 125, 0.6)',
+                        type: 'bar', // Alvás oszlop
+                        yAxisID: 'y2' 
+                    },
+                    {
+                        label: 'Éberség / Közérzet (1-10)',
+                        data: hrvSleepChartData.alertness_data,
+                        borderColor: 'rgb(0, 123, 255)', // Kék
+                        backgroundColor: 'rgba(0, 123, 255, 0.6)',
+                        type: 'bar', // Éberség oszlop
+                        yAxisID: 'y2'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'HRV (ms)' }
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        min: 0,
+                        max: 10,
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'Minőség (1-10)' }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('hrvSleepChart').parentNode.innerHTML = '<p class="text-center text-muted">Nincs elegendő adat a HRV és Alvás grafikon megjelenítéséhez.</p>';
+    }
+
+    // ----------------------------------------------------------------------------------
+    // D. MAROKERŐ és EDZÉSINTENZITÁS GRAFIKON (WorkoutFeedback)
+    // ----------------------------------------------------------------------------------
+
+    if (gripIntensityChartData && gripIntensityChartData.labels && gripIntensityChartData.labels.length > 0) {
+        const ctxGripIntensity = document.getElementById('gripIntensityChart').getContext('2d');
+        new Chart(ctxGripIntensity, {
+            type: 'line',
+            data: {
+                labels: gripIntensityChartData.labels,
+                datasets: [
+                    {
+                        label: 'Jobb Marokerő (kg)',
+                        data: gripIntensityChartData.right_grip_data,
+                        borderColor: 'rgb(255, 193, 7)', // Warning sárga
+                        backgroundColor: 'rgba(255, 193, 7, 0.4)',
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Bal Marokerő (kg)',
+                        data: gripIntensityChartData.left_grip_data,
+                        borderColor: 'rgb(255, 167, 38)', // Sötétebb sárga
+                        backgroundColor: 'rgba(255, 167, 38, 0.4)',
+                        tension: 0.2,
+                        yAxisID: 'y'
+                    },
+                    {
+                        label: 'Edzés Intenzitás (1-10)',
+                        data: gripIntensityChartData.intensity_data,
+                        borderColor: 'rgb(13, 202, 240)', // Cián
+                        backgroundColor: 'rgba(13, 202, 240, 0.6)',
+                        type: 'bar', // Intenzitás oszlop
+                        yAxisID: 'y2'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        title: { display: true, text: 'Marokerő (kg)' }
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        min: 0,
+                        max: 10,
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'Intenzitás (1-10)' }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('gripIntensityChart').parentNode.innerHTML = '<p class="text-center text-muted">Nincs elegendő adat a Marokerő/Intenzitás grafikon megjelenítéséhez.</p>';
+    }
+
+    // ----------------------------------------------------------------------------------
+    // E. FUTÓTELJESÍTMÉNY GRAFIKON (RunningPerformance)
+    // ----------------------------------------------------------------------------------
+
+    if (runningChartData && runningChartData.labels && runningChartData.labels.length > 0) {
+        const ctxRunning = document.getElementById('runningChart').getContext('2d');
+        new Chart(ctxRunning, {
+            type: 'line',
+            data: {
+                labels: runningChartData.labels,
+                datasets: [
+                    {
+                        label: 'Tempó (perc/km)',
+                        data: runningChartData.pace_data,
+                        borderColor: 'rgb(220, 53, 69)', // Danger piros
+                        backgroundColor: 'rgba(220, 53, 69, 0.4)',
+                        tension: 0.2,
+                        yAxisID: 'y',
+                        // Tempó formázása: a pace_data másodpercben van, de perc:mp-ként akarjuk látni.
+                        // A Chart.js custom tooltip callbackot igényel.
+                    },
+                    {
+                        label: 'Átlagos Pulzus (bpm)',
+                        data: runningChartData.avg_hr_data,
+                        borderColor: 'rgb(108, 117, 125)', // Szürke
+                        backgroundColor: 'rgba(108, 117, 125, 0.4)',
+                        tension: 0.2,
+                        yAxisID: 'y2'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        reverse: true, // Gyorsulás felfelé látszódjon (kisebb érték=jobb)
+                        title: { display: true, text: 'Tempó (perc/km)' },
+                        // Segítség a tempó formázásához a tengelyen
+                        ticks: {
+                            callback: function(value, index, values) {
+                                const minutes = Math.floor(value / 60);
+                                const seconds = Math.round(value % 60);
+                                return `${minutes}:${seconds.toString().padStart(2, '0')}/km`;
+                            }
+                        }
+                    },
+                    y2: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        title: { display: true, text: 'Pulzus (bpm)' }
+                    }
+                },
+                // Speciális tooltip a tempó formázásához
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.dataset.label.includes('Tempó')) {
+                                    const value = context.parsed.y;
+                                    const minutes = Math.floor(value / 60);
+                                    const seconds = Math.round(value % 60);
+                                    label += `${minutes}:${seconds.toString().padStart(2, '0')}/km`;
+                                } else {
+                                    label += context.parsed.y;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        document.getElementById('runningChart').parentNode.innerHTML = '<p class="text-center text-muted">Nincs elegendő adat a Futóteljesítmény grafikon megjelenítéséhez.</p>';
+    }
+
+</script>
+
+{% endblock %}
