@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="card-title mb-0">{{ title }}</h2>
+                    <p class="mb-0 small">Kérjük, rögzítse a reggeli testsúlyát és az ébredési paramétereket.</p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {# -------------------- 1. TESTSÚLY ADATOK (WeightDataForm) -------------------- #}
+                        <div class="mb-5 p-4 border rounded">
+                            <h4 class="fw-bold text-primary mb-3">Testsúly (Reggeli)</h4>
+                            <p class="text-muted small">Ezt az adatot naponta egyszer rögzítheti.</p>
+                            
+                            {# morning_weight mező renderelése az új formból #}
+                            {{ weight_form|crispy }}
+                        </div>
+
+                        {# -------------------- 2. HRV, ALVÁS, KÖZÉRZET (HRVandSleepDataForm) -------------------- #}
+                        <div class="mb-5 p-4 border rounded">
+                            <h4 class="fw-bold text-success mb-3">HRV és Ébredési Állapot</h4>
+                            <p class="text-muted small">Ezeket az adatokat is naponta egyszer rögzítheti/módosíthatja.</p>
+                            
+                            {# EZ A MÓDSZER BIZTOSABB: Az egész hrv_form renderelése egyszerre #}
+                            {{ hrv_form|crispy }}
+
+                        </div>
+
+                        <button type="submit" class="btn btn-success mt-4 w-100 btn-lg">
+                            <i class="bi bi-save me-2"></i> Adatok Mentése / Módosítása
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

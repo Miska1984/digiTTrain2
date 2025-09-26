@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.utils import timezone
+from datetime import date
 import logging
 import os
 import uuid
@@ -117,6 +118,17 @@ class Profile(models.Model):
         logger.info("⚠️ Nincs kép, default-ot adunk vissza")
         print("⚠️ Nincs kép, default-ot adunk vissza")
         return settings.STATIC_URL + "images/default.jpg"  # legyen egy default kép a staticban    
+        
+    def age_years(self):
+        """Kiszámolja a felhasználó életkorát években."""
+        if self.date_of_birth:
+            # Ugyanaz a logika, mint amit az is_adult property használ
+            today = date.today()
+            age = today.year - self.date_of_birth.year - (
+                (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
+            )
+            return age
+        return None # Ha nincs születési dátum
     
 class Role(models.Model):
     # A szerepkörök listáját a kódban tároljuk

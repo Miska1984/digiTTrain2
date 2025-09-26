@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-8">
+            <div class="card shadow-lg border-0">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="card-title mb-0">{{ title }}</h2>
+                    <p class="mb-0 small">Kérjük, rögzítse az eseti méréseket testösszetétel, marokerő.</p>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        {# -------------------- 1. Testösszetétel (Body Composition) -------------------- #}
+                        <div class="mb-5 p-4 border rounded border-warning">
+                            <h4 class="fw-bold text-warning mb-3">Testösszetétel Eseti Mérése</h4>
+                            <p class="text-muted small">Ezeket az adatokat ritkábban, 2-3 hetente rögzítse.</p>
+                            
+                            {{ weight_form|crispy }}
+                        </div>
+
+                        {# -------------------- 2. Marokerő (Grip Strength) -------------------- #}
+                        <div class="mb-5 p-4 border rounded border-danger">
+                            <h4 class="fw-bold text-danger mb-3">Marokerő Mérés</h4>
+                            <p class="text-muted small">Ezeket az adatokat ritkábban, 2-3 hetente rögzítse..</p>
+                            
+                            {{ feedback_form|crispy }}
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success mt-4 w-100 btn-lg">
+                            <i class="bi bi-save me-2"></i> Adatok Mentése
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

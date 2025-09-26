@@ -1,89 +1,83 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Szülői Dashboard{% endblock %}
+{% block title %}Szülői Biometrikus Adatok{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js betöltése -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
 {% block content %}
-<div class="container">
-    <h2 class="mb-4">Gyermekeim adatai</h2>
-
-    <!-- Szűrő -->
-    <form method="get" class="mb-4">
-        <label for="child_id">Gyermek kiválasztása:</label>
-        <select name="child_id" id="child_id" class="form-select" onchange="this.form.submit()">
-            <option value="">Összes gyermek</option>
-            {% for role in child_roles %}
-                <option value="{{ role.user.id }}" {% if selected_child_id == role.user.id %}selected{% endif %}>
-                    {{ role.user.profile.first_name }} {{ role.user.profile.last_name }}
-                </option>
-            {% endfor %}
-        </select>
-    </form>
+<div class="container my-5">
+    <h2 class="mb-4 text-center">Gyermekeim biometrikus adatai</h2>
 
     {% if children_data %}
-        <div class="row">
-            {% for child in children_data %}
-                <div class="col-md-12 mb-4">
-                    <div class="card shadow-sm">
-                        <div class="card-header bg-primary text-white">
-                            <strong>{{ child.role.user.profile.first_name }} {{ child.role.user.profile.last_name }}</strong>
-                            – {{ child.role.sport.name }} ({{ child.role.club.short_name }})
-                        </div>
-                        <div class="card-body">
-                            <!-- Súlyadatok -->
-                            <h5>Súlyadatok (utolsó 5)</h5>
-                            {% if child.weight_data %}
-                                <ul>
-                                    {% for data in child.weight_data %}
-                                        <li>{{ data.workout_date }} – {{ data.morning_weight }} kg</li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <p class="text-muted">Nincs adat.</p>
-                            {% endif %}
-
-                            <!-- HRV és alvás -->
-                            <h5 class="mt-3">HRV és Alvás (utolsó 5)</h5>
-                            {% if child.hrv_sleep_data %}
-                                <ul>
-                                    {% for data in child.hrv_sleep_data %}
-                                        <li>{{ data.recorded_at }} – HRV: {{ data.hrv }} ms, Alvás: {{ data.sleep_quality }}/10</li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <p class="text-muted">Nincs adat.</p>
-                            {% endif %}
-
-                            <!-- Edzésvisszajelzés -->
-                            <h5 class="mt-3">Edzés visszajelzés</h5>
-                            {% if child.feedback_data %}
-                                <ul>
-                                    {% for data in child.feedback_data %}
-                                        <li>{{ data.workout_date }} – Marokerő: {{ data.right_grip_strength }} / {{ data.left_grip_strength }} kg, Intenzitás: {{ data.workout_intensity }}/10</li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <p class="text-muted">Nincs adat.</p>
-                            {% endif %}
-
-                            <!-- Futóteljesítmény -->
-                            <h5 class="mt-3">Futó teljesítmény</h5>
-                            {% if child.running_data %}
-                                <ul>
-                                    {% for data in child.running_data %}
-                                        <li>{{ data.run_date }} – {{ data.run_distance_km }} km, Idő: {{ data.run_duration }}, Átlag pulzus: {{ data.run_avg_hr }}</li>
-                                    {% endfor %}
-                                </ul>
-                            {% else %}
-                                <p class="text-muted">Nincs adat.</p>
-                            {% endif %}
-                        </div>
+    <div class="row">
+        {% for child in children_data %}
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-lg border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        {% if child.profile.profile_picture %}
+                            <img src="{{ child.profile.profile_picture.url }}" alt="Profilkép" 
+                                 class="rounded-circle me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                        {% else %}
+                            <i class="bi bi-person-circle h1 me-3 text-muted"></i>
+                        {% endif %}
+                        <h5 class="card-title mb-0">
+                            {{ child.profile.first_name }} {{ child.profile.last_name }}
+                        </h5>
                     </div>
+
+                    <p class="text-muted small mb-3">
+                        Az edzésekhez rögzített súlytrend grafikon.
+                    </p>
+
+                    <!-- Grafikon helye -->
+                    <canvas id="weightChart{{ forloop.counter }}" height="200"></canvas>
                 </div>
-            {% endfor %}
+            </div>
         </div>
+
+        <!-- JSON adatok biztonságosan minden gyerekhez -->
+        {{ child.chart|json_script:"chart-data-" }}{{ forloop.counter }}
+        {% endfor %}
+    </div>
+
+   
+
+<!-- Chart.js script minden gyerekhez -->
+<script>
+    const chartData{{ forloop.counter }} = JSON.parse(
+        document.getElementById("chart-data-{{ forloop.counter }}").textContent
+    );
+
+    const ctx{{ forloop.counter }} = document
+        .getElementById("weightChart{{ forloop.counter }}")
+        .getContext("2d");
+
+    new Chart(ctx{{ forloop.counter }}, {
+        type: 'line',
+        data: {
+            labels: chartData{{ forloop.counter }}.labels,
+            datasets: [{
+                label: 'Reggeli súly (kg)',
+                data: chartData{{ forloop.counter }}.weights,
+                borderColor: 'rgba(54, 162, 235, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+            }]
+        }
+    });
+</script>
     {% else %}
-        <p class="text-muted">Nincs jóváhagyott gyermek.</p>
+    <div class="alert alert-info text-center">
+        <i class="bi bi-info-circle"></i> Jelenleg nincs megjeleníthető adat a gyermekeidhez.
+    </div>
     {% endif %}
 </div>
 {% endblock %}

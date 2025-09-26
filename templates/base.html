@@ -34,9 +34,10 @@
                             Sportoló Funkciók
                         </a>
                         <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="biometricDropdown">
-                            <li><a class="dropdown-item" href="{% url 'biometric_data:list_weight' %}">Testsúly adatok</a></li>
-                            <li><a class="dropdown-item" href="{% url 'biometric_data:add_hrv_and_sleep' %}">Regeneráció Felmérés</a></li>
-                            <li><a class="dropdown-item" href="{% url 'biometric_data:add_workout_feedback' %}">Edzés intenzitás Felmérés</a></li>
+                            <li><a class="dropdown-item" href="{% url 'biometric_data:athlete_dashboard' %}">Adat Összefoglaló</a></li>
+                            <li><a class="dropdown-item" href="{% url 'biometric_data:morning_check' %}">Reggeli mérések</a></li>
+                            <li><a class="dropdown-item" href="{% url 'biometric_data:after_training' %}">Esti mérések</a></li>
+                            <li><a class="dropdown-item" href="{% url 'biometric_data:occasional_measurements' %}">Eseti mérések</a></li>
                             <li><a class="dropdown-item" href="{% url 'biometric_data:add_running_performance' %}">Futás teljesítményfelmérés </a></li>
                         </ul>
                     </li>

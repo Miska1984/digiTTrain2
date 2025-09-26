@@ -1,15 +1,22 @@
 # biometric_data/urls.py
-
 from django.urls import path
 from . import views
 
 app_name = 'biometric_data'
 
 urlpatterns = [
-    path('add/', views.add_weight, name='add_weight'),
-    path('list/', views.list_weight, name='list_weight'),
+    # Napi/Reggeli Adatok
+    path('morning-check/', views.morning_check, name='morning_check'), # Súly + HRV/Alvás
 
-    path('add-hrv-sleep/', views.add_hrv_and_sleep, name='add_hrv_and_sleep'),
-    path('add-workout-feedback/', views.add_workout_feedback, name='add_workout_feedback'),
+    # Edzéshez Kötött Napi Adatok
+    path('after-training/', views.after_training, name='after_training'), # Edzés előtti/utáni súly + Intenzitás
+
+    # Eseti/Periodikus Adatok (Testzsír, Marokerő, Futás)
+    path('occasional-measurements/', views.occasional_measurements, name='occasional_measurements'), 
+
+    # DEDIKÁLT útvonal a futóteljesítmény rögzítéséhez
     path('add-running-performance/', views.add_running_performance, name='add_running_performance'),
+    
+    # Adatok Listázása
+    path('dashboard/', views.athlete_dashboard, name='athlete_dashboard'),
 ]

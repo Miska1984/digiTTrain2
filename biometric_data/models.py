@@ -24,34 +24,77 @@ class WeightData(models.Model):
         return f"{self.user.username} - {self.morning_weight} kg ({self.workout_date})"
 
 class HRVandSleepData(models.Model):
+    # A hiányzó CHOICES konstansok hozzáadása
+    SLEEP_QUALITY_CHOICES = [
+        (None, '--- Válassz minőséget (opcionális) ---'),
+        (1, '1 - Nagyon rossz minőségű'),
+        (2, '2 - Rossz, gyakori ébredéssel'),
+        (3, '3 - Átlag alatti, nem pihentető'),
+        (4, '4 - Átlagos, kielégítő'),
+        (5, '5 - Jó, gyors elalvással'),
+        (6, '6 - Nagyon jó, mély alvással'),
+        (7, '7 - Kipihent, regeneráló'),
+        (8, '8 - Kiváló, ébredés nélkül'),
+        (9, '9 - Szinte tökéletes'),
+        (10, '10 - Tökéletes alvás'),
+    ]
+
+    ALERTNESS_CHOICES = [
+        (None, '--- Válassz közérzetet (opcionális) ---'),
+        (1, '1 - Extrém fáradtság, kimerültség'),
+        (2, '2 - Nagyon fáradt, nehéz koncentrálni'),
+        (3, '3 - Fáradt, de működőképes'),
+        (4, '4 - Átlagos, pici kávé kell'),
+        (5, '5 - Éber, fókuszált'),
+        (6, '6 - Nagyon éber, energikus'),
+        (7, '7 - Magas energia szint'),
+        (8, '8 - Kiegyensúlyozottan motivált'),
+        (9, '9 - Mentálisan a csúcson'),
+        (10, '10 - Tökéletes közérzet'),
+    ]
+    
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     hrv = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="HRV (ms)")
-    sleep_quality = models.IntegerField(
-        null=True, 
-        blank=True, 
-        verbose_name="Alvásminőség", 
-        help_text="1-10 közötti skálán"
-    )
+    sleep_quality = models.IntegerField(choices=SLEEP_QUALITY_CHOICES[1:], null=True, blank=True, verbose_name="Alvás Minősége")
+    alertness = models.IntegerField(choices=ALERTNESS_CHOICES[1:], null=True, blank=True, verbose_name="Éberség / Közérzet")
     recorded_at = models.DateField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "HRV és alvás adat"
-        verbose_name_plural = "HRV és alvás adatok"
+        verbose_name = "HRV és Alvás Adat"
+        verbose_name_plural = "HRV és Alvás Adatok"
         ordering = ['-recorded_at']
+        # Kiegészítés: A DateField-re már van a modellben egy unique_together/index_together,
+        # különben engedi ugyanarra a napra rögzíteni. 
+        # Példa: unique_together = (("user", "recorded_at"),)
 
     def __str__(self):
-        return f"{self.user.username} - {self.recorded_at} HRV: {self.hrv}, Alvás: {self.sleep_quality}"
+        return f"{self.user.username} - {self.recorded_at} HRV/Sleep"
 
 class WorkoutFeedback(models.Model):
+    INTENSITY_CHOICES = [
+        (None, '--- Válassz intenzitást (opcionális) ---'),
+        (1, '1 - Nagyon könnyű (Bemelegítés, regeneráló)'),
+        (2, '2 - Könnyű (Szinte nincs terhelés)'),
+        (3, '3 - Közepes (Kényelmes, hosszan tartható)'),
+        (4, '4 - Kicsit kemény (Megéri az erőlködés)'),
+        (5, '5 - Mérsékelt (Kellemesen nehéz)'),
+        (6, '6 - Elég kemény (Kicsit nehezebb, mint a komfortzóna)'),
+        (7, '7 - Kemény (Komfortzónán kívül, még kontrollálható)'),
+        (8, '8 - Nagyon kemény (Nehéz fenntartani)'),
+        (9, '9 - Extrém (Csak rövidebb ideig tartható)'),
+        (10, '10 - Maximális (Minden erőfeszítés)'),
+    ]
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     right_grip_strength = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Jobb marokerő (kg)")
     left_grip_strength = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="Bal marokerő (kg)")
     workout_intensity = models.IntegerField(
+        choices=INTENSITY_CHOICES[1:], # A [1:] kizárja a 'Válassz' sort a mentésből
         null=True, 
         blank=True, 
         verbose_name="Edzésintenzitás", 
         help_text="1-10 közötti skálán"
     )
+    # 
     workout_date = models.DateField(auto_now_add=True)
     
     class Meta:
