@@ -17,6 +17,9 @@ class TrainingSession(models.Model):
     coach = models.ForeignKey(User, on_delete=models.CASCADE, 
                               limit_choices_to={'role__name': 'Edző'}, 
                               verbose_name="Edző (hívó)")
+    schedule = models.ForeignKey('TrainingSchedule', on_delete=models.SET_NULL, 
+                                 related_name='sessions', verbose_name="Edzésrend", 
+                                 null=True, blank=True)
     session_date = models.DateField(verbose_name="Dátum")
     start_time = models.TimeField(verbose_name="Kezdés ideje")
     duration_minutes = models.IntegerField(verbose_name="Időtartam (perc)")
