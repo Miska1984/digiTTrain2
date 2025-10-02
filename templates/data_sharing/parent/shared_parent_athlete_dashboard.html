@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load static %}
+{% load data_sharing_extras %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">{{ page_title }}</h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="input-group">
+                <span class="input-group-text">Időtartam:</span>
+                <select class="form-select" onchange="window.location.href = '?period=' + this.value">
+                    {% for key, name in period_options.items %}
+                        <option value="{{ key }}" {% if key == period %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    {% if missing_data_messages %}
+    <div class="alert alert-danger" role="alert">
+        <h5 class="alert-heading">⚠️ Adathiány Figyelmeztetés!</h5>
+        <p>A gyermeked a választott időszakban nem rögzített minden adatot:</p>
+        <ul class="mb-0">
+            {% for message in missing_data_messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <h3 class="mt-4 mb-3">Utolsó Mérések és Állapotjelzők</h3>
+    <div class="row mb-4">
+        
+        {% for entry in last_entries %}
+        <div class="col-md-3">
+            <div class="card shadow-sm h-100 border-{{ entry.status_class|default:'secondary' }}">
+                <div class="card-body">
+                    <h6 class="card-title">{{ entry.name }}</h6>
+                    <p class="card-text mb-0">
+                        <strong>Utolsó dátum:</strong> {{ entry.last_date }}
+                    </p>
+                    {% if entry.days_since >= 0 %}
+                    <p class="card-text text-{{ entry.status_class }}">
+                        ({{ entry.days_since }} napja volt a mérés)
+                    </p>
+                    {% else %}
+                    <p class="card-text text-danger">Nincs rögzítve.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <div class="col-md-6 mt-3 mt-md-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    Regenerációs Állapot (HRV/Alvás)
+                </div>
+                <div class="card-body d-flex align-items-center">
+                    <h4 class="mb-0 text-{{ hrv_index.class|default:'muted' }} me-3 fw-bold">{{ hrv_index.status }}</h4>
+                    <p class="mb-0">{{ hrv_index.message }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6 mt-3 mt-md-0">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-light">
+                    Utolsó Edzés Fáradtsági Szintje
+                </div>
+                <div class="card-body d-flex align-items-center">
+                    <h4 class="mb-0 text-{{ fatigue_status.class|default:'muted' }} me-3 fw-bold">{{ fatigue_status.status }}</h4>
+                    <p class="mb-0">{{ fatigue_status.message }}</p>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+    <h3 class="mt-4 mb-3">Testsúly Trend ({{ period_options|get_item:period }})</h3>
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <canvas id="weightChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <h4 class="mt-3 mt-lg-0">Súlytrend Értékelés</h4>
+            <div class="alert alert-info">
+                {{ weight_trend_feedback|safe }}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivrat/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // 1. JSON adatok beolvasása a context-ből
+    var weight_data_json = '{{ weight_chart_json|safe }}';
+    var chartData;
+
+    try {
+        chartData = JSON.parse(weight_data_json);
+    } catch (e) {
+        console.error("Hiba a testsúly adat JSON-ná alakításakor:", e);
+        chartData = { labels: [], weights: [] };
+    }
+
+    // 2. Grafikon megjelenítése, ha van adat
+    const chartContainer = document.getElementById('weightChart');
+    if (chartData.labels.length > 0) {
+        const ctx = chartContainer.getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: chartData.labels,
+                datasets: [{
+                    label: 'Reggeli Testsúly (kg)',
+                    data: chartData.weights,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.2,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: {
+                            display: true,
+                            text: 'Testsúly (kg)'
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        chartContainer.parentElement.innerHTML = '<p class="text-center p-4">A választott időszakban nincs testsúly adat rögzítve.</p>';
+    }
+</script>
+{% endblock extra_js %}

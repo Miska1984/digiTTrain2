@@ -49,7 +49,7 @@ def data_sharing_center(request):
     shareable_roles = UserRole.objects.filter(
         Q(user=user, role__name="Sportoló", status="approved") |
         Q(parent=user, role__name="Sportoló", status="approved")
-    ).select_related('club', 'sport', 'user__profile', 'coach')
+    ).select_related('club', 'sport', 'user__profile', 'coach', 'parent__profile')
 
     if not shareable_roles.exists():
         messages.warning(request, "Nincs jóváhagyott sportoló szerepkör, ezért nem tudsz adatokat megosztani.")
@@ -69,7 +69,7 @@ def data_sharing_center(request):
                 "role_type": "coach",
                 "role_display": "Edző"
             })
-
+            
         # 2. Egyesületi vezető
         if role.club:
             try:
@@ -85,6 +85,14 @@ def data_sharing_center(request):
                 })
             except UserRole.DoesNotExist:
                 pass
+
+        # 3. SZÜLŐ (ÚJ LOGIKA)
+        if role.parent:
+            target_users.append({
+                "user": role.parent,
+                "role_type": "parent",
+                "role_display": "Szülő / Kapcsolattartó"
+            })
         
         # 3. Mátrix építése utils-ból
         matrix_rows = build_sharing_matrix(data_owner, target_users)

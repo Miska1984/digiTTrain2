@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-3">{{ page_title }}</h2>
+    
+    <div class="alert alert-info p-2 small">
+        Edzés: <strong>{{ schedule.name }}</strong> ({{ schedule.club.short_name }} / {{ schedule.sport.name }})<br>
+        Dátum: <strong>{{ session_date|date:"Y.m.d. (l)" }}</strong> | Idő: {{ schedule.start_time|date:"H:i" }} - {{ schedule.end_time|date:"H:i" }}
+    </div>
+
+<form method="POST">
+{% csrf_token %}
+
+<div class="card shadow mb-4">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center">
+        <h6 class="m-0 font-weight-bold text-primary">Sportolói lista ({{ schedule.birth_years|default:"Minden korosztály" }} év / {{ schedule.genders|default:"Összes nem" }})</h6>
+        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i> Jelenlét Mentése</button>
+    </div>
+
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Sportoló neve</th>
+                        <th class="text-center" style="width: 15%;">Jelen</th>
+                        <th class="text-center" style="width: 15%;">Sérült</th>
+                        <th class="text-center" style="width: 15%;">Vendég</th>
+                        <th class="text-center" style="width: 10%;">Hiányzik*</th> <th style="width: 15%;">Típus</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for athlete in athlete_list %}
+                    <tr data-athlete-id="{{ athlete.type }}_{{ athlete.id }}">
+                        <td class="align-middle">
+                            <span class="font-weight-bold">{{ athlete.name }}</span>
+                        </td>
+
+                        <td class="text-center align-middle">
+                            <input type="checkbox" 
+                                   name="is_present_{{ athlete.type }}_{{ athlete.id }}" 
+                                   value="1" 
+                                   class="attendance-status-checkbox"
+                                   data-status-type="present"
+                                   {% if athlete.is_present %}checked{% endif %}
+                                   data-toggle="tooltip" title="Jelen van az edzésen">
+                        </td>
+                        
+                        <td class="text-center align-middle">
+                            <input type="checkbox" 
+                                   name="is_injured_{{ athlete.type }}_{{ athlete.id }}" 
+                                   value="1" 
+                                   class="attendance-status-checkbox"
+                                   data-status-type="injured"
+                                   {% if athlete.is_injured %}checked{% endif %}
+                                   data-toggle="tooltip" title="Sérülés miatt hiányzik/nem edz">
+                        </td>
+
+                        <td class="text-center align-middle">
+                            <input type="checkbox" 
+                                   name="is_guest_{{ athlete.type }}_{{ athlete.id }}" 
+                                   value="1" 
+                                   class="attendance-status-checkbox"
+                                   data-status-type="guest"
+                                   {% if athlete.is_guest %}checked{% endif %}
+                                   data-toggle="tooltip" title="Vendégként van az edzésen (pl. válogatott keret)">
+                        </td>
+                        
+                        <td class="text-center align-middle hiányzik-status-cell">
+                            {# A tartalom a JS által lesz beállítva #}
+                        </td>
+
+                        <td class="align-middle small text-muted">
+                            {{ athlete.type|capfirst }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <small class="text-muted">* A hiányzik állapot automatikusan jelenik meg, ha a **Jelen**, **Sérült** és **Vendég** mezők mind nincsenek bejelölve.</small>
+        <div class="d-flex justify-content-end mt-2">
+            <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Jelenlét Mentése</button>
+        </div>
+    </div>
+</div>
+</form>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+    // FONTOS: Ez a szkript jQuery-t igényel ($). Ha hiba van a konzolban a $-ra, a base.html-ben hiányzik a jQuery.
+
+    $(document).ready(function() {
+        console.log("Jelenléti Ív: DOM betöltve, JavaScript inicializálva."); // Debug üzenet
+
+        // Függvény a Hiányzik oszlop tartalmának frissítésére
+        function updateMissingStatus($row) {
+            var isPresent = $row.find('input[data-status-type="present"]').prop('checked');
+            var isInjured = $row.find('input[data-status-type="injured"]').prop('checked');
+            var isGuest = $row.find('input[data-status-type="guest"]').prop('checked');
+            
+            // A Hiányzik cella megkeresése
+            var $missingCell = $row.find('.hiányzik-status-cell'); 
+
+            // Ha egyik sem jelölt (logikai hiányzás)
+            if (!isPresent && !isInjured && !isGuest) {
+                $missingCell.html('<i class="fas fa-times text-danger"></i>');
+            } else {
+                $missingCell.html('<i class="fas fa-check text-muted"></i>');
+            }
+        }
+
+        // ESEMÉNYKEZELŐ: Csak a kizárólagos státusz jelölőnégyzetekre figyelünk
+        $('.attendance-status-checkbox').on('change', function() {
+            var $currentCheckbox = $(this);
+            var isChecked = $currentCheckbox.prop('checked');
+            
+            console.log("Checkbox státusz megváltozott a sorban:", $currentCheckbox.closest('tr').data('athlete-id')); // Debug üzenet
+
+            // Ha az aktuálisat bejelölték, le kell venni a jelölést a többiről a soron belül
+            if (isChecked) {
+                var $parentRow = $currentCheckbox.closest('tr');
+                
+                // Megszüntetjük a jelölést az összes többi azonos osztályú checkbox-on a soron belül
+                $parentRow.find('.attendance-status-checkbox').not($currentCheckbox).each(function() {
+                    $(this).prop('checked', false);
+                });
+            }
+            
+            // A változás után mindig frissítjük a Hiányzik oszlopot
+            updateMissingStatus($currentCheckbox.closest('tr'));
+        });
+
+        // A lap betöltésekor is ellenőrizzük a hiányzó státuszokat (kezdeti állapot megjelenítése)
+        $('table tbody tr').each(function() {
+            updateMissingStatus($(this));
+        });
+    });
+</script>
+{% endblock extra_js %}
