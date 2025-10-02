@@ -12,11 +12,12 @@ from .forms import (
     OccasionalWeightForm, OccasionalFeedbackForm, RunningPerformanceForm 
 )
 from .models import WeightData, HRVandSleepData, WorkoutFeedback, RunningPerformance
-from django.db.models import Avg, Max, Min 
+from django.db.models import Avg, Max, Min, Q
 from users.models import UserRole
 from datetime import date, timedelta
 from django.utils import timezone
 from django.utils.timezone import now
+from django.shortcuts import get_object_or_404
 
 # *** ÚJ IMPORT *** A logikát most már az analytics.py-ból vesszük!
 from .analytics import (
@@ -214,6 +215,46 @@ def add_running_performance(request):
     return render(request, 'biometric_data/add_running_performance.html', context)
 
 # -------------------- 5. Sportoló Dashboard (segéd adatok) --------------------
+    # A. Testsúly visszajelzés (PLACEHOLDER)
+def generate_weight_feedback(data_queryset):
+    # Itt a Testsúly trend elemzés logikája
+    return "<span class=\"text-success\">Testsúly adatok rendben vannak. (Még nem implementált)</span>"
+
+    # B. Marokerő/Testösszetétel visszajelzés (14 napos ciklus) - JAVÍTVA
+def generate_grip_feedback(weight_queryset, feedback_queryset):
+    """Generál visszajelzést a 14 napos Testösszetétel mérés alapján (marokerő szűrés nélkül)."""
+    today = date.today()
+    latest_date = None
+
+    # Csak a testsúly/testösszetétel lekérdezést használjuk (WeightData - weight_queryset).
+    # Mivel a right_grip_strength hibát okoz a WorkoutFeedback-ben, ideiglenesen csak a WeightData-ra (body_fat_percentage) szűrünk.
+    last_bodycomp_data = weight_queryset.filter(
+        # Ezt a mezőt feltételezzük a WeightData-ban (a hibaüzenet szerint).
+        Q(body_fat_percentage__isnull=False) 
+    ).order_by('-workout_date').first()
+    
+    if last_bodycomp_data and last_bodycomp_data.workout_date:
+        latest_date = last_bodycomp_data.workout_date
+
+    # Visszajelzés üzenet generálása
+    if latest_date:
+        days_since = (today - latest_date).days
+        days_until_target = 14 - days_since
+        
+        if days_since < 14:
+            feedback_class = "text-success"
+            message = f"Utolsó testösszetétel mérés: {days_since} napja. Új mérés **{days_until_target} nap múlva** esedékes."
+        else:
+            feedback_class = "text-danger"
+            message = f"Utolsó testösszetétel mérés: {days_since} napja. A 14 napos ciklus lejárt! Kérlek, mielőbb rögzítsd az adataidat."
+            
+        return f"""
+            <span class="fw-bold {feedback_class}">{message}</span>
+        """
+    
+    # Ha nincs mérés
+    return "Nincs rögzített **testösszetétel** adat. Kérlek, végezz el egy mérést a visszajelzéshez."
+
     # C. HRV és Alvás Grafikon adatok előkészítése
 def generate_hrv_sleep_chart_data(user):
     # Utolsó 30 nap adatai

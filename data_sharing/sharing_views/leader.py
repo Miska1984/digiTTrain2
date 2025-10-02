@@ -1,70 +1,113 @@
 # data_sharing/sharing_views/leader.py
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
+
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from users.models import UserRole, Sport
-from data_sharing.models import BiometricSharingPermission
-from users.utils import has_role
-from data_sharing.utils import get_model_display_name
+from django.contrib import messages
+from django.db.models import Q
+from datetime import date
+
+from users.models import UserRole, User 
+from users.utils import _check_user_role 
+from assessment.models import PlaceholderAthlete, PhysicalAssessment
+
+
+def calculate_age(born):
+    """Kiszámítja a kort a születési dátumból."""
+    if not born:
+        return 'N/A'
+    today = date.today()
+    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 
 @login_required
 def leader_dashboard(request):
     """
-    Egyesületi vezető dashboard – csak vezetői szerepkörrel.
+    Egyesületi vezető dashboard – kilistázza a vezető klubjaihoz tartozó ÖSSZES sportolót.
     """
     leader = request.user
-    if not has_role(leader, "Egyesületi vezető"):
+    
+    if not _check_user_role(leader, "Egyesületi vezető"):
         messages.error(request, "Hozzáférés megtagadva, nincs egyesületi vezetői szerepköröd.")
         return redirect("core:main_page")
 
-    leader_roles = UserRole.objects.filter(user=leader, role__name="Egyesületi vezető", status="approved")
-    club = leader_roles.first().club
-    sports = club.sports.all()
+    athlete_cards = []
 
-    context = {"club": club, "sports": sports}
-    return render(request, "data_sharing/leader/dashboard.html", context)
-
-
-@login_required
-def sport_detail(request, sport_id):
-    """
-    Egy adott sportág részletes adatai – csak vezető nézheti meg.
-    """
-    leader = request.user
-    if not has_role(leader, "Egyesületi vezető"):
-        messages.error(request, "Hozzáférés megtagadva, nincs egyesületi vezetői szerepköröd.")
-        return redirect("core:main_page")
-
-    leader_role = get_object_or_404(UserRole, user=leader, role__name="Egyesületi vezető", status="approved")
-    club = leader_role.club
-    sport = get_object_or_404(Sport, id=sport_id, clubs=club)
-
-    athlete_roles = UserRole.objects.filter(
-        club=club,
-        sport=sport,
-        role__name="Sportoló",
+    # A. Lekérdezzük a Vezető aktív klub ID-it
+    leader_roles = UserRole.objects.filter(
+        user=leader, 
+        role__name="Egyesületi vezető", 
         status="approved"
-    ).select_related("user__profile")
+    )
+    allowed_club_ids = leader_roles.values_list('club_id', flat=True).distinct()
 
-    athletes_with_data = []
-    for role in athlete_roles:
-        permissions = BiometricSharingPermission.objects.filter(
-            user=role.user,
-            target_user=leader,
-            enabled=True
-        )
-        shared_tables = [{
-            "app_name": perm.app_name,
-            "table_name": perm.table_name,
-            "display_name": get_model_display_name(perm.app_name, perm.table_name),
-        } for perm in permissions]
+    if not allowed_club_ids:
+        # Ha nincs aktív klub, üres listával térünk vissza
+        context = {'athlete_cards': athlete_cards, 'page_title': "Vezetői Dashboard - Nincs aktív szerepkör"}
+        return render(request, "data_sharing/leader/dashboard.html", context)
 
-        athletes_with_data.append({
-            "athlete": role.user,
-            "role": role,
-            "shared_tables": shared_tables,
+    # --- 1. Regisztrált Sportolók (User modellek) lekérdezése ---
+    # Szűrünk azokra a sportolói szerepekre, amelyek a Vezető által engedélyezett klubokhoz tartoznak
+    registered_roles = UserRole.objects.filter(
+        club_id__in=allowed_club_ids,
+        role__name='Sportoló',
+        status='approved'
+    ).select_related('user__profile', 'sport', 'club')
+
+    for role in registered_roles: 
+        athlete = role.user
+        profile = athlete.profile
+        # Kétféle mező is lehet, ha korábban birth_date volt, most date_of_birth
+        age = calculate_age(profile.date_of_birth) if profile.date_of_birth else 'N/A'
+        
+        # Jelenlét adatok (most fix 0, amíg a pandas/numpy hiba fennáll)
+        # attendance_30d = get_attendance_summary(athlete, 30)
+        attendance_30d = {'attendance_rate': 0, 'sessions_attended': 0} 
+
+        athlete_cards.append({
+            'type': 'user',
+            'id': athlete.id,
+            'full_name': f"{profile.first_name} {profile.last_name}",
+            'is_registered': True,
+            'age': age,
+            'club_name': role.club.short_name if role.club else 'N/A',
+            'sport_name': role.sport.name if role.sport else 'N/A', # Vezető látja a sportágat
+            'attendance_rate_30d': attendance_30d.get('attendance_rate', 0),
+            'last_assessment_date': PhysicalAssessment.objects.filter(athlete_user=athlete).order_by('-assessment_date').values_list('assessment_date', flat=True).first(),
         })
 
-    context = {"club": club, "sport": sport, "athletes_with_data": athletes_with_data}
-    return render(request, "data_sharing/leader/sport_detail.html", context)
+    # --- 2. Nem Regisztrált Sportolók (PlaceholderAthlete modellek) lekérdezése ---
+    # Szűrünk minden Placeholder sportolóra, akik a Vezető klubjaihoz tartoznak
+    placeholder_athletes = PlaceholderAthlete.objects.filter(
+        club_id__in=allowed_club_ids,
+        registered_user__isnull=True
+    ).select_related('club', 'sport').order_by('last_name')
+    
+    for ph_athlete in placeholder_athletes: 
+        age = calculate_age(ph_athlete.birth_date) if ph_athlete.birth_date else 'N/A'
+        
+        # Jelenlét adatok (fix 0)
+        # attendance_30d = get_attendance_summary(ph_athlete, 30)
+        
+        athlete_cards.append({
+            'type': 'placeholder',
+            'id': ph_athlete.id,
+            'full_name': f"{ph_athlete.first_name} {ph_athlete.last_name}",
+            'is_registered': False,
+            'age': age,
+            'club_name': ph_athlete.club.short_name if ph_athlete.club else 'N/A',
+            'sport_name': ph_athlete.sport.name if ph_athlete.sport else 'N/A',
+            'attendance_rate_30d': 0,
+            'last_assessment_date': PhysicalAssessment.objects.filter(athlete_placeholder=ph_athlete).order_by('-assessment_date').values_list('assessment_date', flat=True).first(),
+        })
+
+    # Név szerinti rendezés
+    athlete_cards = sorted(athlete_cards, key=lambda x: x['full_name'])
+
+    context = {
+        'athlete_cards': athlete_cards, 
+        'page_title': "Egyesületi Vezetői Dashboard - Sportolói Áttekintés",
+    }
+    
+    return render(request, "data_sharing/leader/dashboard.html", context) 
+
+

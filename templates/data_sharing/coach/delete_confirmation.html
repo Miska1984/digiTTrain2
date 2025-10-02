@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h4 class="mb-0">{{ page_title }}</h4>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Biztosan törölni szeretnéd a következő bejegyzést?</p>
+                    
+                    {% if schedule %}
+                        <p class="mb-4"><strong>Edzésrend:</strong> {{ schedule.name }} ({{ schedule.get_day_of_week_display }} {{ schedule.start_time|date:"H:i" }})</p>
+                    {% elif absence %}
+                        <p class="mb-4"><strong>Szünet:</strong> {{ absence.name }} ({{ absence.start_date|date:"Y.m.d." }} - {{ absence.end_date|date:"Y.m.d." }})</p>
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-danger btn-lg">Igen, Törlöm</button>
+                            <a href="{% url 'data_sharing:manage_schedules' %}" class="btn btn-secondary">Mégsem</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

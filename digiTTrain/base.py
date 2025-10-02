@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'core',
     'biometric_data',
     'data_sharing',
+    'assessment',
+    'training_log', 
 ]
 
 MIDDLEWARE = [
