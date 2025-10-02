@@ -42,11 +42,15 @@ urlpatterns = [
     # 2. Edzéshívás
     path('coach/create_training_session/', coach.create_training_session, name='create_training_session'),
 
-    
     # 3. Jelenlét (Exporthoz is használható lesz)
     path('coach/manage_attendance/<int:session_id>/', coach.manage_attendance, name='manage_attendance'),
     path('coach/import_attendance/<int:session_id>/', coach.import_attendance_excel, name='import_attendance_excel'),
     path('coach/attendance/record/<int:schedule_pk>/<str:session_date>/', coach.record_attendance, name='record_attendance'),
+    # 3.1 Jelenléti ív export)
+    path('attendance/export/select/<int:club_pk>/<int:sport_pk>/', 
+     coach.attendance_export_form, name='attendance_export_form'),
+    path('export/attendance/<int:club_pk>/<int:sport_pk>/<str:start_date_str>/<str:end_date_str>/', 
+     coach.export_attendance_report, name='export_attendance_report'), 
     
     # 4. Fizikai felmérés rögzítése
     path('coach/add_physical_assessment/', coach.add_physical_assessment, name='add_physical_assessment'),

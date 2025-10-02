@@ -3,10 +3,11 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.db.models import Q 
-from django.http import Http404, HttpResponse
+from django.db.models import Q, F  
+from django.http import Http404, HttpResponse, FileResponse
 from django.db import transaction, IntegrityError
-from users.models import UserRole, User 
+from django import forms
+from users.models import UserRole, User, Club, Sport
 from users.utils import role_required, _check_user_role 
 from data_sharing.models import BiometricSharingPermission # Még szükséges, ha az edző látja a biometrikus adatokat
 from assessment.models import PlaceholderAthlete, PhysicalAssessment
@@ -20,6 +21,7 @@ from users.utils import get_coach_clubs_and_sports
 import logging
 import pandas as pd
 import io 
+import calendar
 
 logger = logging.getLogger(__name__)
 
@@ -362,6 +364,227 @@ def import_attendance_excel(request, session_id):
     context = {'page_title': "Jelenlét Importálása (Excel)"}
     return render(request, "data_sharing/coach/import_attendance_excel.html", context)
 
+class AttendanceExportForm(forms.Form):
+    start_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), label="Kezdő dátum")
+    end_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}), label="Befejező dátum")
+
+def get_attendance_status(attendance):
+    """Jelenléti rekord alapján visszaadja az Excel kódokat."""
+    if not attendance or not attendance.is_present:
+        if attendance:
+            if attendance.is_injured:
+                return "S"  # Sérült
+            if attendance.is_guest:
+                return "V"  # Vendég
+        return "H"  # Hiányzik
+    if attendance.is_guest:
+        return "V"
+    if attendance.is_injured:
+        return "S"
+    return "J"  # Jelen
+
+@login_required
+@role_required("Edző")
+def export_attendance_report(request, club_pk, sport_pk, start_date_str, end_date_str):
+    coach = request.user
+
+    # --- 1. Klub / Sport ---
+    club = get_object_or_404(Club, pk=club_pk)
+    sport = get_object_or_404(Sport, pk=sport_pk)
+
+    try:
+        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        messages.error(request, "Érvénytelen dátumformátum (YYYY-MM-DD).")
+        return redirect("data_sharing:coach_dashboard")
+
+    # --- 2. Jogosultság ---
+    is_coach_of_group = coach.user_roles.filter(
+        role__name="Edző", status="approved", club_id=club_pk, sport_id=sport_pk
+    ).exists()
+    if not is_coach_of_group:
+        messages.error(request, "Nincs jogosultságod ehhez a jelentéshez.")
+        return redirect("data_sharing:coach_dashboard")
+
+    # --- 3. Edzésszessionök ---
+    sessions = (
+        TrainingSession.objects.filter(
+            session_date__range=(start_date, end_date),
+            coach__user_roles__club_id=club_pk,
+            coach__user_roles__sport_id=sport_pk,
+            coach__user_roles__role__name="Edző",
+            coach__user_roles__status="approved",
+        )
+        .order_by("session_date", "start_time")
+        .distinct()
+    )
+    sessions_list = list(sessions)
+    total_sessions = len(sessions_list)
+    if not sessions_list:
+        messages.error(request, "A feltételeknek megfelelő edzések nem találhatók a megadott időszakban.")
+        return redirect("data_sharing:attendance_export_form", club_pk=club_pk, sport_pk=sport_pk)
+
+    # --- 4. Jelenléti rekordok ---
+    attendance_records = Attendance.objects.filter(session__in=sessions).select_related(
+        "registered_athlete__profile", "placeholder_athlete", "session"
+    )
+
+    # --- 5. Sportolók (User + Placeholder) ---
+    athlete_map = {}
+    registered_athletes = (
+        User.objects.filter(
+            user_roles__role__name="Sportoló",
+            user_roles__status="approved",
+            user_roles__club_id=club_pk,
+            user_roles__sport_id=sport_pk,
+        )
+        .select_related("profile")
+        .distinct()
+    )
+    for athlete in registered_athletes:
+        athlete_map[f"r_{athlete.id}"] = {
+            "id": athlete.id,
+            "type": "registered",
+            "name": f"{athlete.profile.first_name} {athlete.profile.last_name} ",
+            "birth_year": athlete.profile.date_of_birth.year if athlete.profile.date_of_birth else "N/A",
+        }
+
+    placeholder_athletes = PlaceholderAthlete.objects.filter(club_id=club_pk, sport_id=sport_pk)
+    for ph in placeholder_athletes:
+        athlete_map[f"p_{ph.id}"] = {
+            "id": ph.id,
+            "type": "placeholder",
+            "name": f"{ph.first_name} {ph.last_name} (PH)",
+            "birth_year": ph.birth_date.year if ph.birth_date else "N/A",
+        }
+
+    athlete_list = sorted(athlete_map.values(), key=lambda x: x["name"])
+
+    # --- 6. Táblázat adatok ---
+    session_cols = [f"{s.session_date.strftime('%m-%d')} {s.start_time.strftime('%H:%M')}" for s in sessions_list]
+    columns = ["Név", "Születési Év"] + session_cols + ["Összes Edzés", "Jelen (J)", "Sérült (S)", "Vendég (V)", "Hiányzott (H)"]
+
+    data = []
+    for athlete_data in athlete_list:
+        row = {"Név": athlete_data["name"], "Születési Év": athlete_data["birth_year"]}
+        total_present = total_injured = total_guest = 0
+
+        if athlete_data["type"] == "registered":
+            athlete_attendance = {
+                att.session_id: att for att in attendance_records if att.registered_athlete_id == athlete_data["id"]
+            }
+        else:
+            athlete_attendance = {
+                att.session_id: att for att in attendance_records if att.placeholder_athlete_id == athlete_data["id"]
+            }
+
+        for session in sessions_list:
+            att = athlete_attendance.get(session.id)
+            status_code = get_attendance_status(att)
+            if status_code == "J":
+                total_present += 1
+            elif status_code == "S":
+                total_injured += 1
+            elif status_code == "V":
+                total_guest += 1
+            row[f"{session.session_date.strftime('%m-%d')} {session.start_time.strftime('%H:%M')}"] = status_code
+
+        total_attended = total_present + total_injured + total_guest
+        total_absent = total_sessions - total_attended
+        row["Összes Edzés"] = total_sessions
+        row["Jelen (J)"] = f"{total_present} alk."
+        row["Sérült (S)"] = f"{total_injured} alk."
+        row["Vendég (V)"] = f"{total_guest} alk."
+        row["Hiányzott (H)"] = f"{total_absent} alk."
+        data.append(row)
+
+    df = pd.DataFrame(data, columns=columns)
+
+    # --- 7. Excel generálás ---
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        sheet_name = f"Jelenlét_{start_date.strftime('%Y%m')}-{end_date.strftime('%Y%m')}"
+        df.to_excel(writer, sheet_name=sheet_name, startrow=6, index=False)
+
+        workbook = writer.book
+        worksheet = writer.sheets[sheet_name]
+
+        # --- Fejléc formátum ---
+        header_format = workbook.add_format({"bold": True, "font_size": 14, "align": "center"})
+        info_format = workbook.add_format({"font_size": 10, "align": "left"})
+        footer_format = workbook.add_format({"italic": True, "align": "center"})
+
+        # Klubvezető neve
+        club_leader_role = UserRole.objects.filter(
+            role__name="Egyesületi vezető", club=club, status="approved"
+        ).select_related("user__profile").first()
+        leader_name = f"{club_leader_role.user.profile.first_name} {club_leader_role.user.profile.last_name}" if club_leader_role else "Nincs megadva"
+
+        # Edzők neve
+        coaches_qs = UserRole.objects.filter(
+            role__name="Edző", status="approved", club_id=club_pk, sport_id=sport_pk
+        ).select_related("user__profile")
+        coach_names = ", ".join([f"{c.user.profile.first_name} {c.user.profile.last_name}" for c in coaches_qs])
+
+        # Fejléc írása
+        worksheet.merge_range("A1:D1", f"Egyesület: {club.name} / {sport.name}", header_format)
+        worksheet.write("A2", "Cím:", info_format)
+        worksheet.write("B2", club.address, info_format)
+        worksheet.write("A3", "Vezető:", info_format)
+        worksheet.write("B3", leader_name, info_format)
+        worksheet.write("A4", "Edző(k):", info_format)
+        worksheet.write("B4", coach_names if coach_names else coach.get_full_name(), info_format)
+
+        # Időszak
+        worksheet.merge_range("A6:F6", f"Jelentési időszak: {start_date_str} - {end_date_str}", header_format)
+
+        # --- Lábléc ---
+        footer_row = len(df) + 9
+        worksheet.merge_range(footer_row, 0, footer_row, len(columns) - 1, "Készült a digiTTrain2025 programmal.", footer_format)
+        worksheet.merge_range(footer_row + 1, 0, footer_row + 1, len(columns) - 1, "DigiTTrain Logó Helye", footer_format)
+
+    output.seek(0)
+
+    # --- 8. FileResponse ---
+    file_name = f"Jelenléti_ív_{start_date.strftime('%Y%m%d')}-{end_date.strftime('%Y%m%d')}_{club.short_name}.xlsx"
+    return FileResponse(output, as_attachment=True, filename=file_name)
+
+@login_required
+@role_required('Edző')
+def attendance_export_form(request, club_pk, sport_pk):
+    # Feltételezve, hogy a Club és Sport modellek importálva vannak
+    club = get_object_or_404(Club, pk=club_pk)
+    sport = get_object_or_404(Sport, pk=sport_pk)
+
+    if request.method == 'POST':
+        form = AttendanceExportForm(request.POST)
+        if form.is_valid():
+            start_date = form.cleaned_data['start_date']
+            end_date = form.cleaned_data['end_date']
+            
+            # Átirányítás az exportáló nézetre (ami a következő lépésben frissül)
+            return redirect('data_sharing:export_attendance_report', 
+                            club_pk=club_pk, 
+                            sport_pk=sport_pk, 
+                            start_date_str=start_date.strftime('%Y-%m-%d'), 
+                            end_date_str=end_date.strftime('%Y-%m-%d'))
+    else:
+        # Alapértelmezett dátumok beállítása (pl. az aktuális hónap)
+        today = date.today()
+        default_start = today.replace(day=1)
+        default_end = date(today.year, today.month, calendar.monthrange(today.year, today.month)[1])
+        form = AttendanceExportForm(initial={'start_date': default_start, 'end_date': default_end})
+        
+    context = {
+        'form': form,
+        'club': club,
+        'sport': sport,
+        'page_title': f"Jelenléti ív exportálása - {club.short_name} {sport.name}",
+        'club_pk': club_pk,
+        'sport_pk': sport_pk,
+    }
+    return render(request, 'data_sharing/coach/attendance_export_form.html', context)
 
 @login_required
 @role_required('Edző')

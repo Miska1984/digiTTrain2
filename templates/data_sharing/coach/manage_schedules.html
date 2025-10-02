@@ -81,7 +81,11 @@
             <div class="card-footer d-flex justify-content-end">
                 <a href="{% url 'data_sharing:edit_schedule' pk=item.schedule.pk %}" class="btn btn-sm btn-outline-primary mr-2"><i class="fas fa-pencil-alt"></i> Módosít</a>
                 <a href="{% url 'data_sharing:delete_schedule' pk=item.schedule.pk %}" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i> Töröl</a>
+
             </div>
+                <a href="{% url 'data_sharing:attendance_export_form' club_pk=item.schedule.club.pk sport_pk=item.schedule.sport.pk %}" class="btn btn-success">
+                    <i class="fas fa-file-excel"></i> Jelenléti ív lekérése
+                </a>
         </div>
         {% empty %}
             <p class="mt-3 alert alert-info">Jelenleg nincsenek ismétlődő edzésrendek a hozzád rendelt klubokban/sportágakban.</p>

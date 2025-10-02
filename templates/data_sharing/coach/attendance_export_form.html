@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1>{{ page_title }}</h1>
+    <p class="lead">Válaszd ki a dátumtartományt, amelyre a jelenléti ívet Excel formátumban le szeretnéd kérni a **{{ club.short_name }} / {{ sport.name }}** csoporthoz.</p>
+    
+    <div class="card shadow-sm p-4">
+        <form method="post" action="{% url 'data_sharing:attendance_export_form' club_pk=club_pk sport_pk=sport_pk %}">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.start_date.id_for_label }}" class="form-label">{{ form.start_date.label }}</label>
+                    {{ form.start_date }}
+                    {% if form.start_date.errors %}
+                        <div class="text-danger">{{ form.start_date.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.end_date.id_for_label }}" class="form-label">{{ form.end_date.label }}</label>
+                    {{ form.end_date }}
+                    {% if form.end_date.errors %}
+                        <div class="text-danger">{{ form.end_date.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="mt-4">
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="fas fa-download"></i> Jelentés generálása (.xlsx)
+                </button>
+                <a href="{% url 'data_sharing:manage_schedules' %}" class="btn btn-secondary ms-2">Mégsem</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock content %}
