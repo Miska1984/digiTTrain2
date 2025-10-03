@@ -25,7 +25,12 @@ SECRET_KEY = os.environ.get('SECRET_KEY', "django-insecure-gd_25j*vos)xlnio1ja2m
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG') == 'True'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    'localhost', 
+    '127.0.0.1',
+    'www.digit-train.hu',
+    'digit-train.hu',    
+    ]
 
 # Cloud Run/Codespaces specifikus beállítások
 if os.getenv('GAE_APPLICATION') or os.getenv('CODESPACES'):
