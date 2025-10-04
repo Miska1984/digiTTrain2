@@ -1,8 +1,49 @@
-{% extends 'base_out.html' %}
+{% extends "base_out.html" %}
+
+{% block title %}digiT-Train - Főoldal{% endblock %}
 
 {% block content %}
-    <div class="text-center">
-        <h1>Üdvözlünk nálunk!</h1>
-        <p>A bejelentkezéshez és regisztrációhoz használd a fenti gombokat.</p>
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            
+            <div class="alert alert-info text-center my-4" role="alert">
+                <i class="bi bi-megaphone-fill me-2"></i> 
+                <strong>Üdvözlünk!</strong> Oldalunk most már elérhető közvetlenül a következő URL Címeken: 
+                <a href="https://digit-train.hu" target="_blank" class="alert-link">digit-train.hu</a> és 
+                <a href="https://www.digit-train.hu" target="_blank" class="alert-link">www.digit-train.hu</a>
+            </div>
+
+            <h1 class="mb-4">Kezdje el ma az edzések digitális kezelését!</h1>
+            
+            <p class="lead mb-5">
+                A digiT-Train platform segít optimalizálni a sportolók adatgyűjtését, 
+                teljesítményelemzését és kommunikációját az edzői stáb és a sportolók között. 
+            </p>
+
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center mb-5">
+                <a class="btn btn-primary btn-lg px-4 me-md-2" href="{% url 'users:login' %}" role="button">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Bejelentkezés
+                </a>
+                <a class="btn btn-outline-primary btn-lg px-4" href="{% url 'users:register' %}" role="button">
+                    <i class="bi bi-person-add me-1"></i> Regisztráció
+                </a>
+            </div>
+        </div>
     </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-4">
+            <h4>Adatgyűjtés</h4>
+            <p>Egyszerű, gyors felület a sportolói biometrikus és edzésadatok rögzítésére.</p>
+        </div>
+        <div class="col-md-4">
+            <h4>Elemzés</h4>
+            <p>Azonnali visszajelzések és riportok az edzők és a vezetőség számára.</p>
+        </div>
+        <div class="col-md-4">
+            <h4>Kommunikáció</h4>
+            <p>Megosztási központ, mely segíti az adatok biztonságos áramlását a felek között.</p>
+        </div>
+    </div>
+
 {% endblock %}
