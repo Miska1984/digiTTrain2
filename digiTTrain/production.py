@@ -8,7 +8,10 @@ print(">>> [DEBUG] Production settings loaded <<<", file=sys.stderr)
 # Production-specifikus beállítások
 DEBUG = False
 
-ALLOWED_HOSTS = [os.environ.get('ALLOWED_HOSTS', '*')]
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
+ALLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS if h.strip()]
+if not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['digit-train-web-195803356854.europe-west1.run.app'] 
 
 CLOUDSQL_CONNECTION_NAME = os.getenv("CLOUDSQL_CONNECTION_NAME")
 
