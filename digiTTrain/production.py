@@ -30,7 +30,7 @@ DATABASES = {
 }
 
 CSRF_TRUSTED_ORIGINS = [
-    'https://digit-train-web-195803356854.europe-west1.run.app'
+    'https://digit-train-web-195803356854.europe-west1.run.app',
     'https://digit-train.hu',  
     'https://www.digit-train.hu' 
 ]
