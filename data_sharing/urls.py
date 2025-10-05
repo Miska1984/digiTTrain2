@@ -22,17 +22,18 @@ urlpatterns = [
          parent.view_shared_athlete_data_for_parent, 
          name='shared_parent_athlete_dashboard'),
 
+    # -------------------- Egyesületi Vezetői Nézetek --------------------
+    path('leader/', leader.leader_dashboard, name='leader_dashboard'),
+    # path('leader/sport/<int:sport_id>/', leader.sport_detail, name='sport_detail'),    
+    
     # -------------------- Edzői Nézetek --------------------
     path('coach/', coach.coach_dashboard, name='coach_dashboard'),
     
     # Edzői részletes sportoló nézet (ha szükséges)
-    # path('coach/athlete/<int:athlete_id>/', coach.athlete_detail, name='athlete_detail'),
+    path('coach/athlete/details/<str:athlete_type>/<int:athlete_id>/', 
+         coach.coach_athlete_details, 
+         name='coach_athlete_details'),
     
-    # -------------------- Egyesületi Vezetői Nézetek --------------------
-    path('leader/', leader.leader_dashboard, name='leader_dashboard'),
-    # path('leader/sport/<int:sport_id>/', leader.sport_detail, name='sport_detail'),
-
-
     # 1. PlaceholderAthlete felvitel
     path('coach/add_unregistered_athlete/', coach.add_unregistered_athlete, name='add_unregistered_athlete'),
             # ÚJ IMPORT/EXPORT URL-ek Exelhez
