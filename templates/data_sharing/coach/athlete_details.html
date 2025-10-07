@@ -1,5 +1,4 @@
 {% extends "base.html" %}
-
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
@@ -12,153 +11,221 @@
     {% endif %}
 </div>
 
+<div class="mb-4">
+    <p><strong>Egyesület:</strong> {{ athlete_club.name|default:"Nincs megadva" }}</p>
+    <p><strong>Sportág:</strong> {{ athlete_sport.name|default:"Nincs megadva" }}</p>
+</div>
+
 <nav>
     <div class="nav nav-tabs" id="nav-tab" role="tablist">
-        <button class="nav-link active" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#nav-profile" type="button" role="tab" aria-controls="nav-profile" aria-selected="true">Profil & Összefoglaló</button>
-        <button class="nav-link" id="nav-biometrics-tab" data-bs-toggle="tab" data-bs-target="#nav-biometrics" type="button" role="tab" aria-controls="nav-biometrics" aria-selected="false">Biometrikus adatok</button>
-        <button class="nav-link" id="nav-assessment-tab" data-bs-toggle="tab" data-bs-target="#nav-assessment" type="button" role="tab" aria-controls="nav-assessment" aria-selected="false">Felmérések</button>
+        <button class="nav-link active" id="nav-profile-tab" data-bs-toggle="tab" data-bs-target="#nav-profile" type="button">Profil & Összefoglaló</button>
+        <button class="nav-link" id="nav-biometrics-tab" data-bs-toggle="tab" data-bs-target="#nav-biometrics" type="button">Biometrikus adatok</button>
+        <button class="nav-link" id="nav-assessment-tab" data-bs-toggle="tab" data-bs-target="#nav-assessment" type="button">Felmérések</button>
         {% if training_logs %}
-            <button class="nav-link" id="nav-logs-tab" data-bs-toggle="tab" data-bs-target="#nav-logs" type="button" role="tab" aria-controls="nav-logs" aria-selected="false">Edzésnapló</button>
+            <button class="nav-link" id="nav-logs-tab" data-bs-toggle="tab" data-bs-target="#nav-logs" type="button">Edzésnapló</button>
         {% endif %}
     </div>
 </nav>
 
 <div class="tab-content" id="nav-tabContent">
-    
-    <div class="tab-pane fade show active" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab" tabindex="0">
-        <h2 class="mt-4 mb-3">Profil Adatok</h2>
+
+    <!-- ✅ PROFIL -->
+    <div class="tab-pane fade show active p-3" id="nav-profile">
+        <h2 class="mt-3">Profil adatok</h2>
         {% include 'data_sharing/coach/includes/athlete_profile_summary.html' %}
-        
-        <h2 class="mt-5 mb-3">Legutóbbi adatok</h2>
+
+        <h2 class="mt-4 mb-3">Legutóbbi adatok</h2>
         <div class="row">
             <div class="col-md-6">
                 <div class="card mb-3">
                     <div class="card-body">
                         <h5 class="card-title">Súly (Legutóbbi)</h5>
-                        <p class="card-text">
-                            {% if last_weight %}
-                                Dátum: {{ last_weight.date_time|date:"Y.m.d H:i" }}<br>
-                                Súly: <strong>{{ last_weight.weight }} kg</strong>
-                            {% else %}
-                                Nincs rögzített súly.
-                            {% endif %}
-                        </p>
+                        {% if last_weight %}
+                            <p>Dátum: {{ last_weight.workout_date|date:"Y.m.d" }}<br>
+                            Súly: <strong>{{ last_weight.morning_weight }} kg</strong></p>
+                        {% else %}
+                            <p class="text-muted">Nincs rögzített súlyadat.</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="card mb-3">
                     <div class="card-body">
-                        <h5 class="card-title">HRV & Alvás (Legutóbbi)</h5>
-                        <p class="card-text">
-                            {% if last_hrv_sleep %}
-                                Dátum: {{ last_hrv_sleep.date_time|date:"Y.m.d H:i" }}<br>
-                                HRV: <strong>{{ last_hrv_sleep.hrv_score }}</strong> | 
-                                Alvás Minőség: <strong>{{ last_hrv_sleep.sleep_quality }}</strong>
-                            {% else %}
-                                Nincs rögzített reggeli adat.
-                            {% endif %}
-                        </p>
+                        <h5 class="card-title">HRV & Alvás</h5>
+                        {% if last_hrv_sleep %}
+                            <p>Dátum: {{ last_hrv_sleep.recorded_at|date:"Y.m.d" }}<br>
+                            HRV: <strong>{{ last_hrv_sleep.hrv }}</strong><br>
+                            Alvás minőség: <strong>{{ last_hrv_sleep.get_sleep_quality_display }}</strong></p>
+                        {% else %}
+                            <p class="text-muted">Nincs rögzített HRV/alvás adat.</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div class="tab-pane fade" id="nav-biometrics" role="tabpanel" aria-labelledby="nav-biometrics-tab" tabindex="0">
-        <h2 class="mt-4 mb-3">Futás Teljesítmény Felmérések</h2>
-        {% if running_performance %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Dátum</th>
-                        <th>Táv (km)</th>
-                        <th>Idő (min)</th>
-                        <th>Tempó (min/km)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for perf in running_performance %}
-                    <tr>
-                        <td>{{ perf.date_time|date:"Y.m.d" }}</td>
-                        <td>{{ perf.distance }}</td>
-                        <td>{{ perf.time }}</td>
-                        <td>{{ perf.pace }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <!-- ✅ BIOMETRIKUS ADATOK -->
+    <div class="tab-pane fade p-3" id="nav-biometrics">
+        <h2 class="mt-3">Biometrikus adatok</h2>
+
+        {% if not can_view_biometrics %}
+            <div class="alert alert-warning d-flex align-items-center" role="alert">
+                <i class="bi bi-shield-lock me-2"></i>
+                <div>
+                    A sportoló (vagy szülője) nem engedélyezte a biometrikus adatok megosztását.<br>
+                    Ezért ezek az adatok nem láthatók az edzői felületen.
+                </div>
+            </div>
         {% else %}
-            <div class="alert alert-warning">Nincs rögzített futás teljesítmény adat.</div>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">Legutóbbi súly</h5>
+                            {% if last_weight %}
+                                <p class="card-text">
+                                    Dátum: {{ last_weight.workout_date|date:"Y.m.d" }}<br>
+                                    Reggeli súly: <strong>{{ last_weight.morning_weight }} kg</strong><br>
+                                    Testzsír: {{ last_weight.body_fat_percentage|default:"N/A" }} %
+                                </p>
+                            {% else %}
+                                <p class="text-muted">Nincs elérhető súlyadat.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <h5 class="card-title">HRV & Alvás</h5>
+                            {% if last_hrv_sleep %}
+                                <p class="card-text">
+                                    Dátum: {{ last_hrv_sleep.recorded_at|date:"Y.m.d" }}<br>
+                                    HRV: <strong>{{ last_hrv_sleep.hrv|default:"N/A" }}</strong><br>
+                                    Alvás minősége: {{ last_hrv_sleep.get_sleep_quality_display|default:"N/A" }}
+                                </p>
+                            {% else %}
+                                <p class="text-muted">Nincs elérhető HRV vagy alvás adat.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="mt-4 mb-2">Futás Teljesítmény</h3>
+            {% if running_performance %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Dátum</th>
+                            <th>Táv (km)</th>
+                            <th>Idő</th>
+                            <th>Átlagpulzus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for perf in running_performance %}
+                            <tr>
+                                <td>{{ perf.run_date|date:"Y.m.d" }}</td>
+                                <td>{{ perf.run_distance_km }}</td>
+                                <td>{{ perf.run_duration }}</td>
+                                <td>{{ perf.run_avg_hr|default:"-" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-muted">Nincs rögzített futás teljesítmény adat.</p>
+            {% endif %}
         {% endif %}
     </div>
-    
-    <div class="tab-pane fade" id="nav-assessment" role="tabpanel" aria-labelledby="nav-assessment-tab" tabindex="0">
-        <h2 class="mt-4 mb-3">Rögzített Fizikai Felmérések</h2>
+
+    <!-- ✅ FELMÉRÉSEK -->
+    <div class="tab-pane fade p-3" id="nav-assessment">
+        <h2>Fizikai felmérések</h2>
         {% if assessments %}
             <table class="table table-striped">
                 <thead>
                     <tr>
                         <th>Dátum</th>
-                        <th>Felmérés Típusa</th>
-                        <th>Összpontszám</th>
-                        <th>Részletek</th>
+                        <th>Felmérés típusa</th>
+                        <th>Eredmény</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for ass in assessments %}
+                {% for ass in assessments %}
                     <tr>
                         <td>{{ ass.assessment_date|date:"Y.m.d" }}</td>
                         <td>{{ ass.get_assessment_type_display }}</td>
-                        <td>{{ ass.total_score|default:"N/A" }}</td>
-                        <td><a href="{% url 'assessment:assessment_detail' ass.id %}" class="btn btn-sm btn-outline-primary">Megtekintés</a></td>
+                        <td>{{ ass.result_value|default:"-" }}</td>
                     </tr>
-                    {% endfor %}
+                {% endfor %}
                 </tbody>
             </table>
         {% else %}
-            <div class="alert alert-warning">Nincs rögzített fizikai felmérés.</div>
+            <div class="alert alert-warning">Nincs rögzített felmérés.</div>
         {% endif %}
     </div>
-    
+   <!-- Edzésnapló -->
     {% if training_logs %}
-    <div class="tab-pane fade" id="nav-logs" role="tabpanel" aria-labelledby="nav-logs-tab" tabindex="0">
-        <h2 class="mt-4 mb-3">Edzésnapló Bejegyzések (Legutóbbi 10)</h2>
-        {% if training_logs %}
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Dátum</th>
-                        <th>Edzés Időpont</th>
-                        <th>Jelenlét</th>
-                        <th>Időtartam (perc)</th>
-                        <th>RPE (1-10)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for log in training_logs %}
-                    <tr>
-                        <td>{{ log.session.session_date|date:"Y.m.d" }}</td>
-                        <td>{{ log.session.start_time|time:"H:i" }}</td>
-                        <td>
-                            {% if log.is_present %}
-                                <i class="bi bi-check-circle-fill text-success"></i> Jelen
-                            {% else %}
-                                <i class="bi bi-x-circle-fill text-danger"></i> Hiányzott
-                            {% endif %}
-                            {% if log.is_injured %}
-                                (<i class="bi bi-bandaid text-warning"></i> Sérült)
-                            {% endif %}
-                        </td>
-                        <td>{{ log.session.duration_minutes }}</td>
-                        <td>{{ log.rpe_score|default:"N/A" }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% else %}
-            <div class="alert alert-warning">Nincs rögzített edzés (Jelenlét) bejegyzés.</div>
-        {% endif %}
+    <div class="tab-pane fade p-3" id="nav-logs">
+    <h2>Edzésnapló (Legutóbbi 10)</h2>
+    <table class="table table-striped align-middle">
+        <thead>
+        <tr>
+            <th>Dátum</th>
+            <th>Idő</th>
+            <th>Jelenlét</th>
+            <th>Időtartam (perc)</th>
+            <th>Edzés vélemény</th>
+            <th>Előtti súly (kg)</th>
+            <th>Utáni súly (kg)</th>
+            <th>Folyadékbevitel (l)</th>
+            <th>Folyadékvesztés</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for log in training_logs %}
+        <tr>
+            <td>{{ log.session.session_date|date:"Y.m.d" }}</td>
+            <td>{{ log.session.start_time|time:"H:i" }}</td>
+            <td>
+            {% if log.is_present %}
+            <i class="bi bi-check-circle-fill text-success"></i> Jelen
+            {% else %}
+            <i class="bi bi-x-circle-fill text-danger"></i> Hiányzott
+            {% endif %}
+            </td>
+            <td>{{ log.session.duration_minutes }}</td>
+
+            {% if log.feedback_data and feedback_visible %}
+            <td>
+                {% if log.feedback_data.intensity %}
+                <strong>{{ log.feedback_data.intensity }}</strong> –
+                <span class="text-muted">{{ log.feedback_data.intensity_label }}</span>
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            <td>{{ log.feedback_data.pre_weight|default:"-" }}</td>
+            <td>{{ log.feedback_data.post_weight|default:"-" }}</td>
+            <td>{{ log.feedback_data.fluid|default:"-" }}</td>
+            <td>
+                {% if log.feedback_data.loss_kg %}
+                {{ log.feedback_data.loss_kg }} kg ({{ log.feedback_data.loss_pct }}%)
+                {% else %}
+                -
+                {% endif %}
+            </td>
+            {% else %}
+            <td colspan="5" class="text-muted">Nincs visszajelzés</td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
     </div>
     {% endif %}
 

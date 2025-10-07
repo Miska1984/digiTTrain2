@@ -60,7 +60,29 @@ def data_sharing_center(request):
 
     for role in shareable_roles:
         target_users = []
-        data_owner = role.user
+        
+        # 💡 ÚJ LOGIKA: A kiskorú adatainak tulajdonosa a szülő
+        if role.user.is_adult or (role.parent and role.parent != user):
+            # Felnőtt sportoló vagy a szülő nem a bejelentkezett felhasználó
+            data_owner = role.user
+            print(f"DEBUG: Adatmegosztó: Sportoló ({data_owner.username})")
+        else:
+            # Kiskorú sportoló, akit a bejelentkezett szülő kezel (role.parent == user)
+            data_owner = user  # VAGY role.parent
+            print(f"DEBUG: Adatmegosztó: Szülő ({data_owner.username})")
+            
+        # Ez esetben, ha a Szülő kezeli, az adatmegosztás a Szülő nevén kell, hogy menjen
+        # a Sportoló felé. De a view-ban lévő feltételhez igazodva:
+        
+        # Mivel a `coach_athlete_details` az `_has_permission(parent, coach)`-ot hívja,
+        # a `data_owner`-nek az *engedélyezőnek* (TorokM, ID 1) kell lennie, ha ő a bejelentkezett.
+
+        # KORRIGÁLT data_owner meghatározás:
+        is_parent_managing = (role.parent == user)
+        if is_parent_managing:
+            data_owner = user # A szülő a bejelentkezett user (TorokM)
+        else:
+            data_owner = role.user # A sportoló a bejelentkezett user
         
         # 1. Edző
         if role.coach:
