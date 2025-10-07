@@ -1,34 +1,52 @@
-<div class="card mb-4">
+<div class="card shadow-sm mb-4">
     <div class="card-body">
-        <h4 class="card-title">Profil adatok</h4>
+        <div class="d-flex align-items-center mb-3">
+            <i class="bi bi-person-badge fs-3 text-primary me-2"></i>
+            <h4 class="card-title mb-0">Profil adatok</h4>
+        </div>
+        
         <div class="row">
             <div class="col-md-6">
-                <dl class="row">
+                <dl class="row mb-0">
                     <dt class="col-sm-4">Teljes név:</dt>
                     <dd class="col-sm-8">{{ profile_data.first_name }} {{ profile_data.last_name }}</dd>
 
                     <dt class="col-sm-4">Születési dátum:</dt>
-                    <dd class="col-sm-8">{% if profile_data.date_of_birth %}{{ profile_data.date_of_birth|date:"Y.m.d" }}{% else %}{{ profile_data.birth_date|date:"Y.m.d"|default:"N/A" }}{% endif %}</dd>
-                    
-                    <dt class="col-sm-4">Klub:</dt>
-                    <dd class="col-sm-8">{{ profile_data.club.name|default:"N/A" }}</dd>
-                    
-                    <dt class="col-sm-4">Sportág:</dt>
-                    <dd class="col-sm-8">{{ profile_data.sport.name|default:"N/A" }}</dd>
+                    <dd class="col-sm-8">
+                        {% if profile_data.date_of_birth %}
+                            {{ profile_data.date_of_birth|date:"Y.m.d" }}
+                        {% elif profile_data.birth_date %}
+                            {{ profile_data.birth_date|date:"Y.m.d" }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">Neme:</dt>
+                    <dd class="col-sm-8">
+                        {% if profile_data.get_gender_display %}
+                            {{ profile_data.get_gender_display }}
+                        {% elif profile_data.gender %}
+                            {% if profile_data.gender == "M" %}Férfi{% elif profile_data.gender == "F" %}Nő{% else %}N/A{% endif %}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </dd>
                 </dl>
             </div>
+
             <div class="col-md-6">
-                <dl class="row">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Egyesület:</dt>
+                    <dd class="col-sm-8">{{ athlete_club.name|default:"N/A" }}</dd>
+
+                    <dt class="col-sm-4">Sportág:</dt>
+                    <dd class="col-sm-8">{{ athlete_sport.name|default:"N/A" }}</dd>
+
                     {% if not is_placeholder %}
                         <dt class="col-sm-4">E-mail:</dt>
-                        <dd class="col-sm-8">{{ athlete_object.email }}</dd>
+                        <dd class="col-sm-8">{{ athlete_object.email|default:"N/A" }}</dd>
                     {% endif %}
-                    
-                    <dt class="col-sm-4">Telefonszám:</dt>
-                    <dd class="col-sm-8">{{ profile_data.phone_number|default:"N/A" }}</dd>
-                    
-                    <dt class="col-sm-4">Neme:</dt>
-                    <dd class="col-sm-8">{{ profile_data.get_gender_display|default:"N/A" }}</dd>
                 </dl>
             </div>
         </div>

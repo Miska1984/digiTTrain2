@@ -6,18 +6,19 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q, F  
 from django.http import Http404, HttpResponse, FileResponse
-from django.db import transaction, IntegrityError
+from django.db import transaction, IntegrityError, models
 from django import forms
 from users.models import UserRole, User, Club, Sport
 from users.utils import role_required, _check_user_role 
-from biometric_data.models import WeightData, HRVandSleepData, RunningPerformance
+from biometric_data.models import WeightData, HRVandSleepData, RunningPerformance, WorkoutFeedback
 from assessment.models import PlaceholderAthlete, PhysicalAssessment
 from assessment.forms import PlaceholderAthleteForm, PlaceholderAthleteImportForm
 from training_log.models import TrainingSession, Attendance, TrainingSchedule, AbsenceSchedule
 from training_log.forms import TrainingScheduleForm, AbsenceScheduleForm 
 from training_log.utils import get_attendance_summary, TIME_PERIODS, calculate_next_training_sessions
+from data_sharing.models import BiometricSharingPermission
 from datetime import date, datetime, time
-from users.models import User
+from users.models import User, UserRole, ParentChild
 from users.utils import get_coach_clubs_and_sports
 import logging
 import pandas as pd
@@ -128,150 +129,234 @@ def coach_dashboard(request):
 
     return render(request, "data_sharing/coach/dashboard.html", context)
 
-# --- RÉSZLETES DASHBOARD NÉZET ---
 
 @login_required
 def coach_athlete_details(request, athlete_type, athlete_id):
     """
-    Edzői nézet: Sportoló részletes adatainak megjelenítése.
-    Kezeli mind a regisztrált User, mind a PlaceholderAthlete típusokat.
+    Edzői nézet – Sportoló (regisztrált vagy placeholder) részletes adatainak megjelenítése.
+    Tartalmazza a biometrikus adatok megosztási logikáját és az edzésnapló kiegészítést.
     """
     coach = request.user
+    print(f"👟 [DEBUG] coach_athlete_details hívva athlete_type='{athlete_type}' athlete_id={athlete_id}")
 
-    # 0. Jogosultsági ellenőrzés: (Változatlan)
-    allowed_club_ids = UserRole.objects.filter(
+    # --- Jogosultság: csak az adott edző klubjához/sportágához tartozó sportolókat láthatja ---
+    allowed_roles = UserRole.objects.filter(
         user=coach, role__name='Edző', status='approved'
-    ).values_list('club_id', flat=True).distinct()
+    ).select_related('club', 'sport')
 
-    allowed_sport_ids = UserRole.objects.filter(
-        user=coach, role__name='Edző', status='approved'
-    ).values_list('sport_id', flat=True).distinct()
+    allowed_club_ids = [r.club_id for r in allowed_roles if r.club_id]
+    allowed_sport_ids = [r.sport_id for r in allowed_roles if r.sport_id]
 
-    if not allowed_club_ids and not allowed_sport_ids:
+    if not allowed_club_ids or not allowed_sport_ids:
         raise PermissionDenied("Nincs jogosultsága ehhez a nézethez.")
 
-    # --- 1. Sportoló objektum beolvasása és szűrők beállítása ---
-    
-    biometric_filter = Q()
-    assessment_filter = Q()
     athlete_object = None
     profile_data = None
     is_placeholder = False
 
+    # --- Regisztrált sportoló ---
     if athlete_type == 'user':
-        # Regisztrált sportoló
         athlete = get_object_or_404(User, id=athlete_id)
         athlete_object = athlete
-        
-        # Ellenőrizzük, hogy az edzőnek van-e jogosultsága a sportolóra (Változatlan)
-        is_allowed = UserRole.objects.filter(
+        is_placeholder = False
+
+        # --- Jogosultság ellenőrzés ---
+        if not UserRole.objects.filter(
             user=athlete,
             role__name='Sportoló',
             status='approved',
             club_id__in=allowed_club_ids,
             sport_id__in=allowed_sport_ids
-        ).exists()
-        
-        if not is_allowed:
+        ).exists():
             raise PermissionDenied("Nincs jogosultsága megtekinteni ezt a sportolót.")
-            
+
         profile_data = athlete.profile
         athlete_display_name = f"{profile_data.first_name} {profile_data.last_name}"
-        
-        # A szűréshez használt User objektum (Már javítottuk: 'user' mező)
-        biometric_filter = Q(user=athlete) 
-        # Felmérés szűrő (Már javítottuk: feltételezzük, hogy itt is 'user' a helyes mező)
-        assessment_filter = Q(athlete_user=athlete)
-        
-        is_placeholder = False
 
+        # --- BIOMETRIA ENGEDÉLY LOGIKA ---
+        can_view_biometrics = False
+        permitted_tables = [
+            "ALL",
+            "WeightData",
+            "HRVandSleepData",
+            "RunningPerformance",
+            "WorkoutFeedback",
+        ]
+
+        def _has_permission(data_owner, data_viewer):
+            """Ellenőrzi, hogy van-e engedély bármelyik releváns táblára"""
+            for table in permitted_tables:
+                if BiometricSharingPermission.is_data_shared(
+                    data_owner=data_owner,
+                    data_viewer=data_viewer,
+                    app_name="biometric_data",
+                    table_name=table,
+                ):
+                    print(f"✅ [DEBUG] Megosztás engedélyezve: {table} {data_owner.username} → {data_viewer.username}")
+                    return True
+            print(f"❌ [DEBUG] Nincs megosztás találat: {data_owner.username} → {data_viewer.username}")
+            return False
+
+        # --- Felnőtt sportoló esetén: saját döntés ---
+        if athlete.is_adult:
+            can_view_biometrics = _has_permission(athlete, coach)
+            print(f"🧩 [DEBUG] Felnőtt sportoló engedély: {can_view_biometrics}")
+
+        # --- Kiskorú sportoló esetén: szülő engedélye szükséges ---
+        else:
+            print("👶 [DEBUG] Kiskorú sportoló, szülő engedélyét keresem a UserRole-ban...")
+
+            # 1. Keressük meg a sportoló jóváhagyott szerepköreit, ahol parent is van rendelve.
+            athlete_role = UserRole.objects.filter(
+                user=athlete,
+                role__name='Sportoló',
+                status='approved',
+                parent__isnull=False # Csak azokat a szerepköröket nézzük, ahol van szülő rendelve
+            ).select_related('parent').first() # Valószínűleg csak egy ilyen szerepkör van
+
+            parent = None
+            
+            if athlete_role:
+                print(f"✅ [DEBUG] Jóváhagyott sportoló szerepkör megtalálva (Role ID: {athlete_role.id})")
+                
+                # 2. Ellenőrizzük a szülő általi jóváhagyást
+                if athlete_role.approved_by_parent:
+                    parent = athlete_role.parent
+                    print(f"✅ [DEBUG] Szülő jóváhagyás MEGVAN! Szülő: {parent.username} (ID: {parent.id})")
+                else:
+                    print("⚠️ [DEBUG] Nincs jóváhagyás a szülőtől (approved_by_parent=False)")
+            else:
+                print("⚠️ [DEBUG] Nincs jóváhagyott Sportoló szerepkör, amihez szülő lenne rendelve.")
+
+        # EZEN MÚLIK AZ ÖSSZES BIOMETRIAI ADAT LÁTHATÓSÁGA!
+        if parent:
+            # 3. Biometrikus engedély keresése a SZÜLŐ → EDZŐ útvonalon
+            can_view_biometrics = _has_permission(parent, coach)
+            print(f"👨‍👩‍👦 [DEBUG] Szülő által engedélyezett (szülőn keresztül): {can_view_biometrics}")
+        else:
+            print(f"⚠️ [DEBUG] Nincs jóváhagyott szülő kapcsolat! athlete_id={athlete.id}. Can_view_biometrics=False")
+            can_view_biometrics = False
+
+
+        # --- Biometrikus adatok lekérése, ha megosztott ---
+        if can_view_biometrics:
+            last_weight = WeightData.objects.filter(user=athlete).order_by('-workout_date').first()
+            last_hrv_sleep = HRVandSleepData.objects.filter(user=athlete).order_by('-recorded_at').first()
+            running_performance = RunningPerformance.objects.filter(user=athlete).order_by('-run_date')
+            feedback_visible = True
+        else:
+            last_weight = None
+            last_hrv_sleep = None
+            running_performance = None
+            feedback_visible = False
+
+        # --- Edzésnapló + visszajelzés + súlyadatok ---
+        athlete_logs = Attendance.objects.filter(
+            registered_athlete=athlete
+        ).select_related('session').order_by('-session__session_date')[:10]
+
+        intensity_map = dict(WorkoutFeedback.INTENSITY_CHOICES[1:])
+
+        enhanced_logs = []
+        for log in athlete_logs:
+            feedback = WorkoutFeedback.objects.filter(
+                user=athlete, workout_date=log.session.session_date
+            ).first()
+
+            weight_entry = WeightData.objects.filter(
+                user=athlete, workout_date=log.session.session_date
+            ).first()
+
+            if feedback or weight_entry:
+                pre = weight_entry.pre_workout_weight if weight_entry else None
+                post = weight_entry.post_workout_weight if weight_entry else None
+                fluid = weight_entry.fluid_intake if weight_entry else None
+
+                if pre and post:
+                    loss_kg = float(pre) - float(post)
+                    loss_pct = (loss_kg / float(pre)) * 100 if float(pre) > 0 else None
+                else:
+                    loss_kg = None
+                    loss_pct = None
+
+                log.feedback_data = {
+                    'intensity': feedback.workout_intensity if feedback else None,
+                    'intensity_label': intensity_map.get(feedback.workout_intensity) if feedback else None,
+                    'pre_weight': pre,
+                    'post_weight': post,
+                    'fluid': fluid,
+                    'loss_kg': round(loss_kg, 2) if loss_kg else None,
+                    'loss_pct': round(loss_pct, 1) if loss_pct else None,
+                }
+            else:
+                log.feedback_data = None
+
+            enhanced_logs.append(log)
+
+        athlete_logs = enhanced_logs
+
+        # --- Fizikai felmérések ---
+        assessments = PhysicalAssessment.objects.filter(
+            athlete_user=athlete
+        ).order_by('-assessment_date')
+
+        role = UserRole.objects.filter(
+            user=athlete, role__name='Sportoló', status='approved'
+        ).select_related('club', 'sport').first()
+
+        athlete_club = role.club if role else None
+        athlete_sport = role.sport if role else None
+
+    # --- Placeholder sportoló ---
     elif athlete_type == 'placeholder':
-        # Nem regisztrált (Placeholder) sportoló
         athlete = get_object_or_404(PlaceholderAthlete, id=athlete_id)
         athlete_object = athlete
-        
-        # Ellenőrizzük, hogy az edzőnek van-e jogosultsága a placeholderre (Változatlan)
-        is_allowed = (
-            athlete.club_id in allowed_club_ids and 
-            athlete.sport_id in allowed_sport_ids
-        )
-        
-        if not is_allowed:
-            raise PermissionDenied("Nincs jogosultsága megtekinteni ezt a sportolót.")
-            
-        athlete_display_name = f"{athlete.first_name} {athlete.last_name}"
-        
-        # A Placeholder sportolóra vonatkozó Felmérés szűrő (Feltételezzük, hogy ez jó)
-        assessment_filter = Q(athlete_placeholder=athlete)
-        
-        # Fontos: A biometrikus adatokhoz nem állítunk be szűrőt,
-        # mert a modellek (pl. WeightData) nem tartalmazzák a Placeholder ForeignKey-t.
-        # A lekérdezések a 2. pontban 'None'-t fognak visszaadni.
         is_placeholder = True
+        athlete_display_name = f"{athlete.first_name} {athlete.last_name}"
 
-    else:
-        raise Http404("Ismeretlen sportoló típus.")
+        if not (athlete.club_id in allowed_club_ids and athlete.sport_id in allowed_sport_ids):
+            raise PermissionDenied("Nincs jogosultsága megtekinteni ezt a sportolót.")
 
-    # --- 2. Adatok begyűjtése a sportolóról ---
-    
-    # Adatok, amelyek a Placeholder és a User sportolóknál is létezhetnek:
-    assessments = PhysicalAssessment.objects.filter(assessment_filter).order_by('-assessment_date')
-    
-    if not is_placeholder:
-        # REGISZTRÁLT SPORTOLÓK (User)
-        
-        # Biometrikus adatok (utolsó 5 rögzítés) - KORÁBBAN JAVÍTOTT MEZŐNEVEK
-        last_weight = WeightData.objects.filter(biometric_filter).order_by('-workout_date').first()
-        last_hrv_sleep = HRVandSleepData.objects.filter(biometric_filter).order_by('-recorded_at').first()
-        
-        # Edzésnapló (Jelenlét)
-        athlete_logs = Attendance.objects.filter(
-            registered_athlete=athlete_object
-        ).select_related('session').order_by('-session__session_date')[:10]
-        
-        # Futó teljesítmény (összes, rendezve) - KORÁBBAN JAVÍTOTT MEZŐNÉV
-        running_performance = RunningPerformance.objects.filter(biometric_filter).order_by('-run_date')
-
-    else: 
-        # NEM REGISZTRÁLT SPORTOLÓK (Placeholder)
-        
-        # Biometrikus adatok: Nincs (a modellek nem támogatják, None-t állítunk be)
-        last_weight = None 
+        last_weight = None
         last_hrv_sleep = None
         running_performance = None
-        
-        # Edzésnapló (Jelenlét) - Működik, mert a Attendance modell támogatja
-        athlete_logs = Attendance.objects.filter(
-            placeholder_athlete=athlete_object
-        ).select_related('session').order_by('-session__session_date')[:10]
-        
-    # --- 3. Context adatok összeállítása ---
 
+        athlete_logs = Attendance.objects.filter(
+            placeholder_athlete=athlete
+        ).select_related('session').order_by('-session__session_date')[:10]
+
+        assessments = PhysicalAssessment.objects.filter(
+            athlete_placeholder=athlete
+        ).order_by('-assessment_date')
+
+        athlete_club = athlete.club
+        athlete_sport = athlete.sport
+        can_view_biometrics = False
+        feedback_visible = False
+
+    else:
+        raise PermissionDenied("Ismeretlen sportoló típus.")
+
+    # --- Kontextus ---
     context = {
         'page_title': f"{athlete_display_name} - Részletes adatok",
         'athlete_display_name': athlete_display_name,
         'athlete_type': athlete_type,
-        'athlete_id': athlete_id,
         'athlete_object': athlete_object,
         'is_placeholder': is_placeholder,
-        
-        # Biometrikus összefoglaló
         'last_weight': last_weight,
         'last_hrv_sleep': last_hrv_sleep,
-        
-        # Részletes adatok listája
-        'assessments': assessments,
-        'training_logs': athlete_logs, 
         'running_performance': running_performance,
-        
-        # Sportoló Profil adatok
+        'training_logs': athlete_logs,
+        'assessments': assessments,
+        'athlete_club': athlete_club,
+        'athlete_sport': athlete_sport,
         'profile_data': profile_data if athlete_type == 'user' else athlete_object,
+        'can_view_biometrics': can_view_biometrics,
+        'feedback_visible': feedback_visible,
     }
 
     return render(request, 'data_sharing/coach/athlete_details.html', context)
-
-# --- ADATBEVITELI NÉZETEK (A FŐ PRIORITÁS) ---
-
 
 @login_required
 @role_required('Edző')
@@ -301,6 +386,8 @@ def add_unregistered_athlete(request):
         'page_title': "Nem Regisztrált Sportoló Felvitele"
     }
     return render(request, "data_sharing/coach/add_unregistered_athlete.html", context)
+
+
 
 @login_required
 @role_required('Edző')
