@@ -48,7 +48,7 @@
                     </div>
                     
                     <div class="card-footer d-flex justify-content-between">
-                        <a href="#" class="btn btn-primary btn-sm w-100">
+                        <a href="{% url 'data_sharing:leader_athlete_details' athlete_type=card.type athlete_id=card.id %}" class="btn btn-primary btn-sm w-100">
                             Részletek <i class="bi bi-arrow-right-circle ms-2"></i>
                         </a>
                     </div>

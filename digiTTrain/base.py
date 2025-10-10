@@ -59,6 +59,8 @@ INSTALLED_APPS = [
     'data_sharing',
     'assessment',
     'training_log', 
+    'diagnostics',
+    'diagnostics_jobs',
 ]
 
 MIDDLEWARE = [

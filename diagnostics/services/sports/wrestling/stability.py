@@ -1,0 +1,1 @@
+# egyensúly, súlypont, core stabilitás

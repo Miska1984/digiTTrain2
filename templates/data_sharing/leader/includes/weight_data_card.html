@@ -1,0 +1,19 @@
+<div class="card p-4 shadow-sm h-100 border-start border-4 border-info">
+    <h5 class="card-title text-info mb-3"><i class="bi bi-person-fill me-2"></i> Utolsó Súlyadat</h5>
+    {% if last_weight %}
+        <p class="card-text mb-1">
+            <strong>Reggeli súly:</strong> 
+            <span class="fs-4 fw-bold text-success">{{ last_weight.morning_weight }} kg</span>
+        </p>
+        <p class="card-text mb-1 small text-muted">
+            Rögzítve: {{ last_weight.workout_date|date:"Y.m.d." }}
+        </p>
+        <hr class="my-2">
+        <p class="card-text small">
+            Testzsír: {{ last_weight.body_fat_percentage|default:"-" }}% | 
+            Izom: {{ last_weight.muscle_percentage|default:"-" }}%
+        </p>
+    {% else %}
+        <p class="card-text text-muted">Nincs rögzített súlyadat.</p>
+    {% endif %}
+</div>

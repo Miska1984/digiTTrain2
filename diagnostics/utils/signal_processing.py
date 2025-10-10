@@ -1,0 +1,1 @@
+# videó fájl beolvasás / metaadatok

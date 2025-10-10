@@ -1,0 +1,1 @@
+ # gépi látás elemzés kimenet feldolgozása

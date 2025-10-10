@@ -1,178 +1,172 @@
-# /app/data_sharing/sharing_views/parent.py (JAVÍTVA: 'full_name' hiba)
-
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from users.models import UserRole, User 
-from users.utils import role_required, _check_user_role
-from django.urls import reverse
-from datetime import timedelta, date
-from django.utils import timezone
-import json 
-from decimal import Decimal 
-from data_sharing.models import BiometricSharingPermission 
-
-# Feltételezett import a biometrikus adatokhoz használt segédfüggvényekre
-try:
-    from biometric_data.utils import (
-        get_last_entry_info, 
-        get_weight_data_and_feedback, 
-        get_hrv_regeneration_index, 
-        get_latest_fatigue_status
-    )
-except ImportError:
-    # Ez a hibakezelés segít, ha a utils fájl még hiányzik
-    print("FIGYELMEZTETÉS: A biometric_data.utils segédfüggvények importálása sikertelen. Ellenőrizze a utils.py fájlt.")
-
-
-def calculate_age(born):
-    """Kiszámítja a kort a születési dátumból."""
-    if not born:
-        return 'N/A'
-    today = date.today()
-    return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+from django.core.exceptions import PermissionDenied
+from users.models import User, UserRole
+from biometric_data.models import WeightData, HRVandSleepData, RunningPerformance, WorkoutFeedback
+from training_log.models import Attendance
+from assessment.models import PhysicalAssessment
 
 
 @login_required
 def parent_dashboard(request):
     """
-    Szülői áttekintő lista (parent_list.html) az összes gyermekről.
+    Szülői műszerfal. Listázza az összes kiskorú gyermeket, akiknek a szülője a bejelentkezett felhasználó.
     """
     parent = request.user
-    if not _check_user_role(parent, "Szülő"):
-        messages.error(request, "Nincs szülői szerepköröd.")
-        return redirect("core:main_page")
-
-    # Gyermekek lekérdezése
+    
+    # --- 1. Keresse meg a szülőhöz rendelt jóváhagyott Sportoló szerepköröket ---
+    # A UserRole a Sportoló maga, akinek a parent mezője megegyezik a bejelentkezett szülővel.
     children_roles = UserRole.objects.filter(
         parent=parent,
-        role__name="Sportoló",
-        status="approved"
-    ).select_related(
-        "user__profile",        
-        "coach__profile",       
-        "club",                 
-        "sport"                 
-    )
-
+        role__name='Sportoló',
+        status='approved'
+    ).select_related('user__profile', 'club', 'sport').order_by('user__profile__last_name')
+    
+    # --- 2. Adatok gyűjtése a dashboard kártyákhoz ---
     children_data = []
     
     for role in children_roles:
         athlete = role.user
-        profile = athlete.profile
+        
+        # Mivel a jogosultságot már ellenőriztük a szűrőben,
+        # csak az alapvető kártyaadatokat kérjük le.
+        
+        # Biometrikus adat (opcionális, de jó, ha a dashboardon látszik valami)
+        try:
+            from biometric_data.models import WeightData
+            last_weight = WeightData.objects.filter(user=athlete).order_by('-workout_date').first()
+        except ImportError:
+            last_weight = None # Hiba esetén (ha az import nem létezik)
 
-        age = calculate_age(profile.birth_date) if hasattr(profile, 'birth_date') and profile.birth_date else 'N/A'
-        
-        dashboard_url = reverse('data_sharing:shared_parent_athlete_dashboard', kwargs={'athlete_id': athlete.id})
-        
-        # JAVÍTÁS: A coach nevét last_name és first_name mezőkből építjük fel!
-        coach_name = f"{role.coach.profile.last_name} {role.coach.profile.first_name}" \
-                     if role.coach and hasattr(role.coach, 'profile') else 'Nincs edző'
-        
-        # Edző fotó (feltételezve, hogy a profile_picture létezik)
-        coach_photo = role.coach.profile.profile_picture.url \
-                      if role.coach and hasattr(role.coach, 'profile') and role.coach.profile.profile_picture else '/static/images/default.jpg'
-        
-        club_logo = role.club.logo.url if role.club and role.club.logo else '/static/images/default_club.jpg'
-        club_short_name = role.club.short_name if role.club else 'Nincs klub'
-        
-        children_data.append({
-            "athlete": athlete,
-            "profile": profile,
-            # Az sportoló neve is last_name és first_name mezőkből épül
-            "full_name": f"{profile.last_name} {profile.first_name}", 
-            "age": age,
-            "gender": profile.get_gender_display() if hasattr(profile, 'get_gender_display') else 'N/A',
+        # Ellenőrzés, hogy kiskorú-e, bár a logikailag helyesen csak kiskorút kellene látnia.
+        # Ha a szülő a saját felnőtt gyermekét akarja látni, akkor más jogosultság kell.
+        if not athlete.is_adult:
+            children_data.append({
+                'athlete_object': athlete,
+                'profile_data': athlete.profile,
+                'athlete_club': role.club,
+                'athlete_sport': role.sport,
+                'last_weight': last_weight,
+            })
             
-            "coach_name": coach_name,
-            "coach_photo": coach_photo,
-            
-            "club_logo": club_logo,
-            "club_short_name": club_short_name,
-            "sport_name": role.sport.name if role.sport else 'N/A',
-            
-            "dashboard_url": dashboard_url,
-        })
-
     context = {
-        "children_data": children_data,
-        "page_title": "Gyermekek Áttekintő Listája"
+        'page_title': 'Gyermekeim Áttekintője',
+        'children_data': children_data,
     }
     
-    return render(request, "data_sharing/parent/parent_list.html", context)
-
+    return render(request, 'data_sharing/parent/parent_dashboard.html', context)
 
 @login_required
-def view_shared_athlete_data_for_parent(request, athlete_id):
+def parent_athlete_details(request, athlete_id):
     """
-    Részletes szülői dashboard (shared_parent_athlete_dashboard.html).
-    Trendekre és összefoglaló jelzésekre fókuszál.
+    Szülői nézet – Kiskorú sportoló (User) részletes adatainak megjelenítése.
+    A szülőnek alapértelmezetten látnia kell minden biometrikus adatot.
     """
     parent = request.user
+
+    # --- 1. Sportoló lekérése ---
     athlete = get_object_or_404(User, id=athlete_id)
     
-    # 1. Jogosultság ellenőrzés
-    
-    # a) Ellenőrizzük a UserRole kapcsolatot
-    role_exists = UserRole.objects.filter(user=athlete, parent=parent, status="approved").exists()
-    
-    # b) Ellenőrizzük, hogy legalább egy biometrikus adat meg van-e osztva!
-    # Ha nincs EGYETLEN ENGEDÉLYEZETT megosztás sem a sportolótól a szülő felé:
-    sharing_enabled = BiometricSharingPermission.objects.filter(
-        user=athlete,          # A sportoló az adatok tulajdonosa
-        target_user=parent,    # A szülő a célfelhasználó
-        enabled=True           # Engedélyezve van
+    # ⚠️ Placeholder sportolóknak nincs szülői nézete a regisztráció hiánya miatt,
+    # így itt csak regisztrált 'User' sportolókkal foglalkozunk.
+    if athlete.is_adult:
+        raise PermissionDenied("Csak kiskorú gyermekek adatai tekinthetők meg szülői felületről.")
+        
+    # --- 2. Jogosultság ellenőrzés (a sportoló a bejelentkezett szülő gyermeke-e) ---
+    is_parent_of_athlete = UserRole.objects.filter(
+        user=athlete,
+        role__name='Sportoló',
+        parent=parent, # A szülő mezőnek meg kell egyeznie a bejelentkezett felhasználóval
+        status='approved'
     ).exists()
-    
-    if not role_exists or not sharing_enabled:
-        messages.error(request, "Hozzáférés megtagadva. Nincs engedélyezett adatmegosztás ehhez a sportolóhoz.")
-        return redirect('data_sharing:parent_dashboard')
 
-    # 2. Időtartomány kezelése
-    # ... (A korábbi időtartomány logika marad)
-    period_param = request.GET.get('period', '1M')
-    
-    if period_param == '3M':
-        days = 90
-    elif period_param == '1M':
-        days = 30
-    elif period_param == '14D':
-        days = 14
-    elif period_param == '7D':
-        days = 7
-    else:
-        days = 30
-        
-    start_date = timezone.localdate() - timedelta(days=days)
-    # ... (További logika, context előkészítés, return render)
-    
-    # 3. Adatlekérdezés a segédfüggvényekkel
-    try:
-        last_entries_data, missing_data_messages = get_last_entry_info(athlete)
-        weight_chart_data, weight_trend_feedback = get_weight_data_and_feedback(athlete, start_date)
-        hrv_index = get_hrv_regeneration_index(athlete, start_date)
-        fatigue_status = get_latest_fatigue_status(athlete)
-        
-    except NameError as e:
-        messages.error(request, f"Adatfeldolgozási hiba. Hiányzó segédfüggvények: {e}")
-        return redirect('data_sharing:parent_dashboard')
+    if not is_parent_of_athlete:
+        raise PermissionDenied("Nincs jogosultsága megtekinteni ezt a sportolót.")
 
+    # --- 3. Adatok lekérése (MINDIG láthatók) ---
+    
+    # Biometrikus adatok
+    last_weight = WeightData.objects.filter(user=athlete).order_by('-workout_date').first()
+    last_hrv_sleep = HRVandSleepData.objects.filter(user=athlete).order_by('-recorded_at').first()
+    running_performance = RunningPerformance.objects.filter(user=athlete).order_by('-run_date')
+    
+    # Edzésnapló, visszajelzés és súlyadatok (Enhanced Logs)
+    athlete_logs = Attendance.objects.filter(
+        registered_athlete=athlete
+    ).select_related('session').order_by('-session__session_date')[:10]
+
+    intensity_map = dict(WorkoutFeedback.INTENSITY_CHOICES[1:])
+    enhanced_logs = []
+
+    for log in athlete_logs:
+        # Lekérjük a visszajelzéseket és a súlyadatokat (ezek a biometrikus adatok részét képezik)
+        feedback = WorkoutFeedback.objects.filter(
+            user=athlete, workout_date=log.session.session_date
+        ).first()
+
+        weight_entry = WeightData.objects.filter(
+            user=athlete, workout_date=log.session.session_date
+        ).first()
+
+        log.feedback_data = None # Alapérték
+        
+        if feedback or weight_entry:
+            pre = weight_entry.pre_workout_weight if weight_entry else None
+            post = weight_entry.post_workout_weight if weight_entry else None
+            loss_kg = None
+            loss_pct = None
+            
+            if pre and post:
+                try:
+                    # Mivel ezek DecimalField-ek, konvertálás Decimal/float-ra a számításhoz
+                    pre_f = float(pre)
+                    post_f = float(post)
+                    loss_kg = pre_f - post_f
+                    loss_pct = (loss_kg / pre_f) * 100 if pre_f > 0 else None
+                except (ValueError, TypeError):
+                    pass # Hiba esetén hagyjuk None-t
+
+            log.feedback_data = {
+                'intensity': feedback.workout_intensity if feedback else None,
+                'intensity_label': intensity_map.get(feedback.workout_intensity) if feedback else None,
+                'pre_weight': pre,
+                'post_weight': post,
+                'fluid': weight_entry.fluid_intake if weight_entry else None,
+                'loss_kg': round(loss_kg, 2) if loss_kg is not None else None,
+                'loss_pct': round(loss_pct, 1) if loss_pct is not None else None,
+            }
+
+        enhanced_logs.append(log)
+
+    # Fizikai felmérések
+    assessments = PhysicalAssessment.objects.filter(
+        athlete_user=athlete
+    ).order_by('-assessment_date')
+
+    # Klub és sport infó
+    role = UserRole.objects.filter(
+        user=athlete, role__name='Sportoló', status='approved'
+    ).select_related('club', 'sport').first()
+
+    athlete_club = role.club if role else None
+    athlete_sport = role.sport if role else None
+    
+    # --- 4. Kontextus ---
+    athlete_display_name = f"{athlete.profile.first_name} {athlete.profile.last_name}"
+    
     context = {
-        'athlete': athlete,
-        'profile': athlete.profile,
-        'period': period_param,
-        'start_date': start_date,
-        'last_entries': last_entries_data,
-        'missing_data_messages': missing_data_messages, 
-        
-        'weight_chart_json': json.dumps(weight_chart_data), 
-        'weight_trend_feedback': weight_trend_feedback,
-        
-        'hrv_index': hrv_index,
-        'fatigue_status': fatigue_status,
-        
-        'period_options': {'3M': '3 Hónap', '1M': '1 Hónap', '14D': '14 Nap', '7D': '7 Nap'}, 
-        'page_title': f"{athlete.profile.last_name} Adatnézet (Szülő)",
+        'page_title': f"{athlete_display_name} - Gyermek adatai",
+        'athlete_display_name': athlete_display_name,
+        'athlete_object': athlete,
+        'profile_data': athlete.profile,
+        'last_weight': last_weight,
+        'last_hrv_sleep': last_hrv_sleep,
+        'running_performance': running_performance,
+        'training_logs': enhanced_logs, # Használjuk a kibővített naplót
+        'assessments': assessments,
+        'athlete_club': athlete_club,
+        'athlete_sport': athlete_sport,
+        'can_view_biometrics': True, # Mindig True a szülőnek
     }
-    
-    return render(request, "data_sharing/parent/shared_parent_athlete_dashboard.html", context)
+
+    return render(request, 'data_sharing/parent/athlete_details.html', context)

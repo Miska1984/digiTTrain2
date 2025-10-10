@@ -68,41 +68,18 @@ class BiometricSharingPermission(models.Model):
     @classmethod
     def is_data_shared(cls, data_owner, data_viewer, app_name, table_name):
         """
-        Ellenőrzi, hogy a data_owner megosztotta-e az adott táblát a data_viewer-rel.
-        Kezeli az 'ALL' engedélyt és a kis-/nagybetű eltéréseket is.
+        Ellenőrzi, hogy a data_owner megosztotta-e az adott táblát a data_viewer-rel
         """
         try:
-            # Kisbetűs normalizálás
-            app_name = app_name.lower()
-            table_name = table_name.lower()
-
-            # 1️⃣ Külön táblára vonatkozó engedély
-            if cls.objects.filter(
+            permission = cls.objects.get(
                 user=data_owner,
                 target_user=data_viewer,
-                app_name__iexact=app_name,
-                table_name__iexact=table_name,
-                enabled=True
-            ).exists():
-                return True
-
-            # 2️⃣ Általános "ALL" engedély
-            if cls.objects.filter(
-                user=data_owner,
-                target_user=data_viewer,
-                app_name__iexact=app_name,
-                table_name__iexact="all",
-                enabled=True
-            ).exists():
-                return True
-
+                app_name=app_name,
+                table_name=table_name
+            )
+            return permission.enabled
+        except cls.DoesNotExist:
             return False
-
-        except Exception as e:
-            print("⚠️ is_data_shared() hiba:", e)
-            return False
-
-
     
     @classmethod
     def get_shared_data_owners(cls, viewer, app_name, table_name):

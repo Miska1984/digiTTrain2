@@ -1,0 +1,1 @@
+# normalizálás, statisztika, z-score
