@@ -1,0 +1,1 @@
+# dobás, kitörés, fogás pontosság

@@ -1,0 +1,21 @@
+<div class="card p-4 shadow-sm h-100 border-start border-4 border-success">
+    <h5 class="card-title text-success mb-3"><i class="bi bi-speedometer2 me-2"></i> Utolsó Futás</h5>
+    {% with last_run=running_performance.first %}
+        {% if last_run %}
+            <p class="card-text mb-1">
+                <strong>Táv:</strong> 
+                <span class="fs-4 fw-bold text-success">{{ last_run.run_distance_km }} km</span>
+            </p>
+            <p class="card-text mb-1 small text-muted">
+                Dátum: {{ last_run.run_date|date:"Y.m.d." }}
+            </p>
+            <hr class="my-2">
+            <p class="card-text small">
+                Időtartam: {{ last_run.run_duration|default:"-" }} | 
+                Átl. pulzus: {{ last_run.run_avg_hr|default:"-" }} bpm
+            </p>
+        {% else %}
+            <p class="card-text text-muted">Nincs rögzített futóteljesítmény.</p>
+        {% endif %}
+    {% endwith %}
+</div>

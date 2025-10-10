@@ -14,17 +14,13 @@ urlpatterns = [
 
     # -------------------- Szülői Nézetek --------------------
     # 1. Szülői Áttekintő Lista (Ahol a gyerekek kártyái látszanak)
-    path('parent/', parent.parent_dashboard, name='parent_dashboard'), 
+    path('parent/dashboard/', parent.parent_dashboard, name='parent_dashboard'),
+     path('parent/athlete/details/<int:athlete_id>/', parent.parent_athlete_details, name='parent_athlete_details'),
     
-    # 2. SZÜLŐI RÉSZLETES DASHBOARD (Az adatok vizualizációja)
-    # Erre mutat a "Részletes adatok" gomb a listáról.
-    path('parent/athlete/<int:athlete_id>/dashboard/', 
-         parent.view_shared_athlete_data_for_parent, 
-         name='shared_parent_athlete_dashboard'),
 
     # -------------------- Egyesületi Vezetői Nézetek --------------------
     path('leader/', leader.leader_dashboard, name='leader_dashboard'),
-    # path('leader/sport/<int:sport_id>/', leader.sport_detail, name='sport_detail'),    
+    path('leader/athlete/details/<str:athlete_type>/<int:athlete_id>/', leader.leader_athlete_details, name='leader_athlete_details'), 
     
     # -------------------- Edzői Nézetek --------------------
     path('coach/', coach.coach_dashboard, name='coach_dashboard'),

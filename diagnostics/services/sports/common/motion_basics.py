@@ -1,0 +1,1 @@
+ # testtartás, ízületi szög, mozgáshatékonyság

@@ -28,6 +28,9 @@ urlpatterns = [
     path('users/', include('users.urls')),
     path('biometric/', include('biometric_data.urls')),
     path('data-sharing/', include('data_sharing.urls')),
+    path('diagnostics/', include('diagnostics_jobs.urls', namespace='diagnostics_jobs')),
+    path("diagnostics/", include("diagnostics.urls")),
+
 ]
 
 if settings.DEBUG:

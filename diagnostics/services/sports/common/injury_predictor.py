@@ -1,0 +1,1 @@
+# közös sérülés-kockázat algoritmus

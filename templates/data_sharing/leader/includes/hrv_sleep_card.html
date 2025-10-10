@@ -1,0 +1,19 @@
+<div class="card p-4 shadow-sm h-100 border-start border-4 border-danger">
+    <h5 class="card-title text-danger mb-3"><i class="bi bi-heart-pulse me-2"></i> Regeneráció (HRV/Alvás)</h5>
+    {% if last_hrv_sleep %}
+        <p class="card-text mb-1">
+            <strong>Utolsó HRV:</strong> 
+            <span class="fs-4 fw-bold text-danger">{{ last_hrv_sleep.morning_hrv|default:"-" }}</span>
+        </p>
+        <p class="card-text mb-1 small text-muted">
+            Rögzítve: {{ last_hrv_sleep.recorded_at|date:"Y.m.d." }} {{ last_hrv_sleep.recorded_at|time:"H:i" }}
+        </p>
+        <hr class="my-2">
+        <p class="card-text small">
+            Alvásminőség: {{ last_hrv_sleep.sleep_quality_rating|default:"-" }}/5 | 
+            Pihenési Pulzus: {{ last_hrv_sleep.resting_hr|default:"-" }} bpm
+        </p>
+    {% else %}
+        <p class="card-text text-muted">Nincs rögzített HRV/Alvás adat.</p>
+    {% endif %}
+</div>

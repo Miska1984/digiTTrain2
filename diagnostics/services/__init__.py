@@ -1,0 +1,1 @@
+ # központi vezérlő a metrikák számításához

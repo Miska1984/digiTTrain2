@@ -1,0 +1,1 @@
+ # Celery vagy GCP task queue feldolgozás

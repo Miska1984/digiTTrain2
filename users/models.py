@@ -186,6 +186,7 @@ class Club(models.Model):
     def __str__(self):
         return self.name
 
+# Ez a model nem került használtra!!!
 class ParentChild(models.Model):
     """
     Szülő-gyerek kapcsolat modell
