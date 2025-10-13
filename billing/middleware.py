@@ -3,55 +3,64 @@
 from django.shortcuts import render
 from django.utils.deprecation import MiddlewareMixin
 from django.conf import settings
-from .context_processors import is_user_ad_free # Importáljuk a context processort
+from .context_processors import ad_free_status # <-- A helyes függvénynevet importáljuk
 
 class InterstitialAdMiddleware(MiddlewareMixin):
     """
     Ez a middleware egy átmeneti (interstitial) hirdetési oldalt jelenít meg
-    minden harmadik kérés után, HA a felhasználó NEM hirdetésmentes.
-    
-    FONTOS: Mivel a Google szigorúan tiltja a teljes képernyős hirdetések
-    manuális/erőszakos megjelenítését, ez a megvalósítás ITT EGY BELSŐ,
-    átmeneti sablont tölt be, ami a hirdetés kódját tartalmazza.
+    minden N. kérés után, HA a felhasználó NEM hirdetésmentes.
+    A számlálót a felhasználó session-jében tárolja.
     """
     
-    # 💥 FIGYELEM: Ez a számláló nagyon egyszerű!
-    # Valódi alkalmazásban ezt a felhasználó Session-jében kell tárolni.
-    # Most a demó kedvéért a Session-t használjuk.
     REQUEST_COUNTER_KEY = 'ad_interstitial_count'
-    REQUEST_LIMIT = 3 # Minden 3. kérés után jelenjen meg
-
-    # Azon útvonalak, amiket figyelmen kívül hagyunk (API hívások, statikus fájlok)
+    REQUEST_LIMIT = 3 # Példa: minden 3. oldalbetöltésnél jelenik meg a hirdetés
+    
+    # Azon útvonalak, amiket figyelmen kívül hagyunk (pl. API hívások, statikus fájlok)
     EXCLUDE_PATHS = [
-        '/admin/', '/static/', '/media/', '/billing/run-algorithm/', '/billing/ad-for-credit/'
+        '/admin/', 
+        '/static/', 
+        '/media/', 
+        '/billing/run-algorithm/', 
+        '/billing/ad-for-credit/',
+        '/billing/toggle-ad-free/',
+        # 💥 FONTOS KIZÁRÁSOK a bejelentkezési, regisztrációs és kilépési oldalakhoz
+        '/users/login/',    # Kizárja a login oldalt (és az arra irányuló POST kérést)
+        '/users/logout/',   # Kizárja a logout útvonalat
+        '/users/register/', # Kizárja a regisztrációs oldalt
+        '/logout/',         # Esetleges más logout útvonal
+        '/login/',          # Esetleges más login útvonal (biztos, ami biztos)
+        '/register/',       # Esetleges más regisztrációs útvonal
     ]
-
+    
     def process_request(self, request):
-        # 1. Kizárások ellenőrzése
+        
+        # 1. Kizárások ellenőrzése (ne jelenjen meg admin oldalon, stb.)
         for path in self.EXCLUDE_PATHS:
             if request.path.startswith(path):
-                return None # Továbbengedjük a kérést
+                return None 
         
-        # 2. Hirdetésmentes státusz ellenőrzése (Context Processorból)
-        # Feltételezzük, hogy a context_processors.py által lekérhető a státusz
-        is_ad_free = is_user_ad_free(request)['is_ad_free'] 
+        # 2. Hirdetésmentes státusz ellenőrzése
+        # A ad_free_status(request) függvényt hívjuk meg (context_processors.py)
+        is_ad_free = ad_free_status(request)['is_ad_free'] 
         
+        # Csak akkor foglalkozunk a számlálással és a hirdetéssel, ha be van jelentkezve ÉS NEM hirdetésmentes
         if request.user.is_authenticated and not is_ad_free:
             
             # 3. Kérésszámláló kezelése a session-ben
+            # Lekérjük a számlálót, alapértelmezett értéke 0, ha nincs még session-ben
             current_count = request.session.get(self.REQUEST_COUNTER_KEY, 0)
             current_count += 1
+            # Visszaírjuk a növelt értéket a session-be
             request.session[self.REQUEST_COUNTER_KEY] = current_count
-
+            
             # 4. Megjelenítési limit ellenőrzése
             if current_count >= self.REQUEST_LIMIT:
-                # Visszaállítjuk a számlálót
+                
+                # Visszaállítjuk a számlálót a hirdetés megjelenítése után
                 request.session[self.REQUEST_COUNTER_KEY] = 0 
                 
-                # Átmeneti oldal megjelenítése (Response visszaadása)
-                # FONTOS: Mivel a render azonnal Response-t ad vissza, ez a hívás
-                # megszakítja az eredeti nézet (view) futását.
+                # Átmeneti oldal megjelenítése (ez megszakítja az eredeti kérés feldolgozását!)
                 return render(request, 'billing/interstitial_ad.html', {})
                 
-        # Ha be van jelentkezve ÉS hirdetésmentes, vagy ha a számláló alatt van, folytatjuk.
+        # Ha a felhasználó hirdetésmentes, vagy nincs bejelentkezve, vagy a számláló alatt van, továbbengedjük.
         return None
