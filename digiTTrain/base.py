@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'django.contrib.sites', 
     'django.contrib.humanize',
+    'widget_tweaks',
     'crispy_forms',
     'crispy_bootstrap5',
     "storages",
@@ -61,6 +62,7 @@ INSTALLED_APPS = [
     'training_log', 
     'diagnostics',
     'diagnostics_jobs',
+    'billing',
 ]
 
 MIDDLEWARE = [
@@ -80,6 +82,9 @@ SHAREABLE_DATA_MODELS = {
         'WorkoutFeedback',
         'RunningPerformance',
     ],
+    "diagnostics_jobs": [
+        "DiagnosticJob",  # 🧩 új — a gépi látás diagnosztikai eredmények megosztása
+    ],
 }
 
 ROOT_URLCONF = "digiTTrain.urls"
@@ -94,6 +99,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                'billing.context_processors.ad_free_status', 
             ],
         },
     },

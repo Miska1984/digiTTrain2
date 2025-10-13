@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load static %}
+
+{% block title %}Pénzügyi Vezérlőpult{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">
+        <i class="bi bi-wallet2 me-2"></i> Pénzügyi Vezérlőpult
+    </h1>
+
+    <p class="text-gray-600 mb-8">
+        Itt tekintheti meg a Credit egyenlegét, az előfizetései státuszát, és kezelheti a feltöltéseket.
+    </p>
+
+    {# ------------------ ÖSSZEFOGLALÓ KÁRTYÁK ------------------ #}
+    <div class="row row-cols-1 row-cols-md-3 g-4 mb-6">
+
+        {# 1. CREDIT EGYENLEG KÁRTYA #}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-start border-4 border-success">
+                <div class="card-body">
+                    <h5 class="card-title text-success"><i class="bi bi-coin me-2"></i> Credit Egyenleg</h5>
+                    <p class="display-6 fw-bold mb-0">{{ credit_balance|floatformat:0|intcomma }}</p>
+                    <p class="text-muted">Credit (az elemzések futtatásához)</p>
+                    <a href="{% url 'billing_top_up' %}" class="btn btn-sm btn-success mt-2">
+                        <i class="bi bi-plus-circle me-1"></i> Credit feltöltés
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        {# 2. ELŐFIZETÉS STÁTUSZ KÁRTYA #}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-start border-4 {% if is_ad_free %}border-primary{% else %}border-warning{% endif %}">
+                <div class="card-body">
+                    <h5 class="card-title text-primary"><i class="bi bi-shield-lock me-2"></i> Hirdetésmentes Státusz</h5>
+                    {% if is_ad_free %}
+                        <p class="fs-4 fw-bold text-primary mb-0">AKTÍV</p>
+                        <p class="text-muted">Lejárat: {{ request.user.subscription.end_date|date:"Y.m.d" }}</p>
+                        <form method="post" action="{% url 'toggle_ad_free' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-outline-primary mt-2">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Megújítás
+                            </button>
+                        </form>
+                    {% else %}
+                        <p class="fs-4 fw-bold text-warning mb-0">INAKTÍV</p>
+                        <p class="text-muted">Jelenleg hirdetések jelennek meg.</p>
+                        <form method="post" action="{% url 'toggle_ad_free' %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-warning mt-2">
+                                <i class="bi bi-cash me-1"></i> Aktiválás (1500 Ft/hó)
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        {# 3. INGYENES CREDIT SZERZÉS #}
+        <div class="col">
+            <div class="card h-100 shadow-sm border-start border-4 border-info">
+                <div class="card-body">
+                    <h5 class="card-title text-info"><i class="bi bi-tv me-2"></i> Credit Szerzés</h5>
+                    <p class="fs-4 fw-bold mb-0">Hirdetésnézés</p>
+                    <p class="text-muted">Nézz meg egy hirdetést, és szerezz 50 Creditet.</p>
+                    <a href="{% url 'ad_credit_earn' %}" class="btn btn-sm btn-info mt-2 text-white">
+                        <i class="bi bi-play-circle me-1"></i> Credit szerzés most!
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    {# ------------------ LEGUTÓBBI TRANZAKCIÓK ------------------ #}
+    <h2 class="text-2xl font-semibold mb-4 text-indigo-700 mt-5">Legutóbbi Tranzakciók</h2>
+    <div class="bg-white shadow rounded-lg p-4">
+        <div class="overflow-x-auto">
+            <table class="w-full table table-striped border-collapse">
+                <thead>
+                    <tr class="bg-gray-200 text-left text-sm font-semibold text-gray-700">
+                        <th class="p-2 border">Időpont</th>
+                        <th class="p-2 border">Típus</th>
+                        <th class="p-2 border text-end">Összeg (Credit)</th>
+                        <th class="p-2 border">Leírás</th>
+                        <th class="p-2 border">Kapcsolódó Fiók</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td class="p-2 border">{{ transaction.timestamp|date:"Y.m.d H:i" }}</td>
+                        <td class="p-2 border">{{ transaction.get_transaction_type_display }}</td>
+                        <td class="p-2 border text-end fw-bold 
+                            {% if transaction.amount > 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ transaction.amount|floatformat:2|intcomma }}
+                        </td>
+                        <td class="p-2 border small">{{ transaction.description|default:"-" }}</td>
+                        <td class="p-2 border">{{ transaction.related_user.username|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="p-4 text-center text-gray-500">Még nincsenek rögzített tranzakciók.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock content %}

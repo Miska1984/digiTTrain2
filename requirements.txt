@@ -32,3 +32,4 @@ pandas
 numpy
 xlsxwriter
 openpyxl
+django-widget-tweaks
