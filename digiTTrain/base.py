@@ -66,15 +66,21 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # 1. BIZTONSÁG ÉS SESSION
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware",
-    "django.middleware.csrf.CsrfViewMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.middleware.common.CommonMiddleware", # A duplikációt itt szüntettük meg
+    
+    # 2. HITELÉSÍTÉS ÉS FELHASZNÁLÓ KEZELÉS (EZT KELL ELŐRE HOZNI!)
+    "django.middleware.csrf.CsrfViewMiddleware",        
+    "django.contrib.auth.middleware.AuthenticationMiddleware", # 💥 MUST BE HERE!
     "django.contrib.messages.middleware.MessageMiddleware",
+    
+    # 3. CUSTOM LOGIKA (CSAK A HITELÉSÍTÉS UTÁN FUT!)
+    'billing.middleware.InterstitialAdMiddleware', # 💥 A CUSTOM MIDDLEWARE HELYE
+    
+    # 4. UTOLSÓ BIZTONSÁGI INTÉZKEDÉSEK
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    'billing.middleware.InterstitialAdMiddleware', 
-    'django.middleware.common.CommonMiddleware',
 ]
 
 SHAREABLE_DATA_MODELS = {
@@ -99,9 +105,14 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 'billing.context_processors.ad_free_status', 
+                "django.template.context_processors.media", 
+                "django.template.context_processors.static", 
+                "django.template.context_processors.tz",            
             ],
         },
     },
