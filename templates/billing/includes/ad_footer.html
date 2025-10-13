@@ -3,7 +3,19 @@
         <div class="alert alert-light border border-secondary p-2 d-inline-block shadow-sm" role="alert">
             <i class="bi bi-tags-fill me-2 text-secondary"></i>
             <span class="small text-muted">A projektet támogatja:</span>
-            <span class="fw-bold ms-1">Hosszú Lábjegyzet Hirdetési Sáv (728x90)</span>
+            
+            {# IDE JÖN A MÁSODIK (pl. 728x90-es vagy Adaptív) HIRDETÉS EGYSÉG KÓDJA #}
+            <div class="ad-placement-footer bg-light p-1">
+                <ins class="adsbygoogle"
+                     style="display:inline-block;width:728px;height:90px" 
+                     data-ad-client="ca-pub-7737967729637742" 
+                     data-ad-slot="0987654321"></ins>
+                <script>
+                     (adsbygoogle = window.adsbygoogle || []).push({});
+                </script>
+            </div>
+            {# ------------------------------------------------------------ #}
+            
             <a href="{% url 'toggle_ad_free' %}" class="text-primary ms-3 small">Hirdetések kikapcsolása</a>
         </div>
     </div>

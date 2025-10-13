@@ -73,6 +73,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    'billing.middleware.InterstitialAdMiddleware', 
+    'django.middleware.common.CommonMiddleware',
 ]
 
 SHAREABLE_DATA_MODELS = {
