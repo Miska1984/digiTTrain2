@@ -1,5 +1,6 @@
 from django.db import models
 from django.conf import settings
+from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
 
 
 class DiagnosticJob(models.Model):
@@ -23,6 +24,15 @@ class DiagnosticJob(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     result = models.JSONField(null=True, blank=True, help_text="Diagnosztikai eredmények (JSON)")
+    weight_snapshot = models.ForeignKey(
+        WeightData, null=True, blank=True, on_delete=models.SET_NULL, related_name="diagnostic_jobs"
+    )
+    hrv_snapshot = models.ForeignKey(
+        HRVandSleepData, null=True, blank=True, on_delete=models.SET_NULL, related_name="diagnostic_jobs"
+    )
+    workout_feedback_snapshot = models.ForeignKey(
+        WorkoutFeedback, null=True, blank=True, on_delete=models.SET_NULL, related_name="diagnostic_jobs"
+    )
     error_message = models.TextField(null=True, blank=True)
 
     class Meta:

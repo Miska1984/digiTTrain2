@@ -30,6 +30,7 @@ urlpatterns = [
     path('data-sharing/', include('data_sharing.urls')),
     path('diagnostics/', include('diagnostics_jobs.urls', namespace='diagnostics_jobs')),
     path("diagnostics/", include("diagnostics.urls")),
+    path('billing/', include('billing.urls')), 
 
 ]
 

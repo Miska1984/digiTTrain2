@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Általános elemzés – Videó feltöltése{% endblock %}
+
+{% block extra_css %}
+<style>
+    .upload-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        padding: 30px;
+    }
+    .instructions {
+        background: #f8f9fa;
+        border-left: 5px solid #007bff;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4"><i class="fas fa-video me-2"></i> Általános elemzés – Videó feltöltése</h2>
+
+    <div class="instructions">
+        <h5><i class="fas fa-info-circle me-2"></i>Fontos útmutató a videóhoz:</h5>
+        <ul class="mb-0">
+            <li>A videón a teljes tested jól látható legyen.</li>
+            <li>Válassz világos, kontrasztos hátteret és jó fényviszonyokat.</li>
+            <li>Viselj szűk ruhát (például sportfelsőt és nadrágot), hogy a mozgás jól felismerhető legyen.</li>
+            <li>A kamera legyen stabil, szemmagasságban elhelyezve.</li>
+            <li>Elfogadott formátum: <strong>.mp4</strong></li>
+        </ul>
+    </div>
+
+    <div class="upload-card">
+        <form method="post" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <div class="mb-3">
+                {{ form.video.label_tag }}
+                {{ form.video }}
+                {% if form.video.help_text %}
+                    <small class="form-text text-muted">{{ form.video.help_text }}</small>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                {{ form.notes.label_tag }}
+                {{ form.notes }}
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-cloud-upload-alt me-2"></i> Videó feltöltése és elemzés indítása
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Credit Szerzés Hirdetésnézésért{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">
+        <i class="bi bi-gift-fill me-2"></i> Ingyenes Credit Szerzés
+    </h1>
+
+    <div class="row justify-content-center">
+        
+        {# FŐ TARTALOM OSZLOP #}
+        <div class="col-lg-8">
+            <div class="card shadow p-4 mb-4 text-center">
+                <h2 class="text-2xl font-semibold mb-3 text-indigo-700">Nézzen meg egy rövid videóhirdetést!</h2>
+                
+                <p class="text-muted mb-4">
+                    Minden teljes hirdetésnézésért **50 Creditet** írunk jóvá az egyenlegén. 
+                    Ezzel a Credittel futtathatja a Gépi Látás és a Várható Forma elemzési algoritmusokat.
+                </p>
+                
+                {# ------------------ HIRDETÉS FELÜLET (PLACEHOLDER) ------------------ #}
+                <div class="ad-container bg-light p-5 border border-primary rounded mb-5 mx-auto" style="max-width: 600px;">
+                    <i class="bi bi-camera-video-fill display-3 text-primary"></i>
+                    <p class="mt-3 fs-5 fw-bold text-primary">VIDEÓ HIRDETÉS BETÖLTÉS alatt...</p>
+                    <p class="small text-muted">A videó automatikusan elindul. Kérem, várja meg a végét (kb. 30 másodperc).</p>
+                    
+                    {# JAVASLAT: Valódi integráció esetén itt egy JavaScript API hívás történne, 
+                       ami csak a videó lejátszása után engedélyezné a Credit igénylést. #}
+                </div>
+                
+                {# ------------------ CREDIT IGÉNYLŐ GOMB ------------------ #}
+                <div id="credit-claim-section">
+                    <p class="lead fw-bold text-success">
+                        <i class="bi bi-check-circle-fill me-1"></i> A hirdetés lejátszása véget ért.
+                    </p>
+                    
+                    <form id="claimForm" method="post" action="{% url 'ad_credit_earn' %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-success btn-lg px-5" id="claimButton">
+                            <i class="bi bi-coin me-2"></i> Igényelje az 50 Creditet!
+                        </button>
+                    </form>
+                    
+                    <p class="small text-muted mt-3">Az igénylés után azonnal visszakerül a Vezérlőpultra.</p>
+                </div>
+                
+            </div>
+            
+            <a href="{% url 'billing_dashboard' %}" class="btn btn-outline-secondary mt-3">
+                <i class="bi bi-arrow-left me-1"></i> Vissza a Pénzügyi Vezérlőpultra
+            </a>
+            
+        </div>
+        
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    // A valós hirdetési rendszerekben ezt a gombot csak a videó lejátszása után tesszük aktívvá.
+    // Mivel most placeholder-t használunk, a gomb alapból aktív, de itt van a kód struktúra:
+    
+    // document.addEventListener('DOMContentLoaded', function() {
+    //     const claimButton = document.getElementById('claimButton');
+    //     
+    //     // Kezdetben inaktív a gomb
+    //     claimButton.disabled = true;
+    //     claimButton.textContent = 'Kérem, várja meg a hirdetés végét...';
+    //
+    //     // Képzelt funkció: 30 másodperc után aktiválódik a gomb
+    //     setTimeout(function() {
+    //         claimButton.disabled = false;
+    //         claimButton.textContent = 'Igényelje az 50 Creditet!';
+    //         document.querySelector('.lead').textContent = 'A hirdetés lejátszása véget ért.';
+    //     }, 30000); // 30 másodperces várakozás
+    // });
+</script>
+{% endblock extra_js %}

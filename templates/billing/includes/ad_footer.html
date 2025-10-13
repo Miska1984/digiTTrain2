@@ -1,0 +1,10 @@
+{% if not is_ad_free %}
+    <div class="container text-center mb-3">
+        <div class="alert alert-light border border-secondary p-2 d-inline-block shadow-sm" role="alert">
+            <i class="bi bi-tags-fill me-2 text-secondary"></i>
+            <span class="small text-muted">A projektet támogatja:</span>
+            <span class="fw-bold ms-1">Hosszú Lábjegyzet Hirdetési Sáv (728x90)</span>
+            <a href="{% url 'toggle_ad_free' %}" class="text-primary ms-3 small">Hirdetések kikapcsolása</a>
+        </div>
+    </div>
+{% endif %}
