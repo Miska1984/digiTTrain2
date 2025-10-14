@@ -30,6 +30,9 @@ class InterstitialAdMiddleware(MiddlewareMixin):
         '/logout/',         # Esetleges más logout útvonal
         '/login/',          # Esetleges más login útvonal (biztos, ami biztos)
         '/register/',       # Esetleges más regisztrációs útvonal
+        '/index/',
+        '/main_page/',
+
     ]
     
     def process_request(self, request):
