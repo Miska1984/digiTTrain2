@@ -138,8 +138,11 @@ class TransactionHistory(models.Model):
         verbose_name_plural = "Tranzakciók"
         ordering = ['-timestamp']
 
+    is_pending = models.BooleanField(default=False, verbose_name="Függőben lévő tranzakció")
+
     def __str__(self):
-        return f"[{self.get_transaction_type_display()}] {self.user.username}: {self.amount} Credit ({self.timestamp.strftime('%Y.%m.%d %H:%M')})"
+        status = "🕓 PENDING" if self.is_pending else "✅ DONE"
+        return f"[{status}] {self.user} - {self.transaction_type} ({self.amount} Cr)"
 
 
 # ----------------------------------------------------------------------
