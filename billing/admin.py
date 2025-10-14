@@ -53,8 +53,8 @@ class AlgorithmPricingAdmin(admin.ModelAdmin):
 
 @admin.register(TransactionHistory)
 class TransactionHistoryAdmin(admin.ModelAdmin):
-    list_display = ('timestamp', 'user', 'transaction_type', 'amount', 'related_user_display')
-    list_filter = ('transaction_type', 'timestamp')
+    list_display = ('timestamp', 'user', 'transaction_type', 'amount', 'is_pending', 'related_user_display')
+    list_filter = ('transaction_type', 'is_pending', 'timestamp')
     search_fields = ('user__username', 'related_user__username', 'description')
     date_hierarchy = 'timestamp'
     raw_id_fields = ('user', 'related_user')
@@ -77,3 +77,14 @@ class InvoiceRequestAdmin(admin.ModelAdmin):
     @admin.action(description='Jelölje meg Elküldöttként (SENT)')
     def mark_sent(self, request, queryset):
         queryset.update(status='SENT')
+
+@admin.action(description="Visszatérítés (refund)")
+def refund_selected(modeladmin, request, queryset):
+    for tx in queryset.filter(is_pending=True):
+        balance, _ = UserCreditBalance.objects.get_or_create(user=tx.user)
+        balance.balance_amount += abs(tx.amount)
+        balance.save()
+        tx.is_pending = False
+        tx.amount = 0
+        tx.description += " 💰 Manuális refund az adminból"
+        tx.save()     

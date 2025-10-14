@@ -1,76 +1,91 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
-
-{% block title %}Diagnosztikai Elemzéseim{% endblock %}
+{% block title %}Általános Gépi Látás Elemzések{% endblock %}
 
 {% block content %}
-<div class="container py-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>
-            <i class="fas fa-brain me-2 text-primary"></i>
-            Diagnosztikai Elemzéseim
-        </h1>
-        <a href="{% url 'diagnostics:upload_general_video' %}" class="btn btn-outline-success">
-            <i class="fas fa-video me-2"></i>
-            Új általános elemzés feltöltése
-        </a>
+<div class="container mt-4">
+
+    <!-- Fő cím -->
+    <h2 class="mb-4 text-center fw-bold text-primary">
+        <i class="fas fa-brain me-2"></i> Általános Gépi Látás Elemzések
+    </h2>
+
+    <!-- Felső szekció: elemzési típusok -->
+    <div class="row g-4 mb-5">
+        {% for analysis in analyses %}
+        <div class="col-md-6 col-lg-4">
+            <div class="card shadow-sm border-0 h-100">
+                <img src="{{ analysis.gif }}" class="card-img-top rounded-top" alt="{{ analysis.title }}">
+                <div class="card-body text-center">
+                    <h5 class="card-title text-primary fw-semibold">{{ analysis.title }}</h5>
+                    <p class="text-muted small">{{ analysis.description }}</p>
+                    <a href="{% url 'diagnostics:upload_general_video' %}?type={{ analysis.key }}" class="btn btn-outline-primary w-100">
+                        <i class="fas fa-upload me-1"></i> Videó feltöltése
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
     </div>
 
+    <!-- Alsó szekció: korábbi elemzések -->
+    <h4 class="mb-3 mt-5 text-secondary">
+        <i class="fas fa-history me-2"></i> Korábbi elemzéseid
+    </h4>
+
     {% if jobs %}
-        <table class="table table-hover align-middle" id="diagnosticsTable">
-            <thead class="table-light">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle shadow-sm">
+            <thead class="table-dark">
                 <tr>
                     <th>ID</th>
                     <th>Típus</th>
-                    <th>Állapot</th>
-                    <th>Létrehozva</th>
+                    <th>Státusz</th>
+                    <th>Dátum</th>
                     <th>Eredmény</th>
                 </tr>
             </thead>
             <tbody>
                 {% for job in jobs %}
-                    <tr data-job-id="{{ job.id }}">
-                        <td>{{ job.id }}</td>
-                        <td>{{ job.job_type|title }}</td>
-                        <td class="status">{{ job.status }}</td>
-                        <td>{{ job.created_at|date:"Y.m.d H:i" }}</td>
-                        <td class="result">
-                            {% if job.result %}
-                                <pre>{{ job.result|json_script:"result" }}</pre>
-                            {% else %}
-                                <span class="text-muted">Folyamatban...</span>
-                            {% endif %}
-                        </td>
-                    </tr>
+                <tr>
+                    <td>{{ job.id }}</td>
+                    <td class="text-capitalize">{{ job.job_type }}</td>
+                    <td>
+                        {% if job.status == "completed" %}
+                            <span class="badge bg-success">Kész</span>
+                        {% elif job.status == "failed" %}
+                            <span class="badge bg-danger">Hiba</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Folyamatban</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ job.created_at|date:"Y.m.d H:i" }}</td>
+                    <td>
+                        {% if job.result %}
+                            <a href="/media/sample_analysis.pdf" target="_blank" class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-file-pdf me-1"></i> PDF megtekintése
+                            </a>
+                        {% else %}
+                            <span class="text-muted small">–</span>
+                        {% endif %}
+                    </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
     {% else %}
-        <div class="alert alert-info text-center py-4">
-            <i class="fas fa-info-circle me-2"></i>
-            Még nincs feltöltött elemzésed.
-        </div>
+    <div class="alert alert-info text-center mt-4">
+        <i class="fas fa-info-circle me-2"></i> Nincs még feltöltött elemzésed.
+    </div>
     {% endif %}
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-$(document).ready(function() {
-    function refreshJobStatus() {
-        $('#diagnosticsTable tbody tr').each(function() {
-            const row = $(this);
-            const jobId = row.data('job-id');
-            $.get(`/diagnostics/job-status/${jobId}/`, function(data) {
-                row.find('.status').text(data.status);
-                if (data.result && Object.keys(data.result).length > 0) {
-                    row.find('.result').html(`<pre>${JSON.stringify(data.result, null, 2)}</pre>`);
-                }
-            });
-        });
-    }
-
-    setInterval(refreshJobStatus, 10000); // 10 mp-enként frissít
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("🏋️‍♀️ Athlete Diagnostics Dashboard ready");
 });
 </script>
 {% endblock %}
