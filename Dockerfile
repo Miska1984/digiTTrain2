@@ -71,8 +71,8 @@ ENV DJANGO_SETTINGS_MODULE="digiTTrain.settings"
 
 # Mappajogok beállítása (bár GCS esetén ez nem lesz releváns)
 RUN mkdir -p /app/media_root /app/staticfiles_temp
-                                        RUN chown -R www-data:www-data /app/media_root /app/staticfiles_temp
-                                        RUN chmod -R 775 /app/media_root /app/staticfiles_temp
+RUN chown -R www-data:www-data /app/media_root /app/staticfiles_temp
+ RUN chmod -R 775 /app/media_root /app/staticfiles_temp
 
-                                        # A Gunicorn indítja a Django appot
-                                        CMD ["gunicorn", "--bind", "0.0.0.0:8080", "digiTTrain.wsgi:application"]
+ # A Gunicorn indítja a Django appot
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "digiTTrain.wsgi:application"]
