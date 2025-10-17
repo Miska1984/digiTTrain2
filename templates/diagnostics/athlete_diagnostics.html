@@ -1,91 +1,194 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Általános Gépi Látás Elemzések{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-
-    <!-- Fő cím -->
-    <h2 class="mb-4 text-center fw-bold text-primary">
-        <i class="fas fa-brain me-2"></i> Általános Gépi Látás Elemzések
-    </h2>
-
-    <!-- Felső szekció: elemzési típusok -->
-    <div class="row g-4 mb-5">
-        {% for analysis in analyses %}
-        <div class="col-md-6 col-lg-4">
-            <div class="card shadow-sm border-0 h-100">
-                <img src="{{ analysis.gif }}" class="card-img-top rounded-top" alt="{{ analysis.title }}">
-                <div class="card-body text-center">
-                    <h5 class="card-title text-primary fw-semibold">{{ analysis.title }}</h5>
-                    <p class="text-muted small">{{ analysis.description }}</p>
-                    <a href="{% url 'diagnostics:upload_general_video' %}?type={{ analysis.key }}" class="btn btn-outline-primary w-100">
-                        <i class="fas fa-upload me-1"></i> Videó feltöltése
-                    </a>
-                </div>
-            </div>
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- 🟦 Oldalsáv -->
+    <div class="col-md-3 mb-4">
+      <div class="card shadow-sm rounded-3 border-0">
+        <div class="card-header bg-gradient-to-r from-blue-500 to-indigo-600 text-white fw-semibold">
+          Sportspecifikus elemzések
         </div>
-        {% endfor %}
+        <div class="card-body space-y-2">
+          {% if request.user.user_roles.all %}
+            {% for role in request.user.user_roles.all %}
+              {% if role.sport %}
+                <a href="#" class="btn btn-outline-primary w-100 mb-2">
+                  {{ role.sport.name }} elemzés
+                </a>
+              {% endif %}
+            {% endfor %}
+          {% else %}
+            <p class="text-muted text-center">Nincs elérhető sport specifikus elemzés</p>
+          {% endif %}
+        </div>
+      </div>
     </div>
 
-    <!-- Alsó szekció: korábbi elemzések -->
-    <h4 class="mb-3 mt-5 text-secondary">
-        <i class="fas fa-history me-2"></i> Korábbi elemzéseid
-    </h4>
+    <!-- 🟩 Fő tartalom -->
+    <div class="col-md-9">
+      <h2 class="mb-4 fw-bold text-gray-800">Általános mozgáselemzés</h2>
 
-    {% if jobs %}
-    <div class="table-responsive">
-        <table class="table table-hover align-middle shadow-sm">
-            <thead class="table-dark">
+      <!-- 🧠 Elemzési kártyák -->
+      <div class="row g-4">
+        <!-- Testtartás -->
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100 border-0 rounded-4">
+            <img src="{% static 'images/placeholders/posture.gif' %}" class="card-img-top rounded-top-4" alt="Testtartás elemzés">
+            <div class="card-body">
+              <h5 class="card-title fw-semibold">Testtartás elemzés</h5>
+              <p class="text-muted small">Vizsgálja a test szimmetriáját, váll-, csípő- és térdpozíciókat.</p>
+              <a href="{% url 'diagnostics:upload_general_video' %}" class="btn btn-primary w-100">Videó feltöltése</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Egyensúly -->
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100 border-0 rounded-4">
+            <img src="{% static 'images/placeholders/balance.gif' %}" class="card-img-top rounded-top-4" alt="Egyensúly elemzés">
+            <div class="card-body">
+              <h5 class="card-title fw-semibold">Egyensúly elemzés</h5>
+              <p class="text-muted small">Elemzi a stabilitást és súlypontváltozást mozgás közben.</p>
+              <a href="#" class="btn btn-outline-primary w-100">Videó feltöltése</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guggolás -->
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100 border-0 rounded-4">
+            <img src="{% static 'images/placeholders/squat.gif' %}" class="card-img-top rounded-top-4" alt="Guggolás elemzés">
+            <div class="card-body">
+              <h5 class="card-title fw-semibold">Guggolás elemzés</h5>
+              <p class="text-muted small">Térd- és csípőszögek, mozgástartomány és szimmetria értékelése.</p>
+              <a href="#" class="btn btn-outline-primary w-100">Videó feltöltése</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Futómozgás -->
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100 border-0 rounded-4">
+            <img src="{% static 'images/placeholders/running.gif' %}" class="card-img-top rounded-top-4" alt="Futómozgás elemzés">
+            <div class="card-body">
+              <h5 class="card-title fw-semibold">Futómozgás elemzés</h5>
+              <p class="text-muted small">Kar- és lábmozgások, lépéshossz és ritmus kiegyensúlyozottsága.</p>
+              <a href="#" class="btn btn-outline-primary w-100">Videó feltöltése</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Vállmobilitás -->
+        <div class="col-md-6">
+          <div class="card shadow-sm h-100 border-0 rounded-4">
+            <img src="{% static 'images/placeholders/shoulder.gif' %}" class="card-img-top rounded-top-4" alt="Vállmobilitás elemzés">
+            <div class="card-body">
+              <h5 class="card-title fw-semibold">Vállmobilitás elemzés</h5>
+              <p class="text-muted small">Kar- és vállízületi mozgásterjedelem vizsgálata.</p>
+              <a href="#" class="btn btn-outline-primary w-100">Videó feltöltése</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 📊 Korábbi elemzések -->
+      <div class="mt-5">
+        <h4 class="fw-semibold mb-3">Korábbi elemzések</h4>
+        {% if jobs %}
+          <div class="table-responsive">
+            <table class="table table-hover align-middle shadow-sm rounded-3" id="jobs-table">
+              <thead class="table-light">
                 <tr>
-                    <th>ID</th>
-                    <th>Típus</th>
-                    <th>Státusz</th>
-                    <th>Dátum</th>
-                    <th>Eredmény</th>
+                  <th>Típus</th>
+                  <th>Státusz</th>
+                  <th>Dátum</th>
+                  <th>Általános értékelés</th>
+                  <th class="text-center">PDF Riport</th>
                 </tr>
-            </thead>
-            <tbody>
+              </thead>
+              <tbody>
                 {% for job in jobs %}
-                <tr>
-                    <td>{{ job.id }}</td>
-                    <td class="text-capitalize">{{ job.job_type }}</td>
-                    <td>
-                        {% if job.status == "completed" %}
-                            <span class="badge bg-success">Kész</span>
-                        {% elif job.status == "failed" %}
-                            <span class="badge bg-danger">Hiba</span>
-                        {% else %}
-                            <span class="badge bg-warning text-dark">Folyamatban</span>
-                        {% endif %}
+                  <tr data-job-id="{{ job.id }}">
+                    <td>{{ job.job_type|title }}</td>
+                    <td class="status-cell">
+                      {% if job.status == "completed" %}
+                        <span class="badge bg-success">Kész</span>
+                      {% elif job.status == "failed" %}
+                        <span class="badge bg-danger">Hiba</span>
+                      {% else %}
+                        <span class="badge bg-warning text-dark">Folyamatban</span>
+                      {% endif %}
                     </td>
                     <td>{{ job.created_at|date:"Y.m.d H:i" }}</td>
-                    <td>
-                        {% if job.result %}
-                            <a href="/media/sample_analysis.pdf" target="_blank" class="btn btn-sm btn-outline-secondary">
-                                <i class="fas fa-file-pdf me-1"></i> PDF megtekintése
-                            </a>
-                        {% else %}
-                            <span class="text-muted small">–</span>
-                        {% endif %}
+                    <td class="result-cell">
+                      {% if job.result %}
+                        {{ job.result.overall_rating|default:"–" }}
+                      {% else %}
+                        <span class="text-muted">–</span>
+                      {% endif %}
                     </td>
-                </tr>
+                    <td class="text-center pdf-cell">
+                      {% if job.status == "completed" and job.result.report_pdf_url %}
+                        <a href="{{ job.result.report_pdf_url }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                          <i class="bi bi-file-earmark-pdf-fill me-1"></i> Megnyitás
+                        </a>
+                      {% else %}
+                        <span class="text-muted small fst-italic">Nincs riport</span>
+                      {% endif %}
+                    </td>
+                  </tr>
                 {% endfor %}
-            </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <p class="text-muted fst-italic">Még nem történt elemzés.</p>
+        {% endif %}
+      </div>
     </div>
-    {% else %}
-    <div class="alert alert-info text-center mt-4">
-        <i class="fas fa-info-circle me-2"></i> Nincs még feltöltött elemzésed.
-    </div>
-    {% endif %}
+  </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+<!-- 🔁 Automatikus státuszfrissítés -->
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    console.log("🏋️‍♀️ Athlete Diagnostics Dashboard ready");
+document.addEventListener("DOMContentLoaded", () => {
+  const refreshInterval = 30000; // 30 másodperc
+
+  async function refreshJobStatuses() {
+    const rows = document.querySelectorAll("#jobs-table tbody tr");
+    for (const row of rows) {
+      const jobId = row.dataset.jobId;
+      if (!jobId) continue;
+
+      try {
+        const res = await fetch(`/diagnostics/job_status/${jobId}/`);
+        if (!res.ok) continue;
+
+        const data = await res.json();
+        const statusCell = row.querySelector(".status-cell");
+        const resultCell = row.querySelector(".result-cell");
+        const pdfCell = row.querySelector(".pdf-cell");
+
+        if (data.status === "completed") {
+          statusCell.innerHTML = `<span class="badge bg-success">Kész</span>`;
+          resultCell.innerHTML = data.result?.overall_rating || "–";
+          if (data.result?.report_pdf_url) {
+            pdfCell.innerHTML = `<a href="${data.result.report_pdf_url}" target="_blank" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Megnyitás</a>`;
+          }
+        } else if (data.status === "failed") {
+          statusCell.innerHTML = `<span class="badge bg-danger">Hiba</span>`;
+        } else {
+          statusCell.innerHTML = `<span class="badge bg-warning text-dark">Folyamatban</span>`;
+        }
+      } catch (err) {
+        console.warn("Nem sikerült frissíteni a státuszt:", err);
+      }
+    }
+  }
+
+  setInterval(refreshJobStatuses, refreshInterval);
 });
 </script>
 {% endblock %}
