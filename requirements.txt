@@ -33,3 +33,4 @@ numpy
 xlsxwriter
 openpyxl
 django-widget-tweaks
+weasyprint

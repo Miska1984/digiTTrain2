@@ -171,7 +171,7 @@ class InvoiceRequest(models.Model):
         settings.AUTH_USER_MODEL, 
         on_delete=models.PROTECT, 
         related_name='credit_target_invoices',
-        verbose_name="Cél felhasználó (aki kapja a Creditet)"
+        verbose_name="Jóváírás Személye"
     )
 
     # Számlázási adatok
