@@ -1,7 +1,7 @@
 {
   "name": "digiTTrain Django",
   "dockerComposeFile": ["docker-compose.yml"],
-  "service": "app",
+  "service": "django-app",
   "workspaceFolder": "/workspace",
   "customizations": {
     "vscode": {
