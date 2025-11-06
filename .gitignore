@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 .env
 .env.yaml
+gcp_service_account.json
 
 # Docker
 .dockerignore
@@ -23,3 +24,4 @@ env/
 /static_collected/
 /analysis_output/
 /tmp/
+
