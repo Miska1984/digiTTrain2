@@ -1,87 +1,89 @@
-# Használjunk hivatalos Python image-t
+# ----------------------------
+# 📦 Alap image
+# ----------------------------
 FROM python:3.12-slim
 
-# Munkakönyvtár
+ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # ----------------------------
-# 🧩 Rendszerszintű függőségek telepítése (WeasyPrint, Node.js/Tailwind)
-# A függőségeket egyetlen RUN parancsban telepítjük a rétegek számának csökkentése érdekében.
+# 🧩 Rendszerfüggőségek (WeasyPrint + OpenCV + Node.js)
 # ----------------------------
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    pkg-config \
+    cmake \
+    git \
+    wget \
+    ffmpeg \
     libmariadb-dev-compat \
     libffi-dev \
-    # WeasyPrint/Cairo/Pango függőségek
+    # 🧾 WeasyPrint + Cairo függőségek
     libcairo2 \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
-    libgdk-pixbuf-2.0-0 \  
+    libgdk-pixbuf-2.0-0 \
     libgobject-2.0-0 \
-    libjpeg-dev \
-    zlib1g-dev \
-    pkg-config \
-    pango1.0-tools \
     libpangocairo-1.0-0 \
     shared-mime-info \
-    # Node.js (a Tailwind buildeléshez)
-    nodejs \
-    npm \
-    # Tisztítás
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
+    pango1.0-tools \
+    libsm6 libxext6 libxrender-dev \
+    libgl1 \
+    curl && \
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 # ----------------------------
-# 📦 Python és Node.js függőségek telepítése
+# 📦 Python + Node függőségek
 # ----------------------------
-
-# Függőségek és fájlok másolása
-COPY requirements.txt .
-COPY package.json .
+COPY requirements.txt ./
+COPY package.json ./
 COPY tailwind.config.js ./
 COPY static/src/input.css ./static/src/
 
-# Python függőségek telepítése
 RUN pip install --no-cache-dir -r requirements.txt
-
-# Node.js függőségek telepítése
 RUN npm install
 
-# Tailwind CSS buildelése
+# ----------------------------
+# 🎨 Tailwind CSS build
+# ----------------------------
 RUN mkdir -p ./static/dist && \
     npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
 
-# A többi alkalmazásfájl bemásolása
+# ----------------------------
+# 📁 Projektfájlok
+# ----------------------------
 COPY . .
 
-# ----------------------------
-# ⚙️ Környezeti Beállítások (Cloud Run / Django)
-# ----------------------------
 
-# Környezeti változók (egyszeri beállítás)
-ENV PYTHONUNBUFFERED=1
-ENV ENVIRONMENT="production"
+RUN if [ -f assets/pose_landmarker_full.task ]; then echo "MediaPipe assets found."; else echo "WARNING: MediaPipe asset not found in assets/pose_landmarker_full.task" && exit 1; fi
+
+# ----------------------------
+# ⚙️ Django környezet
+# ----------------------------
+ENV ENVIRONMENT=production
 ENV PYTHONPATH=/app
+ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 ENV PORT=8080
-ENV DJANGO_SETTINGS_MODULE="digiTTrain.settings"
 
-# BUILD MODE beállítás a collectstatic-hoz (helyi storage használata build közben)
+# ----------------------------
+# 🧱 Statikus és média fájlok
+# ----------------------------
 ENV BUILD_MODE=true
-# Statikus fájlok összegyűjtése (build közben helyi storage-ba)
 RUN python manage.py collectstatic --no-input --verbosity=2 --settings=digiTTrain.settings
-# BUILD MODE kikapcsolása runtime-hoz (GCS használata)
 ENV BUILD_MODE=false
 
-
-# Mappajogok beállítása (jó gyakorlat a biztonságos futtatáshoz)
 RUN mkdir -p /app/media_root /app/staticfiles_temp && \
     chown -R www-data:www-data /app/media_root /app/staticfiles_temp && \
     chmod -R 775 /app/media_root /app/staticfiles_temp
 
 # ----------------------------
+# 👤 Felhasználó beállítása
+# ----------------------------
+# Fontos, hogy ne root-ként fusson a konténer.
+USER www-data
+
+# ----------------------------
 # ▶️ Indítás
 # ----------------------------
-
-# A Gunicorn indítja a Django appot
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "digiTTrain.wsgi:application"]

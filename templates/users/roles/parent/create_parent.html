@@ -72,14 +72,34 @@
         <button type="submit" class="btn btn-primary">Mentés</button>
     </form>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     let clubField = document.getElementById("id_club");
     let sportField = document.getElementById("id_sport");
     let coachField = document.getElementById("id_coach");
     
-    // ... a JavaScript kód változatlan ...
+    // Frissítési függvény, amit mindkét helyről hívunk
+    function updateCoaches() {
+        let clubId = clubField.value;
+        let sportId = sportField.value;
+        coachField.innerHTML = "<option value=''>Válassz edzőt...</option>";
+        
+        if (clubId && sportId) {
+            // ELLENŐRIZZE EZT AZ ÚTVONALAT!
+            fetch(`/users/roles/parent/get_coaches_by_club_and_sport/?club_id=${clubId}&sport_id=${sportId}`)
+            .then(response => response.json())
+            .then(data => {
+                data.coaches.forEach(coach => {
+                    let option = new Option(coach.name, coach.id);
+                    coachField.add(option);
+                });
+            });
+        }
+    }
+    
     // Klub változás → sportokat frissít
     clubField.addEventListener("change", function() {
         let clubId = this.value;
@@ -94,27 +114,24 @@ document.addEventListener("DOMContentLoaded", function() {
                     let option = new Option(sport.name, sport.id);
                     sportField.add(option);
                 });
+                
+                // Ha volt korábban kiválasztott sport, frissítjük az edzőket
+                if (sportField.value) {
+                    sportField.dispatchEvent(new Event('change'));
+                }
             });
         }
     });
     
-    // Sport változás → edzőket frissít
-    sportField.addEventListener("change", function() {
-        let clubId = clubField.value;
-        let sportId = this.value;
-        coachField.innerHTML = "<option value=''>Válassz edzőt...</option>";
-        
-        if (clubId && sportId) {
-            fetch(`/users/roles/parent/get_coaches_by_club_and_sport/?club_id=${clubId}&sport_id=${sportId}`)
-            .then(response => response.json())
-            .then(data => {
-                data.coaches.forEach(coach => {
-                    let option = new Option(coach.name, coach.id);
-                    coachField.add(option);
-                });
-            });
-        }
-    });
+    // Sport változás → edzőket frissít (Használjuk a fenti updateCoaches függvényt)
+    sportField.addEventListener("change", updateCoaches);
+    
+    // 💥 ÚJ KÓD: Kezdeti állapot kezelése
+    // Ez a blokk indítja be a láncot a lapbetöltéskor (Club -> Sport -> Coach)
+    if (clubField.value) {
+        // Ha a Club mező már ki van töltve, futtassuk le a Club frissítő logikáját (ami behívja a Sport frissítést is).
+        clubField.dispatchEvent(new Event('change'));
+    }
 });
 </script>
 {% endblock %}

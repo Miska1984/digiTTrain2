@@ -1,50 +1,72 @@
 # diagnostics/forms.py
+
 from django import forms
 
-class GeneralDiagnosticUploadForm(forms.Form):
+# ----------------------------------------------------
+# 1. Testtartás Elemzés Űrlap
+# ----------------------------------------------------
+class PostureDiagnosticUploadForm(forms.Form):
     """
-    Videófeltöltő űrlap az általános (gépi látás) elemzéshez.
+    Videófeltöltő űrlap a Testtartás Elemzéshez.
     """
     video = forms.FileField(
-        label="Videó feltöltése",
-        help_text="Töltsd fel a teljes alakos, jól megvilágított videót (MP4 formátumban).",
+        label="Testtartás videó feltöltése",
+        help_text="Töltsd fel a teljes alakos, szemből (frontális) felvett videót (MP4).",
         widget=forms.ClearableFileInput(attrs={
             'class': 'form-control',
             'accept': 'video/mp4'
         })
     )
 
-    notes = forms.CharField(
-        label="Megjegyzés (opcionális)",
-        required=False,
-        widget=forms.Textarea(attrs={
-            'class': 'form-control',
-            'rows': 3,
-            'placeholder': 'Ha van külön megjegyzésed a videóval kapcsolatban, ide írhatod.'
-        })
-    )
 
-class GeneralDiagnosticUploadForm(forms.Form):
+
+# ----------------------------------------------------
+# 2. Guggolás Elemzés Űrlap
+# ----------------------------------------------------
+class SquatDiagnosticUploadForm(forms.Form):
     """
-    Videófeltöltő űrlap az általános (gépi látás) elemzéshez.
+    Videófeltöltő űrlap a Guggolás Elemzéshez.
     """
     video = forms.FileField(
-        label="Videó feltöltése",
-        help_text="Töltsd fel a teljes alakos, jól megvilágított videót (MP4 formátumban).",
+        label="Guggolás videó feltöltése",
+        help_text="Töltsd fel az oldalnézetből (profilból) felvett, 3-5 ismétlést tartalmazó videót (MP4).",
         widget=forms.ClearableFileInput(attrs={
             'class': 'form-control',
             'accept': 'video/mp4'
         })
     )
 
-    notes = forms.CharField(
-        label="Megjegyzés (opcionális)",
-        required=False,
-        widget=forms.Textarea(attrs={
+
+
+# ----------------------------------------------------
+# 3. Vállkörzés Elemzés Űrlap
+# ----------------------------------------------------
+class ShoulderCircumductionUploadForm(forms.Form):
+    """
+    Videófeltöltő űrlap a Vállkörzés Elemzéshez.
+    """
+    video = forms.FileField(
+        label="Vállkörzés videó feltöltése",
+        help_text="Töltsd fel a frontális nézetből (szemből) felvett videót (MP4).",
+        widget=forms.ClearableFileInput(attrs={
             'class': 'form-control',
-            'rows': 3,
-            'placeholder': 'Ha van külön megjegyzésed a videóval kapcsolatban, ide írhatod.'
+            'accept': 'video/mp4'
         })
     )
 
-    
+class VerticalJumpDiagnosticUploadForm(forms.Form):
+    """
+    Form a Helyből Magassági Ugrás elemzéshez. Csak a megjegyzést kezeli.
+    """
+    notes = forms.CharField(
+        label='Megjegyzés (opcionális)',
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 3})
+    )
+    # A video_url mezőt NEM definiáljuk itt, mivel azt a JS küldi a POST kérés body-jában.
+
+    # ❗ Fontos: ez a mező a JS-ből jön, a view-nak kell kezelnie a POST request-ből
+    video_url = forms.CharField(required=False, widget=forms.HiddenInput) 
+
+    # Hozzáadhatunk egy job_type mezőt is rejtett beviteli mezőként a view kényelme érdekében, 
+    # de a _process_video_upload segédfüggvény ezt már kezeli.

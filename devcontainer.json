@@ -1,14 +1,24 @@
 {
-  "name": "digiTTrain Django",
+  "name": "digiTTrain Django Dev",
   "dockerComposeFile": ["docker-compose.yml"],
   "service": "django-app",
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/app",
   "customizations": {
     "vscode": {
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.autoImportCompletions": true,
+        "python.formatting.provider": "black",
+        "python.linting.enabled": true,
+        "python.linting.mypyEnabled": true
+      },
       "extensions": [
         "ms-python.python",
-        "ms-azuretools.vscode-docker"
+        "ms-python.black-formatter",
+        "ms-azuretools.vscode-docker",
+        "esbenp.prettier-vscode"
       ]
     }
-  }
+  },
+  "remoteUser": "root"
 }

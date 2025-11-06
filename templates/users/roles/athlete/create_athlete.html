@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
 
-
 {% block content %}
 <div class="container mt-4">
     <h2>Sportoló szerepkör igénylése</h2>
@@ -18,19 +17,19 @@
         {% endif %}
         {% csrf_token %}
         <div class="mb-3">
-            <label for="club-select" class="form-label">Egyesület</label>
+            <label for="id_club" class="form-label">Egyesület</label>
             {{ form.club }}
         </div>
         <div class="mb-3">
-            <label for="sport-select" class="form-label">Sportág</label>
+            <label for="id_sport" class="form-label">Sportág</label>
             {{ form.sport }}
         </div>
         <div class="mb-3">
-            <label for="coach-select" class="form-label">Edző</label>
+            <label for="id_coach" class="form-label">Edző</label>
             {{ form.coach }}
         </div>
         <div class="mb-3" id="parent-field" {% if not kiskoru %}style="display: none;"{% endif %}>
-            <label for="parent-select" class="form-label">Szülő</label>
+            <label for="id_parent" class="form-label">Szülő</label>
             {{ form.parent }}
         </div>
         <div class="mb-3">
@@ -41,84 +40,152 @@
     </form>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script>
-$(document).ready(function(){
-    // A kiskorúsági állapotot a Django template-ből kapjuk meg
-    const isUnderage = "{{ kiskoru|yesno:'true,false' }}" === "true";
 
+{% endblock %}
+
+
+
+{% block extra_js %}
+
+<script>
+$(document).ready(function() {
+    console.log("🧩 JS inicializálva (athlete page).");
+
+    // Ezzel logoljuk, hogy mikor melyik AJAX kérés indul
+    $(document).ajaxSend(function(event, xhr, settings) {
+        console.log("➡️ AJAX INDULT:", settings.url, " PARAMS:", settings.data);
+    });
+
+    // És ha bármelyik hibát dob:
+    $(document).ajaxError(function(event, xhr, settings, thrownError) {
+        console.error("💥 AJAX HIBA!", settings.url, "STATUS:", xhr.status, "RESPONSE:", xhr.responseText);
+    });
+});
+
+$(document).ready(function(){
+    // Kezdeti értékek mentése, hogy az űrlap újratöltésekor visszaálljanak (validációs hiba esetén)
+    const isUnderage = "{{ kiskoru|yesno:'true,false' }}" === "true";
+    const initialClubId = $("#id_club").val();
+    const initialSportId = $("#id_sport").val();
+    const initialCoachId = $("#id_coach").val();
+    const initialParentId = $("#id_parent").val(); 
+    
     // Kezdetben elrejtjük a szülő mezőt, ha a felhasználó nagykorú
     if (!isUnderage) {
         $("#parent-field").hide();
     }
 
-    $("#club-select").change(function(){
-        let clubId = $(this).val();
-        // Minden függőlegest ürítünk
-        $("#sport-select").empty().append('<option value="">Válassz sportágat</option>');
-        $("#coach-select").empty().append('<option value="">Válassz edzőt</option>');
-        $("#parent-select").empty().append('<option value="">Válassz szülőt</option>');
+    // -------------------------------------------------------------
+    // FÜGGVÉNYEK: AZ ADATOK ASZINKRON BETÖLTÉSÉRE
+    // -------------------------------------------------------------
+
+    function loadSports(clubId, initialSport = null, initialCoach = null, initialParent = null) {
+        $("#id_sport").empty().append('<option value="">Válassz sportágat</option>');
+        $("#id_coach").empty().append('<option value="">Válassz edzőt</option>');
+        $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
         
-        // Elrejtjük a szülő mezőt, ha nagykorú
-        if (!isUnderage) {
-            $("#parent-field").hide();
+        // ❌ A kritikus pont: Ha a Club ID hiányzik, azonnal visszatérünk
+        if (!clubId) { 
+            console.log("❌ loadSports leállt: Nincs Club ID.");
+            return;
         }
 
-        if(clubId){
-            $.get("{% url 'users:get_sports_by_club' %}", {club_id: clubId}, function(data){
-                let sportSelect = $("#sport-select");
-                data.forEach(function(item){
-                    sportSelect.append(`<option value="${item.id}">${item.name}</option>`);
-                });
+        console.log(`✅ loadSports indult Club ID: ${clubId}`);
+
+        $.get("{% url 'users:get_sports_by_club' %}", {club_id: clubId}, function(data){
+            let sportSelect = $("#id_sport");
+            data.forEach(function(item){
+                sportSelect.append(`<option value="${item.id}">${item.name}</option>`);
             });
-        }
-    });
+            
+            if (initialSport) {
+                sportSelect.val(initialSport);
+            }
+            
+            if (sportSelect.val()) {
+                loadCoaches(clubId, sportSelect.val(), initialCoach, initialParent);
+            }
+        }).fail(function(xhr, status, error) {
+            // A saját AJAX kérésünk hibája! Ha itt 400-at lát, a Django adta vissza.
+            console.error("AJAX HIBA: Hiba a sportágak betöltésekor. Status:", xhr.status, "Error:", error, "Válasz:", xhr.responseText);
+        });
+    }
 
-    $("#sport-select").change(function(){
-        let clubId = $("#club-select").val();
-        let sportId = $(this).val();
-        // Edző és szülő mezők ürítése
-        $("#coach-select").empty().append('<option value="">Válassz edzőt</option>');
-        $("#parent-select").empty().append('<option value="">Válassz szülőt</option>');
+    function loadCoaches(clubId, sportId, initialCoach = null, initialParent = null) {
+        $("#id_coach").empty().append('<option value="">Válassz edzőt</option>');
+        $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
+        if (!clubId || !sportId) { return; }
         
-        if(clubId && sportId){
-            $.get("{% url 'users:get_coaches_by_club_and_sport' %}", {club_id: clubId, sport_id: sportId}, function(data){
-                let coachSelect = $("#coach-select");
-                data.forEach(function(item){
-                    coachSelect.append(`<option value="${item.id}">${item.name}</option>`);
-                });
+        console.log(`✅ loadCoaches indult Club ID: ${clubId}, Sport ID: ${sportId}`);
+        
+        $.get("{% url 'users:get_coaches_by_club_and_sport' %}", {club_id: clubId, sport_id: sportId}, function(data){
+            let coachSelect = $("#id_coach");
+            data.forEach(function(item){
+                coachSelect.append(`<option value="${item.id}">${item.name}</option>`);
             });
-        }
-    });
+            if (initialCoach) { coachSelect.val(initialCoach); }
+            if (coachSelect.val()) { loadParents(clubId, sportId, coachSelect.val(), initialParent); }
+        }).fail(function(xhr, status, error) {
+            console.error("AJAX HIBA: Hiba az edzők betöltésekor. Status:", xhr.status, "Error:", error, "Válasz:", xhr.responseText);
+        });
+    }
 
-    $("#coach-select").change(function(){
-        let clubId = $("#club-select").val();
-        let sportId = $("#sport-select").val();
-        let coachId = $(this).val();
-        
-        // Szülő mező ürítése
-        $("#parent-select").empty().append('<option value="">Válassz szülőt</option>');
-
-        // Ha kiskorú, akkor a szülő mező mindig látható, és töltjük az adatokat
+    function loadParents(clubId, sportId, coachId, initialParent = null) {
+        $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
         if(isUnderage) {
             $("#parent-field").show();
-            if(clubId && sportId && coachId) {
-                $.get("{% url 'users:get_parents_by_club_sport_and_coach' %}", {
-                    club_id: clubId,
-                    sport_id: sportId,
-                    coach_id: coachId
-                }, function(data){
-                    let parentSelect = $("#parent-select");
-                    data.forEach(function(item){
-                        parentSelect.append(`<option value="${item.id}">${item.name}</option>`);
-                    });
+            if (!clubId || !sportId || !coachId) { return; }
+            
+            console.log(`✅ loadParents indult Club ID: ${clubId}, Sport ID: ${sportId}, Coach ID: ${coachId}`);
+            
+            $.get("{% url 'users:get_parents_by_club_sport_and_coach' %}", {
+                club_id: clubId, sport_id: sportId, coach_id: coachId
+            }, function(data){
+                let parentSelect = $("#id_parent");
+                data.forEach(function(item){
+                    parentSelect.append(`<option value="${item.id}">${item.name}</option>`);
                 });
-            }
+                if (initialParent) { parentSelect.val(initialParent); }
+            }).fail(function(xhr, status, error) {
+                console.error("AJAX HIBA: Hiba a szülők betöltésekor. Status:", xhr.status, "Error:", error, "Válasz:", xhr.responseText);
+            });
         } else {
-            // Ha nagykorú, a szülő mező továbbra is rejtett
             $("#parent-field").hide();
         }
+    }
+
+
+    // -------------------------------------------------------------
+    // EVENT LISTENEREK
+    // -------------------------------------------------------------
+    
+    $("#id_club").change(function(){
+        let selectedClubId = $(this).val(); 
+        // 🎯 DEBUG KULCSLÉPÉS: Ellenőrizze ezt a sort a böngésző konzolban!
+        console.log("Club Change Event: Selected Club ID:", selectedClubId); 
+        loadSports(selectedClubId);
     });
+
+    $("#id_sport").change(function(){
+        let clubId = $("#id_club").val();
+        loadCoaches(clubId, $(this).val());
+    });
+
+    $("#id_coach").change(function(){
+        let clubId = $("#id_club").val();
+        let sportId = $("#id_sport").val();
+        loadParents(clubId, sportId, $(this).val());
+    });
+    
+    // -------------------------------------------------------------
+    // KEZDETI ÁLLAPOT INDÍTÁSA
+    // -------------------------------------------------------------
+
+    if (initialClubId) {
+        console.log("ℹ️ Kezdeti lánc indítása (újratöltés) miatt.");
+        loadSports(initialClubId, initialSportId, initialCoachId, initialParentId);
+    }
 });
 </script>
+
 {% endblock %}

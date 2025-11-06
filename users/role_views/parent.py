@@ -89,26 +89,47 @@ def get_sports_by_club(request):
 @login_required
 def get_coaches_by_club_and_sport(request):
     """Adott klub + sport alapján visszaadja az edzőket"""
+    
+    # 1. Lekérdezi a bemeneti ID-ket
     club_id = request.GET.get("club_id")
     sport_id = request.GET.get("sport_id")
 
+    # Ha hiányzik valamelyik ID, térjünk vissza azonnal
+    if not club_id or not sport_id:
+        return JsonResponse({'coaches': []})
+    
+    # 2. Keresd meg a Role ID-t
+    try:
+        # A Role név alapján keressük meg az objektumot.
+        coach_role = Role.objects.get(name="Edző")
+    except Role.DoesNotExist:
+        return JsonResponse({'coaches': []})
+
+    # 3. Futtassa a szigorú szűrést
     coaches = User.objects.filter(
-        user_roles__role__name="Edző",
+        # Szerepkör: Edző (Role ID 2)
+        user_roles__role=coach_role, 
+        # Club ID 1
         user_roles__club_id=club_id,
+        # Sport ID 2
         user_roles__sport_id=sport_id,
+        # Státusz: Jóváhagyott
         user_roles__status="approved",
     ).distinct().select_related('profile')
 
+    # 4. JSON adatok előkészítése
     coaches_data = []
     for coach in coaches:
         full_name = coach.username
-        # Ha van kereszt- és vezetéknév, használd azt a teljes név helyett
+        # Teljes név generálása
         if hasattr(coach, 'profile') and coach.profile.first_name and coach.profile.last_name:
             full_name = f"{coach.profile.first_name} {coach.profile.last_name}"
         
         coaches_data.append({
             'id': coach.id,
-            'name': full_name,  # Ezt a nevet fogja a JavaScript használni
+            'name': full_name,
         })
 
+    # 5. Válasz visszaadása
     return JsonResponse({'coaches': coaches_data})
+

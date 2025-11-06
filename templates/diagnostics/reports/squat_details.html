@@ -1,0 +1,47 @@
+<h3>Guggolás Elemzés (Oldalnézet)</h3>
+
+<div class="metric">
+    Összesített Pontszám: <strong>{{ analysis.overall_squat_score|floatformat:1 }}</strong> / 100
+</div>
+<div class="metric">
+    ROM (Guggolási Mélység): <strong>{{ analysis.rom_score|floatformat:1 }}</strong> / 100
+</div>
+<div class="metric">
+    Törzs Stabilitás: <strong>{{ analysis.trunk_score|floatformat:1 }}</strong> / 100
+</div>
+<div class="metric">
+    Mozgáskontroll: <strong>{{ analysis.control_score|floatformat:1 }}</strong> / 100
+</div>
+<hr>
+<div class="metric">
+    Min. Térdszög: <strong>{{ analysis.min_knee_angle|floatformat:1 }}°</strong>
+</div>
+<div class="metric">
+    Max. Törzsdőlés: <strong>{{ analysis.max_trunk_lean|floatformat:1 }}°</strong>
+</div>
+
+{% if analysis.knee_snapshot_url %}
+<div class="snapshot">
+    <h4>Kulcspillanat – Legmélyebb Guggolás</h4>
+    <img src="{{ analysis.knee_snapshot_url }}" alt="Knee Snapshot">
+</div>
+{% endif %}
+
+{% if analysis.trunk_snapshot_url %}
+<div class="snapshot">
+    <h4>Kulcspillanat – Legnagyobb Törzsdőlés</h4>
+    <img src="{{ analysis.trunk_snapshot_url }}" alt="Trunk Snapshot">
+</div>
+{% endif %}
+
+<h4>Visszajelzések</h4>
+{% if analysis.feedback %}
+<ul>
+    {% for msg in analysis.feedback %}
+        <li>{{ msg }}</li>
+    {% endfor %}
+</ul>
+{% else %}
+<p>Kiváló teljesítmény, nincs szükség korrekcióra.</p>
+{% endif %}
+

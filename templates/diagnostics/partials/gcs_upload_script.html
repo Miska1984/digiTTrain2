@@ -1,0 +1,130 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('upload-form');
+    const fileInput = uploadForm.querySelector('input[type="file"]');
+    const notesInput = uploadForm.querySelector('#id_notes'); // Feltételezve, hogy az ID így néz ki
+    const submitButton = document.getElementById('submit-button');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const statusMessage = document.getElementById('status-message');
+
+    const signUrl = uploadForm.getAttribute('data-sign-url');
+    const redirectUrl = uploadForm.getAttribute('data-redirect-url');
+
+    // ----------------------------------------------------
+    // Segédfüggvény: Feltöltés indítása és GCS feltöltés
+    // ----------------------------------------------------
+    uploadForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        if (fileInput.files.length === 0) {
+            alert("Kérjük, válasszon ki egy videót a feltöltéshez.");
+            return;
+        }
+        
+        const file = fileInput.files[0];
+
+        // UI elemek frissítése
+        submitButton.disabled = true;
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '0%';
+        statusMessage.className = 'mt-2 text-info small';
+        statusMessage.textContent = `1/2: GCS aláírt URL kérése (${file.name})...`;
+
+        try {
+            // A. 1. LÉPÉS: Aláírt URL kérése a Django-tól (GCS-sign endpoint)
+            const signResponse = await fetch(signUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    filename: file.name,
+                    content_type: file.type
+                })
+            });
+
+            if (!signResponse.ok) {
+                const errorData = await signResponse.json();
+                throw new Error(`Hiba az aláírt URL kérésében: ${errorData.error || signResponse.statusText}`);
+            }
+
+            const signData = await signResponse.json();
+            const signedUrl = signData.signed_url;
+            const videoUrlInGCS = signData.public_url; // Az a teljes URL, amit a Django DB-be mentünk
+
+            statusMessage.textContent = `2/2: Videó feltöltése Google Cloud Storage-ra...`;
+            
+            // B. 2. LÉPÉS: Videó feltöltése közvetlenül a GCS-re (PUT metódus)
+            const gcsUploadResponse = await fetch(signedUrl, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': file.type
+                },
+                // Feltöltés előrehaladásának követése (opcionális, de ajánlott)
+                onprogress: (event) => {
+                    if (event.lengthComputable) {
+                        const percent = Math.round((event.loaded / event.total) * 100);
+                        progressBar.style.width = percent + '%';
+                        statusMessage.textContent = `2/2: Videó feltöltése Google Cloud Storage-ra (${percent}%)...`;
+                    }
+                }
+            });
+            
+            if (!gcsUploadResponse.ok) {
+                 // GCS hiba, pl. jogosultság vagy fájlméret
+                throw new Error(`GCS Feltöltési Hiba. Státusz: ${gcsUploadResponse.status} (${gcsUploadResponse.statusText})`);
+            }
+            
+            progressBar.style.width = '100%';
+            statusMessage.textContent = `✅ Feltöltés kész. Job indítása...`;
+
+
+            // C. 3. LÉPÉS: Vissza POST a Django-hoz, a Job elindításához
+            const finalPostResponse = await fetch(uploadForm.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    video_url: videoUrlInGCS, // Ez a GCS elérési útja!
+                    notes: notesInput.value
+                })
+            });
+
+            if (!finalPostResponse.ok) {
+                 // Django hiba (pl. validáció vagy Job mentés)
+                 const errorText = await finalPostResponse.text();
+                 throw new Error(`Django hiba a Job indításakor. Státusz: ${finalPostResponse.status}. Válasz: ${errorText.substring(0, 100)}...`);
+            }
+            
+            const finalData = await finalPostResponse.json();
+
+            if (!finalData.success) {
+                throw new Error(finalData.error || 'Hiba a Job létrehozásakor/indításakor.');
+            }
+
+            // Siker esetén átirányítás
+            statusMessage.className = 'mt-2 text-success';
+            statusMessage.textContent = `🎉 Sikeres: Job #${finalData.job_id} elindult. Átirányítás...`;
+            const finalRedirectUrl = `${redirectUrl}?highlight_job=${finalData.job_id}`;
+
+            setTimeout(() => {
+                window.location.href = finalRedirectUrl; 
+            }, 1000);
+
+        } catch (error) {
+            console.error(error);
+            submitButton.disabled = false;
+            progressBar.style.width = '0%';
+            progressContainer.style.display = 'none';
+            statusMessage.className = 'mt-2 text-danger';
+            statusMessage.textContent = `❌ Hiba a feltöltéskor: ${error.message}`;
+            alert(`Feltöltési hiba: ${error.message}`);
+        }
+    });
+});
+</script>

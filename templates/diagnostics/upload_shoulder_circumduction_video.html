@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Vállkörzés elemzés – Videó feltöltése{% endblock %}
+
+{% block content %}
+<div class="container mx-auto py-6">
+    <h2 class="text-2xl font-semibold mb-4">🤸 Vállkörzés Értékelés – Videó feltöltése</h2>
+    <p class="text-muted mb-4">Kérjük, töltsön fel egy videót, ami **5 kör előre és 5 kör hátra** vállkörzést mutat be. A kamera legyen **szemből (frontális) elhelyezve**, hogy mindkét kar és a teljes törzs látható legyen.</p>
+
+    {# GCS feltöltési logika: Eltávolítva az enctype="multipart/form-data" és hozzáadva a data-attribútumok a JS-nek #}
+    <form 
+        id="upload-form" 
+        method="post" 
+        novalidate
+        data-sign-url="{% url 'diagnostics:get_signed_gcs_url' %}"
+        data-redirect-url="{% url 'diagnostics:athlete_diagnostics' %}"
+    >
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="id_video" class="form-label">Videó feltöltése</label>
+            <input type="file" name="video" accept="video/mp4" class="form-control" required>
+            <div class="form-text">MP4 formátum, a teljes mozgás és a törzs látható legyen szemből.</div>
+        </div>
+
+        <div class="mb-3">
+            <label for="id_notes" class="form-label">Megjegyzés (opcionális)</label>
+            <textarea name="notes" id="id_notes" class="form-control" rows="3"></textarea>
+            <div class="form-text">Bármilyen fontos információ a mozgásról vagy esetleges fájdalomról.</div>
+        </div>
+
+        <button type="submit" id="submit-button" class="btn btn-primary mt-3">
+            <span id="submit-spinner" class="spinner-border spinner-border-sm me-2 d-none" role="status" aria-hidden="true"></span>
+            Videó feltöltése és elemzés indítása
+        </button>
+
+        <div id="progress-container" class="mt-4" style="display:none;">
+            <div class="progress" role="progressbar" aria-label="Feltöltés folyamatban" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div id="progress-bar" class="progress-bar" style="width: 0%"></div>
+            </div>
+        </div>
+        <div id="status-message" class="mt-2 text-info"></div>
+
+    </form>
+</div>
+
+{# A JavaScript kód a GCS feltöltéshez és a Job indításához (Ahogy a squat_video.html-ben is van) #}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('upload-form');
+        const submitButton = document.getElementById('submit-button');
+        const submitSpinner = document.getElementById('submit-spinner');
+        const progressBar = document.getElementById('progress-bar');
+        const progressContainer = document.getElementById('progress-container');
+        const statusMessage = document.getElementById('status-message');
+
+        const signUrl = form.getAttribute('data-sign-url');
+        const redirectUrl = form.getAttribute('data-redirect-url');
+        const finalJobUrl = "{% url 'diagnostics:upload_shoulder_circumduction_video' %}"; 
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+            
+            const fileInput = form.querySelector('input[name="video"]');
+            const videoFile = fileInput.files[0];
+            const notes = form.querySelector('textarea[name="notes"]').value;
+
+            if (!videoFile) {
+                statusMessage.className = 'mt-2 text-danger';
+                statusMessage.textContent = 'Kérjük, válasszon egy MP4 videófájlt!';
+                return;
+            }
+
+            // UI frissítése
+            submitButton.disabled = true;
+            submitSpinner.classList.remove('d-none');
+            progressContainer.style.display = 'block';
+            statusMessage.className = 'mt-2 text-info';
+            statusMessage.textContent = '1/2: Feltöltési adatok kérése...';
+            progressBar.style.width = '0%';
+            
+            
+            try {
+                // 1. Aláírt GCS URL kérése (GCS sign URL)
+                const signResponse = await fetch(signUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        filename: videoFile.name,
+                        content_type: videoFile.type || 'video/mp4',
+                    }),
+                });
+                
+                const signData = await signResponse.json();
+                
+                if (!signData.success) {
+                    throw new Error(signData.error || 'Hiba az aláírt URL kérésekor.');
+                }
+                
+                const gcsSignedUrl = signData.signed_url;
+                
+                // ❗ KRITIKUS JAVÍTÁS: A gcs_signer.py a 'file_name' kulcsot használja a GCS elérési útra
+                const gcs_object_key = signData.file_name; 
+                
+                statusMessage.textContent = '2/2: Videó feltöltése a Google Cloud Storage-ra...';
+
+                // 2. Fájl feltöltése közvetlenül a GCS-re a kapott URL-lel (PUT kérés)
+                const uploadResponse = await fetch(gcsSignedUrl, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': videoFile.type || 'video/mp4',
+                    },
+                    body: videoFile,
+                });
+
+                if (!uploadResponse.ok) {
+                    const errorText = await uploadResponse.text();
+                    throw new Error(`GCS feltöltési hiba (HTTP ${uploadResponse.status}).`);
+                }
+
+                statusMessage.textContent = '2/2: Feltöltve. Job indítása a szerveren...';
+
+                // 3. Jelzés a Django szervernek a feltöltés sikerességéről és a Job indításáról
+                const finalPostResponse = await fetch(finalJobUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        video_url: gcs_object_key, // ⬅️ Ezt használja a Django Job!
+                        notes: notes,
+                    }),
+                });
+
+                let finalData;
+                const errorText = await finalPostResponse.text(); 
+                
+                try {
+                    finalData = JSON.parse(errorText);
+                } catch (e) {
+                     throw new Error(`Kritikus Django hiba a Job indításakor. Státusz: ${finalPostResponse.status}. Válasz: ${errorText.substring(0, 100)}...`);
+                }
+
+                if (!finalData.success) {
+                    throw new Error(finalData.error || 'Hiba a Job létrehozásakor/indításakor (a szerver JSON-t adott, de success: false).');
+                }
+
+                // Siker esetén átirányítás
+                statusMessage.className = 'mt-2 text-success';
+                statusMessage.textContent = `🎉 Sikeres: Job #${finalData.job_id} elindult. Átirányítás...`;
+                
+                const finalRedirectUrl = `${redirectUrl}?highlight_job=${finalData.job_id}`;
+                
+                setTimeout(() => {
+                    window.location.href = finalRedirectUrl;
+                }, 1000);
+
+
+            } catch (error) {
+                console.error(error);
+                submitButton.disabled = false;
+                submitSpinner.classList.add('d-none');
+                progressBar.style.width = '0%';
+                progressContainer.style.display = 'none';
+                statusMessage.className = 'mt-2 text-danger';
+                statusMessage.textContent = `❌ Hiba a feltöltéskor: ${error.message}`;
+                
+            }
+        });
+    });
+</script>
+{% endblock %}

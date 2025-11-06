@@ -1,0 +1,14 @@
+[
+    {
+        "origin": ["https://turbo-space-computing-machine-5ggpxw6j7qvg34gr-8000.app.github.dev"],
+        "method": ["GET", "POST", "PUT", "DELETE"],
+        "responseHeader": ["Content-Type"],
+        "maxAgeSeconds": 3600
+    },
+    {
+        "origin": ["*"],
+        "method": ["GET"],
+        "responseHeader": ["Content-Type"],
+        "maxAgeSeconds": 3600
+    }
+]

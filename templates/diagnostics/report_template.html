@@ -2,248 +2,89 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-  <meta charset="UTF-8">
-  <title>digiTrain – Elemzési Riport</title>
-  <style>
-    @page {
-      size: A4;
-      margin: 2cm;
-    }
-    
-    body {
-      font-family: "DejaVu Sans", Arial, sans-serif;
-      color: #333;
-      background: #f9f9fb;
-      margin: 0;
-      padding: 20px;
-    }
-    
-    header {
-      border-bottom: 3px solid #007bff;
-      padding-bottom: 10px;
-      margin-bottom: 30px;
-      overflow: hidden;
-    }
-    
-    header h1 {
-      font-size: 24px;
-      color: #007bff;
-      margin: 0;
-      float: left;
-    }
-    
-    header img {
-      height: 40px;
-      float: right;
-    }
-    
-    h2 {
-      font-size: 18px;
-      border-left: 4px solid #007bff;
-      padding-left: 10px;
-      color: #222;
-      margin-top: 30px;
-      margin-bottom: 15px;
-    }
-    
-    .section {
-      margin-bottom: 30px;
-      page-break-inside: avoid;
-    }
-    
-    .metric {
-      margin: 10px 0;
-      font-size: 14px;
-      overflow: hidden;
-    }
-    
-    .metric strong {
-      float: left;
-    }
-    
-    .metric span {
-      float: right;
-    }
-
-    .progress-container {
-      width: 100%;
-      background-color: #eee;
-      border-radius: 4px;
-      height: 10px;
-      margin-top: 5px;
-      clear: both;
-    }
-    
-    .progress-bar {
-      height: 10px;
-      border-radius: 4px;
-      min-width: 2%;
-    }
-    
-    .good { 
-      background-color: #28a745;
-    }
-    
-    .medium { 
-      background-color: #ffc107;
-    }
-    
-    .poor { 
-      background-color: #dc3545;
-    }
-
-    .summary-box {
-      background: #fff;
-      border-radius: 8px;
-      padding: 15px;
-      border: 1px solid #e0e0e0;
-      margin-bottom: 20px;
-    }
-    
-    .summary-box p {
-      margin: 8px 0;
-    }
-
-    .grid {
-      width: 100%;
-      margin-bottom: 20px;
-    }
-    
-    .grid-item {
-      width: 48%;
-      float: left;
-      margin-right: 4%;
-    }
-    
-    .grid-item:nth-child(2n) {
-      margin-right: 0;
-    }
-    
-    .clear {
-      clear: both;
-    }
-
-    .overall-rating {
-      text-align: center;
-      padding: 20px;
-      font-size: 24px;
-      color: white;
-      border-radius: 8px;
-      background: #007bff;
-      font-weight: bold;
-    }
-
-    .pose-section {
-      text-align: center;
-      margin-top: 20px;
-      page-break-inside: avoid;
-    }
-    
-    .pose-section img {
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      width: 45%;
-      margin: 0 2%;
-      max-width: 300px;
-    }
-
-    footer {
-      margin-top: 40px;
-      border-top: 1px solid #ccc;
-      padding-top: 10px;
-      text-align: center;
-      font-size: 11px;
-      color: #777;
-      clear: both;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>{{ user.get_full_name|default:user.username }} - Elemzési Riport</title>
+    <style>
+        body {
+            font-family: "Helvetica", sans-serif;
+            color: #222;
+            margin: 2cm;
+        }
+        h1, h2, h3 {
+            color: #003366;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            width: 120px;
+            margin-bottom: 10px;
+        }
+        .section-title {
+            color: #0d6efd;
+            border-bottom: 2px solid #0d6efd;
+            margin-top: 30px;
+            padding-bottom: 4px;
+        }
+        .metric {
+            padding: 5px 0;
+            margin: 3px 0;
+        }
+        .snapshot {
+            text-align: center;
+            margin: 10px 0;
+        }
+        .snapshot img {
+            max-width: 80%;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .footer {
+            text-align: center;
+            font-size: 0.8em;
+            color: #777;
+            margin-top: 30px;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <h1>digiTrain – Elemzési Riport</h1>
-    {% if logo_url %}
-    <img src="{% static 'images/your_logo.png' %}" alt="Logo">
+
+    <div class="header">
+        {% if company_logo %}
+            <img src="{{ company_logo }}" alt="Logo" class="logo">
+        {% endif %}
+        <h1>
+            {% if job.job_type == 'SQUAT_ASSESSMENT' %}
+                Guggolás Biomechanikai Elemzés
+            {% elif job.job_type == 'POSTURE_ASSESSMENT' %}
+                Testtartás és Szimmetria Elemzés
+            {% else %}
+                Általános Diagnosztikai Jelentés
+            {% endif %}
+        </h1>
+        <p>{{ company_name }} | {{ report_date|date:"Y.m.d H:i" }}</p>
+    </div>
+
+    <h2 class="section-title">Felhasználói adatok</h2>
+    <p><strong>Név:</strong> {{ user.get_full_name|default:user.username }}</p>
+    <p><strong>Sportág:</strong> {{ job.sport_type }}</p>
+    <p><strong>Videó:</strong> <a href="{{ job.video_url }}" target="_blank">{{ job.video_url }}</a></p>
+
+    <h2 class="section-title">Elemzési eredmények</h2>
+    {{ section_html|safe }}
+
+    {% if analysis.skeleton_video_url %}
+    <h2 class="section-title">Vizuális elemzés</h2>
+    <p style="text-align:center;">
+        <a href="{{ analysis.skeleton_video_url }}" target="_blank">🎥 Mozgásváz Videó megtekintése</a>
+    </p>
     {% endif %}
-  </header>
 
-  <div class="section">
-    <h2>Sportoló és elemzés adatai</h2>
-    <div class="summary-box">
-      <p><strong>Sportoló:</strong> {{ user.profile.first_name }} {{ user.profile.last_name }}</p>
-      <p><strong>Dátum:</strong> {{ timestamp }}</p>
-      <p><strong>Elemzés típusa:</strong> {{ report_data.type|title|default:"Általános diagnosztika" }}</p>
+    <div class="footer">
+        Ezt a riportot a DigiTTrain rendszer automatikusan generálta.<br>
+        Elemzési motor: <strong>MediaPipe Pose</strong>
     </div>
-  </div>
 
-  <div class="section">
-    <h2>Eredmények és kiértékelés</h2>
-    <div class="grid">
-      <div class="grid-item">
-        <div class="summary-box">
-          <div class="metric">
-            <strong>Gerinc dőlés:</strong> 
-            <span>{{ report_data.spine_tilt|default:"0" }}°</span>
-          </div>
-          <div class="progress-container">
-            <div class="progress-bar {% if report_data.spine_tilt < 2 %}good{% elif report_data.spine_tilt < 4 %}medium{% else %}poor{% endif %}" style="width: {{ report_data.spine_tilt|default:0 }}%;"></div>
-          </div>
-
-          <div class="metric">
-            <strong>Vállszög:</strong> 
-            <span>{{ report_data.shoulder_angle|default:"0" }}°</span>
-          </div>
-          <div class="progress-container">
-            <div class="progress-bar {% if report_data.shoulder_angle < 2 %}good{% elif report_data.shoulder_angle < 4 %}medium{% else %}poor{% endif %}" style="width: {{ report_data.shoulder_angle|default:"0" }}%;"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid-item">
-        <div class="summary-box">
-          <div class="metric">
-            <strong>Csípő aszimmetria:</strong> 
-            <span>{{ report_data.hip_asymmetry|default:"0" }}°</span>
-          </div>
-          <div class="progress-container">
-            <div class="progress-bar {% if report_data.hip_asymmetry < 1.5 %}good{% elif report_data.hip_asymmetry < 2.5 %}medium{% else %}poor{% endif %}" style="width: {{ report_data.hip_asymmetry|default:"0" }}%;"></div>
-          </div>
-
-          <div class="metric">
-            <strong>Egyensúly pontszám:</strong> 
-            <span>{{ report_data.balance_score|default:"0" }}/100</span>
-          </div>
-          <div class="progress-container">
-            <div class="progress-bar {% if report_data.balance_score >= 80 %}good{% elif report_data.balance_score >= 60 %}medium{% else %}poor{% endif %}" style="width: {{ report_data.balance_score|default:"0" }}%;"></div>
-          </div>
-        </div>
-      </div>
-      
-      <div class="clear"></div>
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Összesített értékelés</h2>
-    <div class="overall-rating">
-      {{ report_data.overall_rating|default:"Nincs értékelés" }}
-    </div>
-  </div>
-
-  <div class="section">
-    <h2>Pózvizualizáció</h2>
-    <div class="pose-section">
-      {% if report_data.pose_image_front %}
-      <img src="{{ report_data.pose_image_front }}" alt="Elölnézeti csontváz">
-      {% endif %}
-      {% if report_data.pose_image_side %}
-      <img src="{{ report_data.pose_image_side }}" alt="Oldalnézeti csontváz">
-      {% endif %}
-    </div>
-  </div>
-
-  <footer>
-    Ez a riport automatikusan generálódott a digiTrain rendszerében.<br>
-    © 2025 digiTrain Sport Diagnosztikai Platform
-  </footer>
 </body>
 </html>

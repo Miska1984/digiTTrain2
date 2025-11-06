@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Antropometria Kalibráció – Fényképek feltöltése{% endblock %}
+
+{% block content %}
+<div class="container mx-auto py-6">
+    <h2 class="text-2xl font-semibold mb-4">📷 Antropometria Kalibráció</h2>
+    <p class="text-muted mb-4">
+        A pontos test-szegmenshosszak becsléséhez kérjük, töltse fel a <strong>szemből</strong> és <strong>oldalról</strong> készült fényképeket, 
+        és adja meg a pontos, ellenőrzött testmagasságát méterben.
+    </p>
+
+    <div class="alert alert-info" role="alert">
+        <h4 class="alert-heading">Fényképezési útmutató (A pontos eredményért)</h4>
+        <ul>
+            <li><strong>Testtartás:</strong> Álljon egyenesen, zárt lábakkal, karok enyhén elállva a törzstől.</li>
+            <li><strong>Háttér:</strong> Egyszínű, kontrasztos háttér (pl. fehér fal) a jobb detektálás érdekében.</li>
+            <li><strong>Lábak:</strong> Meztelen láb vagy zokni (cipő nélkül!).</li>
+            <li><strong>Ruházat:</strong> Szűk ruházat (pl. sportmelltartó, rövidnadrág), hogy a kontúrok láthatóak legyenek.</li>
+        </ul>
+    </div>
+
+    <form 
+        id="upload-form" 
+        method="post" 
+        novalidate
+        data-sign-url="{% url 'diagnostics:get_signed_gcs_url' %}"
+        data-job-url="{% url 'diagnostics_jobs:calibrate_anthropometry_with_photos' %}"
+        data-redirect-url="{% url 'diagnostics:athlete_diagnostics' %}"
+    >
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="id_height_m" class="form-label fw-bold">Testmagasság (méterben)</label>
+            <input 
+                type="number" 
+                step="0.01" 
+                min="0.5" 
+                max="2.5" 
+                name="user_stated_height_m" 
+                id="id_height_m" 
+                class="form-control" 
+                placeholder="Pl. 1.75" 
+                required
+            >
+            <div class="form-text">Adja meg a pontos testmagasságát méterben (pl. 1.75).</div>
+        </div>
+        
+        <div class="mb-3">
+            <label for="id_front_photo" class="form-label fw-bold">1. Fénykép (Szemből)</label>
+            <input 
+                type="file" 
+                name="front_photo" 
+                accept="image/jpeg,image/png" 
+                class="form-control" 
+                id="id_front_photo"
+                required
+            >
+            <div class="form-text">JPEG vagy PNG formátum.</div>
+            <div id="preview-front" class="mt-2"></div>
+        </div>
+
+        <div class="mb-3">
+            <label for="id_side_photo" class="form-label fw-bold">2. Fénykép (Oldalról)</label>
+            <input 
+                type="file" 
+                name="side_photo" 
+                accept="image/jpeg,image/png" 
+                class="form-control" 
+                id="id_side_photo"
+                required
+            >
+            <div class="form-text">JPEG vagy PNG formátum.</div>
+            <div id="preview-side" class="mt-2"></div>
+        </div>
+
+        <button 
+            type="submit" 
+            id="submit-button" 
+            class="btn btn-primary w-100 mt-4"
+        >
+            🚀 Feltöltés és Kalibráció indítása
+        </button>
+
+        <div id="progress-container" class="mt-3" style="display: none;">
+            <div class="progress" role="progressbar" aria-label="Feltöltés" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+            </div>
+        </div>
+        <p id="status-message" class="mt-2 text-info"></p>
+
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('upload-form');
+    const submitButton = document.getElementById('submit-button');
+    const progressBar = document.getElementById('progress-bar');
+    const progressContainer = document.getElementById('progress-container');
+    const statusMessage = document.getElementById('status-message');
+    
+    const previewFront = document.getElementById('preview-front');
+    const previewSide = document.getElementById('preview-side');
+    
+    // Adat attribútumok
+    const SIGN_URL = form.dataset.signUrl;
+    const JOB_URL = form.dataset.jobUrl;
+    const REDIRECT_URL = form.dataset.redirectUrl;
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // 💡 SEGÉDFÜGGVÉNY: előnézet megjelenítése
+    function showPreview(file, container) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            container.innerHTML = `
+                <img src="${e.target.result}" 
+                     alt="Előnézet" 
+                     class="rounded shadow-sm border"
+                     style="max-width: 240px; max-height: 320px; object-fit: cover;">
+            `;
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Fájlválasztás események
+    document.getElementById('id_front_photo').addEventListener('change', e => {
+        if (e.target.files[0]) showPreview(e.target.files[0], previewFront);
+    });
+    document.getElementById('id_side_photo').addEventListener('change', e => {
+        if (e.target.files[0]) showPreview(e.target.files[0], previewSide);
+    });
+    
+    // 💡 SEGÉDFÜGGVÉNY: Fájl feltöltése GCS-re
+    async function _uploadFileToGCS(file, fileType) {
+        statusMessage.textContent = `⏳ Lekérem a GCS feltöltési URL-t (${fileType})...`;
+        
+        const signResponse = await fetch(SIGN_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                file_name: file.name,
+                content_type: file.type,
+                is_photo: true, 
+                job_type: 'ANTHROPOMETRY_CALIBRATION',
+                photo_type: fileType 
+            }),
+        });
+        
+        if (!signResponse.ok) {
+            const errorData = await signResponse.json();
+            throw new Error(`Nem sikerült aláírt URL-t kérni: ${errorData.error || signResponse.statusText}`);
+        }
+        
+        const signData = await signResponse.json();
+        // ✅ FIX: a backend `file_name` mezőt ad vissza
+        const signed_url = signData.signed_url;
+        const gcs_object_name = signData.file_name;
+
+        statusMessage.textContent = `📤 Feltöltöm a fájlt: ${file.name} (${fileType})...`;
+        
+        const gcsUploadResponse = await fetch(signed_url, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': file.type, 
+                'Content-Length': file.size,
+            },
+            body: file,
+        });
+
+        if (!gcsUploadResponse.ok) {
+            const errorText = await gcsUploadResponse.text();
+            throw new Error(`GCS feltöltési hiba. Státusz: ${gcsUploadResponse.status}. Válasz: ${errorText.substring(0, 100)}...`);
+        }
+
+        statusMessage.textContent = `✅ Sikeres feltöltés: ${file.name} (${fileType}).`;
+        return gcs_object_name;
+    }
+
+    // 👑 FŐ SUBMIT KEZELŐ
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const frontPhotoFile = document.getElementById('id_front_photo').files[0];
+        const sidePhotoFile = document.getElementById('id_side_photo').files[0];
+        const statedHeight = document.getElementById('id_height_m').value;
+
+        if (!frontPhotoFile || !sidePhotoFile || !statedHeight) {
+            statusMessage.className = 'mt-2 text-danger';
+            statusMessage.textContent = '❌ Kérjük, töltse ki az összes mezőt!';
+            return;
+        }
+
+        submitButton.disabled = true;
+        progressContainer.style.display = 'block';
+        progressBar.style.width = '10%'; 
+        statusMessage.className = 'mt-2 text-info';
+        statusMessage.textContent = 'Indítás: Képek előkészítése és feltöltése...';
+
+        try {
+            progressBar.style.width = '20%';
+            const frontGcsKey = await _uploadFileToGCS(frontPhotoFile, 'szemből');
+            
+            progressBar.style.width = '50%';
+            const sideGcsKey = await _uploadFileToGCS(sidePhotoFile, 'oldalról');
+            
+            progressBar.style.width = '80%';
+            statusMessage.textContent = '🚀 Kalibrációs Job indítása...';
+
+            console.log("DEBUG: frontGcsKey:", frontGcsKey);
+            console.log("DEBUG: sideGcsKey:", sideGcsKey);
+            
+            const finalPostResponse = await fetch(JOB_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken,
+                },
+                body: JSON.stringify({
+                    front_photo_url: frontGcsKey, 
+                    side_photo_url: sideGcsKey,
+                    user_stated_height_m: statedHeight,
+                    job_type: 'ANTHROPOMETRY_CALIBRATION' 
+                }),
+            });
+
+            const finalData = await finalPostResponse.json();
+
+            if (!finalData.success) {
+                throw new Error(finalData.error || 'Hiba a Job létrehozásakor/indításakor.');
+            }
+
+            progressBar.style.width = '100%';
+            statusMessage.className = 'mt-2 text-success';
+            statusMessage.textContent = `🎉 Sikeres: Kalibrációs Job #${finalData.job_id} elindult. Átirányítás...`;
+            
+            setTimeout(() => {
+                window.location.href = `${REDIRECT_URL}?highlight_job=${finalData.job_id}`;
+            }, 1500);
+
+        } catch (error) {
+            console.error(error);
+            submitButton.disabled = false;
+            progressBar.style.width = '0%';
+            progressContainer.style.display = 'none';
+            statusMessage.className = 'mt-2 text-danger';
+            statusMessage.textContent = `❌ Hiba a feltöltéskor: ${error.message}`;
+        }
+    });
+});
+</script>
+{% endblock %}

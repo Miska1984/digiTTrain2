@@ -63,6 +63,8 @@ INSTALLED_APPS = [
     'diagnostics',
     'diagnostics_jobs',
     'billing',
+    'general_results',
+
 ]
 
 MIDDLEWARE = [
@@ -76,8 +78,8 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware", # 💥 MUST BE HERE!
     "django.contrib.messages.middleware.MessageMiddleware",
     
-    # 3. CUSTOM LOGIKA (CSAK A HITELÉSÍTÉS UTÁN FUT!)
-    'billing.middleware.InterstitialAdMiddleware', # 💥 A CUSTOM MIDDLEWARE HELYE
+    # 3. CUSTOM LOGIKA (CSAK A HITELÉSÍTÉS UTÁN FUT! CSAK ADDIG LEGYEN KI KOMMENTELVE AMEDDIG A FEJELSZTÉS MEGY)
+    # 'billing.middleware.InterstitialAdMiddleware', # 💥 A CUSTOM MIDDLEWARE HELYE
     
     # 4. UTOLSÓ BIZTONSÁGI INTÉZKEDÉSEK
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -220,3 +222,45 @@ SERVER_EMAIL = EMAIL_HOST_USER
 
 FORM_RENDERER = 'django.forms.renderers.DjangoTemplates'
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'diagnostics': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}
+
+# Fájl feltöltés handlers
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+]
+
+# Fájl feltöltés beállítások
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600
+DATA_UPLOAD_MAX_MEMORY_SIZE = 104857600
+
+# Temp könyvtár Docker-ben
+FILE_UPLOAD_TEMP_DIR = '/tmp'
+
+# CSRF trusted origins (ha Docker containerben fut)
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+]
+
+# 🔹 ÚJ: Request body max size
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000

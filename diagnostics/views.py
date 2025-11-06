@@ -1,27 +1,94 @@
 import json
 import os
-from django.http import JsonResponse
+import logging
+from django.http import JsonResponse, HttpResponseBadRequest, Http404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils import timezone
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+
 from diagnostics_jobs.models import DiagnosticJob
 from diagnostics_jobs.cloud_tasks import enqueue_diagnostic_job
 from diagnostics_jobs.tasks import run_diagnostic_job
-from .forms import GeneralDiagnosticUploadForm
 from billing.models import UserCreditBalance, AlgorithmPricing, TransactionHistory
-
+from .utils.gcs_signer import generate_signed_upload_url
+from django.views.decorators.http import require_http_methods
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
+# ----------------------------------------------------------------
+# 🆕 ÚJ: GCS Signed URL generálása a feltöltéshez
+# ----------------------------------------------------------------
+
+@login_required
+@csrf_exempt 
+@require_http_methods(["POST"])
+def get_signed_gcs_url(request):
+    """
+    Visszaad egy aláírt URL-t a fájl GCS-re való feltöltéséhez a frontend számára.
+    """
+    if request.method != "POST":
+        return JsonResponse({"success": False, "error": "Érvénytelen metódus."}, status=405)
+
+    # 1. JSON adatok feldolgozása (hibatűrő módon)
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        logger.error("GCS Sign hiba: Hibás JSON formátum vagy kódolás.")
+        return JsonResponse({"success": False, "error": "Hibás JSON formátum."}, status=400)
+
+    # 2. PARAMÉTEREK KINYERÉSE ÉS TISZTÍTÁSA
+    # ❗ KRITIKUS JAVÍTÁS: A frontend 'filename'-t küld, ezt használjuk, és eltávolítjuk a szóközöket.
+    file_name_from_squat = data.get('file_name')
+    file_name_from_other = data.get('filename')
+    
+    filename = str(file_name_from_squat or file_name_from_other or '').strip()
+    content_type = str(data.get('content_type', '')).strip()
+    
+    logger.info(f"GCS Sign kérés adatok (tisztított): {{'filename': '{filename}', 'content_type': '{content_type}'}}")
+    
+    # 3. Kötelező adatok ellenőrzése
+    if len(filename) == 0 or len(content_type) == 0:
+        logger.error(f"GCS Sign hiba: Hiányzó vagy üres paraméterek. Bejövő adatok: {data}")
+        return JsonResponse({"success": False, "error": "Hiányzó fájlnév vagy tartalomtípus."}, status=400)
+
+    # 4. Aláírt URL generálása
+    try:
+        # A generate_signed_upload_url függvény a 'filename'-t várja (ami az útvonal kulcsa lesz)
+        result = generate_signed_upload_url(filename, content_type)
+        
+        if not result.get("success"):
+            logger.error(f"GCS aláírás hiba a signer-ben: {result.get('error')}")
+            # Belső szerverhiba esetén 500-at adunk vissza
+            return JsonResponse({"success": False, "error": result.get("error", "Ismeretlen GCS hiba a signerben.")}, status=500)
+
+        # Sikeres válasz
+        logger.info(f"✅ GCS aláírt URL sikeresen generálva: {result.get('file_name')}")
+        return JsonResponse(result, status=200)
+
+    except FileNotFoundError as e:
+        logger.error(f"GCS Service Account hiba: {e}")
+        return JsonResponse({"success": False, "error": "Konfigurációs hiba: GCS kulcs nem található."}, status=500)
+    except Exception as e:
+        logger.critical(f"❌ Váratlan hiba a GCS aláíráskor: {e}", exc_info=True)
+        return JsonResponse({"success": False, "error": "Váratlan szerverhiba az URL generálásakor."}, status=500)
+
+
+# -----------------------------------------------------------
+# API VÉGPONTOK (Változatlanul hagyva a kényelem kedvéért)
+# -----------------------------------------------------------
 
 @csrf_exempt
 def create_diagnostic_job(request):
+    """
+    Új diagnosztikai feladat létrehozása (API hívás).
+    """
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "POST metódus szükséges"}, status=405)
 
@@ -30,309 +97,209 @@ def create_diagnostic_job(request):
         user_id = data.get("user_id")
         sport_type = data.get("sport_type", "general")
         job_type = data.get("job_type", "general")
-        video_url = data.get("video_url")
+        gcs_object_key = data.get("video_url")
+        notes = data.get("notes", "")
+        
+        # Kredit ellenőrzés és levonás logikája (a feltöltött fájl alapján)
+        try:
+            # Feltételezés: Az AlgorithmPricing modell tartalmazza a get_from_job_type metódust
+            algorithm_type = AlgorithmPricing.AlgorithmType.get_from_job_type(job_type)
+            pricing = AlgorithmPricing.objects.get(algorithm_type=algorithm_type)
+            
+            if not UserCreditBalance.can_afford(user_id, pricing.credit_cost):
+                return JsonResponse({"success": False, "error": "Nincs elegendő kredit a művelethez."}, status=403)
+                
+            UserCreditBalance.deduct_credits(user_id, pricing.credit_cost, f"{job_type} elemzés indítása")
 
-        if not all([user_id, sport_type, job_type, video_url]):
-            return JsonResponse({"success": False, "error": "Hiányzó kötelező mező"}, status=400)
+        except AlgorithmPricing.DoesNotExist:
+            # Ezt a birkózás miatt vesszük ki, ha a sport_type nincs még beárazva
+            if job_type == DiagnosticJob.JobType.WRESTLING:
+                 pass # Ideiglenes engedélyezés, amíg a birkózás kikerül a rendszerből
+            else:
+                return JsonResponse({"success": False, "error": f"Nincs ár beállítva az algoritmushoz: {job_type}"}, status=400)
+        except Exception as e:
+            return JsonResponse({"success": False, "error": f"Hiba a kredit kezelés során: {str(e)}"}, status=500)
+
+        if not all([user_id, sport_type, job_type, gcs_object_key]): # 🟢 Ellenőrzés gcs_object_key-re
+            return JsonResponse({"success": False, "error": "Hiányzó kötelező mező (user_id, job_type, video_url/GCS kulcs)"}, status=400)
 
         user = User.objects.filter(id=user_id).first()
         if not user:
-            return JsonResponse({"success": False, "error": "Felhasználó nem található"}, status=404)
+             return JsonResponse({"success": False, "error": "A felhasználó nem található"}, status=404)
 
-        # 🔹 1. Lekérjük az algoritmus árát (pl. sport_type alapján)
-        algorithm_key = f"{sport_type}_{job_type}".lower()
-        algo_price = AlgorithmPricing.objects.filter(algorithm_name=algorithm_key).first()
-        cost = algo_price.cost_per_run if algo_price else 10  # fallback 10 credit
+        GCS_BUCKET_NAME = settings.GS_BUCKET_NAME
+        full_video_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{gcs_object_key}"
 
-        # 🔹 2. Ellenőrizzük a balance-ot
-        balance_obj, _ = UserCreditBalance.objects.get_or_create(user=user)
-        if balance_obj.balance_amount < cost:
-            return JsonResponse({
-                "success": False,
-                "error": f"Nincs elegendő Credit (szükséges: {cost}, elérhető: {balance_obj.balance_amount})"
-            }, status=403)
-
-        # 🔹 3. Lefoglaljuk a creditet
-        balance_obj.balance_amount -= cost
-        balance_obj.save(update_fields=["balance_amount"])
-
-        TransactionHistory.objects.create(
-            user=user,
-            transaction_type="ALGO_RUN",
-            amount=-cost,
-            description=f"Gépi látásos elemzés ({sport_type}) lefoglalva",
-            is_pending=True,
-        )
-
-        # 🔹 4. DiagnosticJob létrehozása
         job = DiagnosticJob.objects.create(
             user=user,
             sport_type=sport_type,
             job_type=job_type,
-            video_url=video_url,
+            video_url=full_video_url, # ⬅️ EZT AZ ABSZOLÚT URL-T KELL MENTENI!
+            notes=notes,
+            status=DiagnosticJob.JobStatus.PENDING,
         )
 
+        # Aszinkron task indítása
         try:
-            task_name = enqueue_diagnostic_job(job.id)
-            msg = f"Feladat ütemezve: {task_name}"
+            if settings.ENABLE_CLOUD_TASKS:
+                enqueue_diagnostic_job(job.id)
+            else:
+                run_diagnostic_job(job.id)
+
         except Exception as e:
-            msg = f"Helyi fejlesztés: Task nem ütemezhető ({e})"
+            job.mark_as_failed(f"Hiba az indításkor: {str(e)}")
+            return JsonResponse({"success": False, "error": f"Hiba a feladat indításakor: {str(e)}"}, status=500)
+
 
         return JsonResponse({
-            "success": True,
+            "success": True, 
+            "message": "A diagnosztikai feladat elküldve feldolgozásra.",
             "job_id": job.id,
             "status": job.status,
-            "video_url": job.video_url,
-            "message": msg,
-            "credit_reserved": cost,
-        })
+            "job_type": job.job_type,
+        }, status=201)
 
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "error": "Érvénytelen JSON formátum"}, status=400)
     except Exception as e:
-        return JsonResponse({"success": False, "error": str(e)}, status=500)
+        return JsonResponse({"success": False, "error": f"Ismeretlen hiba: {str(e)}"}, status=500)
+        
+# -----------------------------------------------------------
 
 @csrf_exempt
 def run_diagnostic_job_view(request):
-    """Cloud Task vagy lokális hívás a diagnosztikai job lefuttatására."""
+    """
+    HTTP hívás a job indításához (pl. Cloud Task-ból vagy lokális teszteléshez).
+    """
     if request.method != "POST":
-        return JsonResponse({"error": "POST required"}, status=405)
+        return HttpResponseBadRequest("Csak POST metódus engedélyezett.")
 
     try:
-        payload = json.loads(request.body)
-        job_id = payload.get("job_id")
+        data = json.loads(request.body)
+        job_id = data.get("job_id")
+        
         if not job_id:
-            return JsonResponse({"error": "Missing job_id"}, status=400)
+            return HttpResponseBadRequest("Hiányzó 'job_id' mező.")
 
-        # 🔹 1️⃣ Lekérjük a job-ot
-        job = DiagnosticJob.objects.get(id=job_id)
-        user = job.user
+        job = get_object_or_404(DiagnosticJob, id=job_id)
+        
+        run_diagnostic_job(job.id)
 
-        # 🔹 2️⃣ Megkeressük a PENDING credit tranzakciót ehhez a userhez
-        tx = TransactionHistory.objects.filter(
-            user=user,
-            transaction_type="ALGO_RUN",
-            is_pending=True
-        ).order_by('-timestamp').first()
-
-        # Ha nincs ilyen, az sem baj — csak logoljuk
-        if not tx:
-            print(f"[WARN] Nincs függő ALGO_RUN tranzakció a felhasználóhoz: {user}")
-
-        # 🔹 3️⃣ Lefuttatjuk az elemzést
-        try:
-            run_diagnostic_job(job_id)
-            job.refresh_from_db()
-
-            # 🔹 4️⃣ Ha sikeres, lezárjuk a tranzakciót
-            if tx:
-                tx.is_pending = False
-                tx.description += " ✅ Elemzés sikeresen befejezve"
-                tx.save(update_fields=["is_pending", "description"])
-
-            return JsonResponse({
-                "success": True,
-                "job_id": job.id,
-                "status": job.status,
-                "result": job.result
-            })
-
-        except Exception as e:
-            # 🔹 5️⃣ Ha az elemzés HIBÁS → credit visszatérítés
-            print(f"[ERROR] Elemzési hiba: {e}")
-
-            if tx:
-                # Visszaírjuk a felhasználó creditjét
-                balance, _ = UserCreditBalance.objects.get_or_create(user=user)
-                balance.balance_amount += abs(tx.amount)  # mivel amount negatív volt
-                balance.save(update_fields=["balance_amount"])
-
-                tx.is_pending = False
-                tx.description += f" ❌ Elemzés sikertelen, refundálva ({abs(tx.amount)} Cr)"
-                tx.amount = 0  # a refund után már ne legyen levonva
-                tx.save(update_fields=["is_pending", "description", "amount"])
-
-            job.status = "failed"
-            job.save(update_fields=["status"])
-
-            return JsonResponse({"error": str(e)}, status=500)
-
-    except DiagnosticJob.DoesNotExist:
-        return JsonResponse({"error": "Job not found"}, status=404)
+        return JsonResponse({"success": True, "message": f"Diagnostic Job #{job_id} elindítva."})
+    
+    except Http404: 
+        return JsonResponse({"success": False, "error": f"Diagnostic Job #{job_id} nem található."}, status=404)
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        return JsonResponse({"success": False, "error": f"Hiba a feladat futtatásakor: {str(e)}"}, status=500)
+        
+# -----------------------------------------------------------
 
-@csrf_exempt
+@login_required
 def job_status(request, job_id):
     """
-    Egy adott diagnosztikai feladat státuszának és eredményének lekérdezése.
+    Visszaadja egy diagnosztikai feladat aktuális állapotát (AJAX híváshoz).
     """
     try:
         job = DiagnosticJob.objects.get(id=job_id)
-        data = {
+        
+        # A felhasználói jogosultságok ellenőrzése (ha szükséges)
+        # ...
+
+        return JsonResponse({
             "job_id": job.id,
             "status": job.status,
-            "result": job.result or {},
+            "status_display": job.get_status_display(),
             "created_at": job.created_at,
+            "started_at": job.started_at,
             "completed_at": job.completed_at,
-        }
-        return JsonResponse(data, status=200)
+            "error_message": job.error_message,
+            "video_url": job.video_url,
+            "job_type": job.job_type,
+            "pdf_path": job.pdf_path, 
+            "result": job.result,
+        })
+
     except DiagnosticJob.DoesNotExist:
-        return JsonResponse({"error": "Job not found"}, status=404)
-    
-@csrf_exempt
+        return JsonResponse({"error": f"Diagnostic Job #{job_id} nem található."}, status=404)
+        
+# -----------------------------------------------------------
+
+@login_required
 def list_diagnostic_jobs(request):
     """
-    Összes diagnosztikai job lekérdezése (opcionálisan user_id szerint szűrve).
+    Az aktuális felhasználó vagy az általa edzett sportolók diagnosztikai feladatainak listája (JSON/AJAX).
     """
-    if request.method != "GET":
-        return JsonResponse({"error": "GET required"}, status=405)
+    # 💡 Ideális esetben a jogosultsági logika itt van
+    jobs = DiagnosticJob.objects.filter(user=request.user).order_by('-created_at')
 
-    user_id = request.GET.get("user_id")
+    data = [{
+        "id": job.id,
+        "created_at": job.created_at,
+        "job_type": job.get_job_type_display(),
+        "sport_type": job.sport_type,
+        "status": job.status,
+        "status_display": job.get_status_display(),
+        "pdf_path": job.pdf_path,
+        "result": job.result,
+        "notes": job.notes,
+    } for job in jobs]
 
-    jobs = DiagnosticJob.objects.all().order_by("-created_at")
-    if user_id:
-        jobs = jobs.filter(user_id=user_id)
+    return JsonResponse({"jobs": data})
 
-    data = {
-        "jobs": [
-            {
-                "id": j.id,
-                "user": j.user.username if j.user else None,
-                "sport_type": j.sport_type,
-                "job_type": j.job_type,
-                "status": j.status,
-                "created_at": j.created_at,
-                "completed_at": j.completed_at,
-            }
-            for j in jobs
-        ]
-    }
 
-    return JsonResponse(data, status=200)
+# -----------------------------------------------------------
+# FELHASZNÁLÓI INTERFÉSZ VIEWS
+# -----------------------------------------------------------
+
+# ❌ ELAVULT FELTÖLTŐ VIEWS (pl. upload_wrestling_video, upload_general_video) - TÖRÖLVE!
+# Ezek már átkerültek a dedikált fájlokba, mint a squat_posture_views.py.
+
 
 @login_required
 def diagnostics_dashboard(request):
-    user = request.user
-    jobs = DiagnosticJob.objects.filter(user=user).order_by('-created_at')
-
-    analyses = [
-        {"key": "posture", "title": "Teljes testtartás elemzés", "gif": "/static/diagnostics/gifs/posture.gif", "description": "A testtartás és gerinc szögének elemzése."},
-        {"key": "balance", "title": "Egyensúly és stabilitás teszt", "gif": "/static/diagnostics/gifs/balance.gif", "description": "Egyensúly középpont és stabilitás mérése."},
-        {"key": "squat", "title": "Guggolás mozgásanalízis", "gif": "/static/diagnostics/gifs/squat.gif", "description": "A térd és csípő szögek vizsgálata mozgás közben."},
-        {"key": "running", "title": "Futómozgás elemzés", "gif": "/static/diagnostics/gifs/running.gif", "description": "Lépéshossz, ritmus és szimmetria elemzése."},
-        {"key": "shoulder", "title": "Vállmobilitás és karstabilitás elemzés", "gif": "/static/diagnostics/gifs/shoulder.gif", "description": "A váll és könyök ízületek mozgásterjedelmének mérése."},
-    ]
-
-    return render(request, "diagnostics/athlete_diagnostics.html", {
-        "jobs": jobs,
-        "analyses": analyses,
+    """
+    A sportoló fő diagnosztikai felülete (UI).
+    """
+    # Lekérjük a bejelentkezett felhasználó összes diagnosztikai feladatát
+    job_list = DiagnosticJob.objects.filter(
+        user=request.user
+    ).order_by('-created_at')  # Legújabb legyen elől
+    
+    return render(request, 'diagnostics/athlete_diagnostics.html', {
+        'title': 'Sportoló Diagnosztikai Dashboard',
+        'job_list': job_list,  # ✅ EZ HIÁNYZOTT!
     })
 
-@login_required
-def upload_general_video(request):
-    """
-    Videó feltöltése általános (nem sportspecifikus) mozgáselemzéshez.
-    A fájl MEDIA_ROOT/videos/general_diagnostics/szimetria_videok/ alá kerül.
-    """
-    if request.method == "POST":
-        uploaded_file = request.FILES.get("video_file")
-        if not uploaded_file:
-            return render(request, "diagnostics/upload_instructions.html", {
-                "error": "Nem választottál ki videófájlt!",
-            })
-
-        user = request.user
-
-        # Mentési útvonal (local + GCS kompatibilis)
-        file_path = f"videos/general_diagnostics/szimetria_videok/{timezone.now().strftime('%Y%m%d_%H%M%S')}_{uploaded_file.name}"
-        saved_path = default_storage.save(file_path, ContentFile(uploaded_file.read()))
-
-        # Mentett videó abszolút URL
-        video_url = default_storage.url(saved_path)
-
-        # Új DiagnosticJob létrehozása
-        job = DiagnosticJob.objects.create(
-            user=user,
-            sport_type="general",
-            job_type="general",
-            video_url=video_url,
-        )
-
-        # Cloud Task ütemezés
-        try:
-            enqueue_diagnostic_job(job.id)
-        except Exception as e:
-            print(f"[DEBUG] Local dev: Task nem ütemezhető ({e})")
-
-        return render(request, "diagnostics/upload_instructions.html", {
-            "success": True,
-            "video_url": video_url,
-            "job_id": job.id,
-        })
-
-    return render(request, "diagnostics/upload_instructions.html")
+# -----------------------------------------------------------
 
 @login_required
-def upload_general_video(request):
+def sport_diagnostics_list(request):
     """
-    Általános elemzéshez videó feltöltése (gépi látás).
-    - Fejlesztési környezetben (Codespaces): automatikusan futtatja az elemzést.
-    - Production: csak ütemezett futtatás.
+    Listázza azokat a sportspecifikus elemzéseket, amelyekre a felhasználónak van jogosultsága.
     """
-    if request.method == "POST":
-        form = GeneralDiagnosticUploadForm(request.POST, request.FILES)
-        if form.is_valid():
-            video_file = form.cleaned_data['video']
-            notes = form.cleaned_data.get('notes', '')
-
-            # 📁 Mentési útvonal: media/videos/general_diagnostics/
-            upload_dir = os.path.join(settings.MEDIA_ROOT, "videos", "general_diagnostics")
-            os.makedirs(upload_dir, exist_ok=True)
-
-            file_path = os.path.join(upload_dir, video_file.name)
-            with open(file_path, 'wb+') as destination:
-                for chunk in video_file.chunks():
-                    destination.write(chunk)
-
-            # 🌐 Videó URL (media könyvtárból)
-            video_url = f"{settings.MEDIA_URL}videos/general_diagnostics/{video_file.name}"
-
-            # 🧩 DiagnosticJob létrehozása
-            job = DiagnosticJob.objects.create(
-                user=request.user,
-                sport_type="general",
-                job_type="general",
-                video_url=video_url,
-                status="pending",
-                result=None
-            )
-
-            messages.info(request, f"A videó feltöltése sikerült! Az elemzés előkészítés alatt...")
-
-            # ⚙️ Fejlesztési mód esetén futtassuk automatikusan
-            if settings.DEBUG:
-                try:
-                    messages.info(request, "Fejlesztői mód észlelve — az elemzés automatikusan indul.")
-                    run_diagnostic_job(job.id)
-                    job.refresh_from_db()
-
-                    if job.status == "completed":
-                        messages.success(request, f"Elemzés befejezve! Eredmény: {job.result or 'n/a'}")
-                    else:
-                        messages.warning(request, f"Elemzés folyamatban... (státusz: {job.status})")
-                except Exception as e:
-                    messages.error(request, f"Hiba történt az automatikus elemzés során: {e}")
-            else:
-                # Productionban csak ütemezés történne
-                messages.info(request, "Elemzés ütemezve, feldolgozás 1-5 órán belül várható.")
-
-            return redirect("diagnostics:athlete_diagnostics")
-
-    else:
-        form = GeneralDiagnosticUploadForm()
-
-    context = {
-        "form": form,
-        "page_title": "Általános elemzés – Videó feltöltése"
+    # ❌ TÖRÖLVE: 'wrestling' elemzés, mert ezt kivezettük
+    SPORT_ANALYSES = {
+        'football': {'name': 'Labdarúgás: Rúgástechnika', 'url_name': 'diagnostics:upload_football_kick_video', 'icon': '⚽', 'description': 'Rúgás biomechanikai elemzése, sérüléskockázat felmérése.'},
+        'handball': {'name': 'Kézilabda: Dobástechnika', 'url_name': 'diagnostics:upload_handball_throw_video', 'icon': '🤾', 'description': 'Vállmobilitás és dobómozgás láncának vizsgálata.'},
+        'judo': {'name': 'Judo: Eséstechnika', 'url_name': 'diagnostics:upload_judo_fall_video', 'icon': '🥋', 'description': 'Esés közbeni ízületi pozíciók és szimmetria elemzése.'},
     }
-    return render(request, "diagnostics/upload_general_video.html", context)
+    
+    sports_with_diagnostics = []
+    
+    user_roles = request.user.user_roles.filter(status='approved').select_related('sport').distinct()
+    
+    for role in user_roles:
+        if role.sport:
+            sport_slug = getattr(role.sport, 'slug', role.sport.name.lower().replace(' ', '_'))
+            
+            if sport_slug in SPORT_ANALYSES:
+                sports_with_diagnostics.append(SPORT_ANALYSES[sport_slug])
+
+    unique_sports = {s['url_name']: s for s in sports_with_diagnostics}.values()
+
+    return render(request, 'diagnostics/sport_diagnostics_list.html', {
+        'sports_with_diagnostics': unique_sports,
+        'title': 'Sportspecifikus Elemzések',
+    })
+
 

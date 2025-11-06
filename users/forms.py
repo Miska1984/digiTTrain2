@@ -203,31 +203,28 @@ class ParentRoleForm(forms.ModelForm):
                 ).distinct()
 
 class AthleteRoleForm(forms.ModelForm):
-    # A 'coach' mező most már a User modellre hivatkozik
     coach = forms.ModelChoiceField(
         queryset=User.objects.none(),
         label="Edző",
-        widget=forms.Select(attrs={"class": "form-select", "id": "coach-select"})
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_coach"})
     )
 
     class Meta:
         model = UserRole
         fields = ["club", "sport", "coach", "notes"]
         widgets = {
-            "club": forms.Select(attrs={"class": "form-select", "id": "club-select"}),
-            "sport": forms.Select(attrs={"class": "form-select", "id": "sport-select"}),
-            "notes": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "club": forms.Select(attrs={"class": "form-select", "id": "id_club"}),
+            "sport": forms.Select(attrs={"class": "form-select", "id": "id_sport"}),
+            "notes": forms.Textarea(attrs={"class": "form-control", "id": "id_notes", "rows": 3}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.fields["club"].queryset = Club.objects.filter(
             userrole__role__name="Egyesületi vezető",
             userrole__status="approved"
         ).distinct()
 
-        # A lekérdezés most a User modellt használja a UserRole helyett
         if self.is_bound:
             if self.data.get('club'):
                 self.fields['sport'].queryset = Sport.objects.filter(
@@ -243,13 +240,10 @@ class AthleteRoleForm(forms.ModelForm):
 
 
 class UnderageAthleteRoleForm(AthleteRoleForm):
-    """Sportoló (18 év alatti) űrlap"""
-
-    # A 'parent' mező most már a User modellre hivatkozik
     parent = forms.ModelChoiceField(
         queryset=User.objects.none(),
         label="Szülő",
-        widget=forms.Select(attrs={"class": "form-select", "id": "parent-select"})
+        widget=forms.Select(attrs={"class": "form-select", "id": "id_parent"})
     )
 
     class Meta(AthleteRoleForm.Meta):
@@ -257,7 +251,6 @@ class UnderageAthleteRoleForm(AthleteRoleForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         if self.is_bound:
             if self.data.get('club'):
                 self.fields['sport'].queryset = Sport.objects.filter(

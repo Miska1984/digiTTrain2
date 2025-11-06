@@ -11,7 +11,8 @@ except ImportError:
     timestamp_pb2 = None
 
 # Fejlesztői környezet jelölése
-LOCAL_DEV = os.getenv("ENVIRONMENT", "development") == "development"
+ENV = os.getenv("ENVIRONMENT", "development").lower()
+LOCAL_DEV = ENV in ["development", "dev", "local", "codespaces"]
 
 PROJECT_ID = os.getenv("GCP_PROJECT_ID", "digittrain-projekt")
 QUEUE_ID = os.getenv("GCLOUD_TASK_QUEUE", "diagnostic-job-queue")
@@ -28,10 +29,10 @@ def enqueue_diagnostic_job(job_id: int):
     """
     # --- FEJLESZTŐI / LOKÁLIS FUTÁS ---
     if tasks_v2 is None or LOCAL_DEV:
-        print(f"⚙️ Local fallback: running job {job_id} synchronously.")
+        print(f"⚙️ [LOCAL] Enqueuing job {job_id} to Celery (ENV={ENV})")
         from diagnostics_jobs.tasks import run_diagnostic_job
-        run_diagnostic_job(job_id)
-        print(f"✅ Local diagnostic job {job_id} completed successfully.")
+        run_diagnostic_job.delay(job_id)
+        print(f"✅ [LOCAL] Celery diagnostic job {job_id} enqueued successfully.")
         return
 
     # --- FELHŐS FUTÁS ---

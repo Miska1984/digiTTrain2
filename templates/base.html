@@ -111,7 +111,12 @@
                             </a>
                         </li>
                         <li>
-                            <a class="dropdown-item" href="{% url 'diagnostics:upload_general_video' %}">
+                            <a class="dropdown-item" href="{% url 'diagnostics_jobs:anthropometry_profile_view' %}">
+                                <i class="fas fa-ruler-combined"></i> Antropometriai Profil
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="#">
                                 <i class="fas fa-video me-2 text-success"></i> Általános elemzés (videó feltöltése lenne de már nem kell)
                             </a>
                         </li>
@@ -179,11 +184,18 @@
     <p class="text-center text-muted">© 2025 digiTTrain</p>
 </footer>
 
-<!-- JS -->
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 {% block extra_js %}{% endblock %}
+
+<script>
+  console.log("📦 Base.html betöltve – most jQuery-teszt jön...");
+  if (typeof $ !== "undefined") {
+      console.log("✅ jQuery működik! Verzió:", $.fn.jquery);
+  } else {
+      console.error("❌ jQuery NEM működik! A $ változó undefined!");
+  }
+</script>
 </body>
 </html>

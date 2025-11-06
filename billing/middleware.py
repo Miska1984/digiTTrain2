@@ -30,8 +30,11 @@ class InterstitialAdMiddleware(MiddlewareMixin):
         '/logout/',         # Esetleges más logout útvonal
         '/login/',          # Esetleges más login útvonal (biztos, ami biztos)
         '/register/',       # Esetleges más regisztrációs útvonal
-        '/index/',
         '/main_page/',
+        '/index/'
+        '/users/roles/parent/get_sports_by_club/',
+        '/users/roles/parent/get_coaches_by_club_and_sport/',
+        '/users/roles/parent/',
 
     ]
     

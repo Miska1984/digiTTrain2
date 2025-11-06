@@ -1,0 +1,65 @@
+<h3>Helyből Magassági Ugrás Biomechanikai Elemzés</h3>
+
+<div class="metric">
+    Összesített Ugrás Pontszám: <strong>{{ analysis.overall_jump_score|floatformat:1 }}</strong> / 100
+    {% if analysis.overall_jump_score > 84.9 %}
+        <span class="text-success small">(Kiváló neuromuszkuláris teljesítmény )</span>
+    {% elif analysis.overall_jump_score > 69.9 %}
+        <span class="text-warning small">(Jó, kisebb kompenzációk )</span>
+    {% else %}
+        <span class="text-danger small">(Közepes / Korrekció szükséges )</span>
+    {% endif %}
+    <p class="small text-muted">A pontszám alapja: Robbanékonyság (40p), Landolási Kontroll (30p), Valgus Kontroll (20p) és Szimmetria (10p)[cite: 21].</p>
+</div>
+<hr>
+
+<div class="row">
+    <div class="col-md-6">
+        <h4>Teljesítmény és Dinamika (Erőkifejtés: 40p)</h4>
+        <div class="metric">
+            Ugrásmagasság: <strong>{{ analysis.jump_height_cm|floatformat:1 }} cm</strong> [cite: 30]
+        </div>
+        <div class="metric">
+            Elrugaszkodás Dinamika (Takeoff Index): <strong>{{ analysis.takeoff_speed_index|floatformat:2 }}</strong> [cite: 32]
+        </div>
+        <div class="metric">
+            Térdhajlítás Mélysége: <strong>{{ analysis.countermovement_depth_deg|floatformat:1 }}°</strong> [cite: 31]
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <h4>Landolási Kontroll (30p) és Kockázat (20p)</h4>
+        <div class="metric">
+            Landolási Kontroll Score: <strong>{{ analysis.landing_control_score|floatformat:1 }}</strong> / 100 [cite: 37]
+        </div>
+        <div class="metric">
+            Max. Térd Valgus Szög: <strong>{{ analysis.max_valgus_angle|floatformat:1 }}°</strong> [cite: 33]
+            {% if analysis.max_valgus_angle > 15 %}
+                <span class="text-danger small">(Magas ACL sérüléskockázatot jelez. [cite: 17])</span>
+            {% else %}
+                <span class="text-success small">(Kontrollált)</span>
+            {% endif %}
+        </div>
+        <div class="metric">
+            Szimmetria Score (Bal-Jobb arány): <strong>{{ analysis.jump_symmetry_score|floatformat:1 }}</strong> / 100 [cite: 38]
+        </div>
+    </div>
+</div>
+
+<hr>
+
+{% if analysis.snapshot_urls.landing %}
+<div class="snapshot">
+    <h4>Kulcspillanat – Landolás Fázis</h4>
+    <img src="{{ analysis.snapshot_urls.landing }}" alt="Ugrás Landolási Pillanatkép">
+</div>
+{% endif %}
+
+<h4>Visszajelzés és Korrekciók</h4>
+<ul>
+{% for item in analysis.feedback %}
+    <li>{{ item }}</li>
+{% empty %}
+    <li>Kiváló teljesítmény és kontroll. </li>
+{% endfor %}
+</ul>
