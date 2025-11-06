@@ -13,3 +13,13 @@ __pycache__/
 
 # IDE fájlok
 .vscode/
+
+# Virtuális környezetek (ez a KRITIKUS sor!)
+venv/
+env/
+
+# Elemzési outputok és ideiglenes fájlok
+/media/
+/static_collected/
+/analysis_output/
+/tmp/
