@@ -86,4 +86,4 @@ USER www-data
 # ----------------------------
 # ▶️ Indítás
 # ----------------------------
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "digiTTrain.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8080","--timeout", "120", "--workers", "2", "digiTTrain.wsgi:application"]
