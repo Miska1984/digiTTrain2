@@ -16,6 +16,7 @@ from .analysis_views.squat_views import upload_squat_video       # <-- DEDIKÁLT
 from .analysis_views.posture_views import upload_posture_video   # <-- DEDIKÁLT TESTTARTÁS VIEW
 from .analysis_views.shoulder_circumduction_views import upload_shoulder_circumduction_video
 from .analysis_views.vertical_jump_views import upload_vertical_jump_video
+from .analysis_views.single_leg_stance_views import single_leg_stance_upload_view
 
 app_name = "diagnostics"
 
@@ -39,6 +40,7 @@ urlpatterns = [
     path("upload/squat/", upload_squat_video, name="upload_squat_video"),
     path("upload/shoulder-circumduction/", upload_shoulder_circumduction_video, name="upload_shoulder_circumduction_video"),
     path('upload/vertical-jump/', upload_vertical_jump_video, name='upload_vertical_jump_video'),
+    path('upload/single-leg-stance-left/', single_leg_stance_upload_view, name='upload_single_leg_stance_unified'),
 
     # 🆕 ÚJ ÚTVONAL a GCS feltöltés előkészítéséhez
     path("upload/gcs-sign/", get_signed_gcs_url, name="get_signed_gcs_url"),

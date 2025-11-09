@@ -1,0 +1,87 @@
+<h3>Egylábon Állás ({{ analysis.side|upper }} Láb)</h3>
+
+<div class="score-summary">
+    <span class="fw-bold">Összesített Pontszám:</span>
+    <strong class="h4 {% if analysis.overall_score >= 85 %}text-success{% elif analysis.overall_score >= 70 %}text-warning{% else %}text-danger{% endif %}">
+        {{ analysis.overall_score|floatformat:1 }}
+    </strong> / 100
+</div>
+
+<hr>
+
+<h4>📊 Részletes Pontozás és Stabilitás</h4>
+
+<div class="metric-group row">
+    <div class="metric col-md-4">
+        <span class="fw-bold">Stabilitás:</span>
+        <span class="metric-value">{{ analysis.stability_score|floatformat:0 }}</span> / 40
+    </div>
+    <div class="metric col-md-4">
+        <span class="fw-bold">Medence Kontroll:</span>
+        <span class="metric-value">{{ analysis.pelvic_control_score|floatformat:0 }}</span> / 20
+    </div>
+    <div class="metric col-md-4">
+        <span class="fw-bold">Térd-Boka Stabilitás:</span>
+        <span class="metric-value">{{ analysis.knee_ankle_score|floatformat:0 }}</span> / 20
+    </div>
+    <div class="metric col-md-4">
+        <span class="fw-bold">Kitartás Idő:</span>
+        <span class="metric-value">{{ analysis.time_score|default:0|floatformat:0 }}</span> / 10
+    </div>
+    <div class="metric col-md-4">
+        <span class="fw-bold">Szimmetriaviszony:</span>
+        <span class="metric-value">{{ analysis.symmetry_score|default:0|floatformat:0 }}</span> / 10
+    </div>
+</div>
+
+<hr>
+
+<h4>📐 Biomechanikai Adatok és Eltérések</h4>
+
+<div class="metric-group row">
+    <div class="metric col-md-4">
+        <span class="fw-bold">Max. Csípő Lecsapás:</span>
+        <span class="metric-value">{{ analysis.max_pelvic_drop_angle|floatformat:1 }}°</span>
+    </div>
+    <div class="metric col-md-4">
+        <span class="fw-bold">Max. Térd Valgus (befelé esés):</span>
+        <span class="metric-value">{{ analysis.max_knee_valgus_angle|floatformat:1 }}°</span>
+    </div>
+    <div class="metric col-md-4">
+        <span class="fw-bold">Kitartás idő:</span>
+        <span class="metric-value">{{ analysis.stance_time_sec|floatformat:1 }} mp</span>
+    </div>
+</div>
+
+<hr>
+
+<div class="feedback-section mt-4">
+    <h4 class="text-primary">💡 Kiértékelés és Ajánlott Edzés</h4>
+    
+    {% if analysis.feedback_list %}
+        <ul class="list-group list-group-flush">
+            {% for feedback in analysis.feedback_list %}
+                <li class="list-group-item">{{ feedback|safe }}</li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <div class="alert alert-info">
+            <p class="mb-0">A részletes kiértékeléshez nem sikerült releváns hibát találni, vagy a felvétel időtartama túl rövid volt.</p>
+        </div>
+    {% endif %}
+</div>
+
+<hr>
+
+{% if analysis.worst_frame_snapshot_url %}
+<div class="snapshot">
+    <h4>Kulcspillanat – Legnagyobb Instabilitás</h4>
+    <img src="{{ analysis.worst_frame_snapshot_url }}" alt="Leginstabilabb pillanat" class="img-fluid">
+</div>
+{% endif %}
+
+{% if analysis.skeleton_video_url %}
+<div class="video-link-section mt-3 mb-4">
+    <a href="{{ analysis.skeleton_video_url }}" target="_blank" class="btn btn-sm btn-info">Vázolt Videó megtekintése</a>
+</div>
+{% endif %}

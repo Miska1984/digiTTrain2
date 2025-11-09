@@ -20,6 +20,8 @@ TEMPLATE_MAP = {
     "POSTURE_ASSESSMENT": "diagnostics/reports/posture_details.html",
     "SHOULDER_CIRCUMDUCTION": "diagnostics/reports/shoulder_circumduction_details.html",
     "VERTICAL_JUMP": "diagnostics/reports/vertical_jump_details.html",
+    "SINGLE_LEG_STANCE_LEFT": "diagnostics/reports/single_leg_stance_details.html",
+    "SINGLE_LEG_STANCE_RIGHT": "diagnostics/reports/single_leg_stance_details.html",
 }
 
 # Alapsablon

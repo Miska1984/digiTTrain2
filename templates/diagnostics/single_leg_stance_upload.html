@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Egy lábon állás elemzés – Videó feltöltése{% endblock %}
+
+{% block content %}
+<div class="container mx-auto py-6">
+    <h2 class="text-2xl font-semibold mb-4">🧘 Egy Lábon Állás (SLS) Értékelés – Videók feltöltése</h2>
+    <p class="text-muted mb-4">Kérjük, töltsön fel egy videót **mindkét lábra külön-külön** (kb. 20-30 mp/oldal). A kamera legyen **szemből**, a teljes test és a lábfejek láthatóak legyenek, ahogy a dokumentáció is javasolja.</p>
+
+    <form 
+        id="upload-form" 
+        method="post" 
+        novalidate
+        data-sign-url="{% url 'diagnostics:get_signed_gcs_url' %}"
+        {# ⚠️ JAVÍTÁS: A job_list hiba javítása. Az 'athlete_dashboard' névre irányítunk át. #}
+        data-redirect-url="{% url 'diagnostics:athlete_diagnostics' %}"
+    >
+        {% csrf_token %}
+        
+        <div class="mb-3">
+            <label for="id_video_left" class="form-label">Bal láb – Videó feltöltése</label>
+            {# Fontos, hogy a name attributum 'video_left' legyen, ahogy a view.py várja #}
+            <input type="file" name="video_left" id="id_video_left" accept="video/mp4" class="form-control" required>
+            <div class="form-text">MP4 formátum, a bal lábon állás látszódjon szemből.</div>
+        </div>
+
+        <div class="mb-3">
+            <label for="id_video_right" class="form-label">Jobb láb – Videó feltöltése</label>
+            {# Fontos, hogy a name attributum 'video_right' legyen, ahogy a view.py várja #}
+            <input type="file" name="video_right" id="id_video_right" accept="video/mp4" class="form-control" required>
+            <div class="form-text">MP4 formátum, a jobb lábon állás látszódjon szemből.</div>
+        </div>
+        
+        <div class="mb-3">
+            {{ form.notes.label_tag }}
+            {{ form.notes }}
+            <div class="form-text">{{ form.notes.help_text }}</div>
+        </div>
+        
+        <div id="progress-container" class="mt-4" style="display:none;">
+            <div class="progress" role="progressbar" aria-label="Feltöltés" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
+            </div>
+            <p id="status-message" class="mt-2 text-info small">Videók feltöltése folyamatban...</p>
+        </div>
+
+        <button type="submit" id="submit-button" class="btn btn-primary mt-3">Elemzés indítása</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{# A Vertical Jump-hoz hasonlóan használjuk a közös feltöltő scriptet #}
+{% include "diagnostics/partials/gcs_upload_script.html" %} 
+{% endblock %}

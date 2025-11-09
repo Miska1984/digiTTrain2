@@ -19,6 +19,7 @@ from .services.squat_assessment import SquatAssessmentService
 from .services.posture_assessment import PostureAssessmentService
 from .services.shoulder_circumduction_assessment import ShoulderCircumductionService
 from .services.vertical_jump_assessment import VerticalJumpAssessmentService
+from .services.single_leg_stance_service import SingleLegStanceAssessmentService
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,8 @@ SERVICE_MAP = {
     DiagnosticJob.JobType.POSTURE_ASSESSMENT: PostureAssessmentService,
     DiagnosticJob.JobType.SHOULDER_CIRCUMDUCTION: ShoulderCircumductionService,
     DiagnosticJob.JobType.VERTICAL_JUMP: VerticalJumpAssessmentService,
+    DiagnosticJob.JobType.SINGLE_LEG_STANCE_LEFT: SingleLegStanceAssessmentService,
+    DiagnosticJob.JobType.SINGLE_LEG_STANCE_RIGHT: SingleLegStanceAssessmentService,
 }
 
 def _convert_numpy_to_python(data):
@@ -68,7 +71,8 @@ def run_diagnostic_job(job_id):
         logger.info(f"▶️ [TASK] {service_class.__name__} feldolgozás indítása job_id={job.id}")
 
         # 1️⃣ Elemzés futtatása
-        result_data = service_class.run_analysis(job)
+        service_instance = service_class(job=job)
+        result_data = service_instance.run_analysis()
 
         
         # =========================================================================

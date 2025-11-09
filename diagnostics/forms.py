@@ -18,8 +18,6 @@ class PostureDiagnosticUploadForm(forms.Form):
         })
     )
 
-
-
 # ----------------------------------------------------
 # 2. Guggolás Elemzés Űrlap
 # ----------------------------------------------------
@@ -35,8 +33,6 @@ class SquatDiagnosticUploadForm(forms.Form):
             'accept': 'video/mp4'
         })
     )
-
-
 
 # ----------------------------------------------------
 # 3. Vállkörzés Elemzés Űrlap
@@ -70,3 +66,16 @@ class VerticalJumpDiagnosticUploadForm(forms.Form):
 
     # Hozzáadhatunk egy job_type mezőt is rejtett beviteli mezőként a view kényelme érdekében, 
     # de a _process_video_upload segédfüggvény ezt már kezeli.
+
+# ----------------------------------------------------
+# 5. Egy Lábon Állás Elemzés Űrlap (SLS)
+# ----------------------------------------------------
+class SlsUploadForm(forms.Form):
+    """
+    Form az Egy Lábon Állás elemzéshez. Csak a megjegyzést kezeli.
+    """
+    notes = forms.CharField(
+        label='Megjegyzés (opcionális)',
+        required=False,
+        widget=forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}) # Hozzáadva a 'form-control' osztályt a bootstrap stílus miatt
+    )

@@ -21,6 +21,8 @@ class DiagnosticJob(models.Model):
         ANTHROPOMETRY_CALIBRATION = 'ANTHROPOMETRY_CALIBRATION', ('Antropometria Kalibráció Két Képpel')
         SHOULDER_CIRCUMDUCTION = "SHOULDER_CIRCUMDUCTION", ("Vállkörzés elemzés")
         VERTICAL_JUMP = "VERTICAL_JUMP", ("Helyből Magassági Ugrás Elemzés")
+        SINGLE_LEG_STANCE_LEFT = "SINGLE_LEG_STANCE_LEFT", ("Egylábon Állás (Bal)")
+        SINGLE_LEG_STANCE_RIGHT = "SINGLE_LEG_STANCE_RIGHT", ("Egylábon Állás (Jobb)")
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     sport_type = models.CharField(max_length=50, verbose_name="Sportág")

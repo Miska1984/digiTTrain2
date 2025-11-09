@@ -37,6 +37,11 @@
                         🤸 Magasugrás
                     </a>
 
+                    {# GOMB: Egylábon Állás BAL ÉS JOBB feltöltés #}
+                    <a href="{% url 'diagnostics:upload_single_leg_stance_unified' %}" class="btn btn-outline-secondary w-100 mb-2">
+                        🧘 Egylábon Állás Elemzés (Bal és Jobb)
+                    </a>
+
                     <hr class="my-3">
 
                     <h5 class="fw-bold mb-3">Sportspecifikus elemzések</h5>
@@ -235,6 +240,19 @@ document.addEventListener("DOMContentLoaded", () => {
                                 <div class="small fw-bold mb-1">${resultData.overall_rating || '–'}</div>
                                 <div class="small text-muted">Átl. ROM: ${avgRom}</div>
                                 <div class="small text-muted">Pontszám: ${overallScore} / 100</div>
+                            `;
+                        }
+
+                        // 🆕 SINGLE LEG STANCE LOGIKA (Egylábon Állás)
+                        else if ((jobType === 'SINGLE_LEG_STANCE_LEFT' || jobType === 'SINGLE_LEG_STANCE_RIGHT') && resultData) {
+                            const overallScore = resultData.overall_score ? resultData.overall_score.toFixed(0) : '–';
+                            // feltételezzük, hogy a kulcs duration_sec
+                            const durationSec = resultData.duration_sec ? resultData.duration_sec.toFixed(1) + ' mp' : '–'; 
+
+                            resultHtml = `
+                                <div class="small fw-bold mb-1">${resultData.overall_rating || '–'}</div>
+                                <div class="small text-muted">Pontszám: ${overallScore} / 100</div>
+                                <div class="small text-muted">Kitartás: ${durationSec}</div>
                             `;
                         }
 
