@@ -36,36 +36,38 @@ class VerticalJumpAssessmentService(BaseDiagnosticService):
     Méri a robbanékonyságot, a landolási kontrollt és a valgus kockázatot.
     """
 
-    @classmethod
-    def run_analysis(cls, job):
-        cls.log(f"▶️ Vertical Jump Assessment indítása job_id={job.id}")
+    
+    def run_analysis(self):
+        job = self.job
+        self.log(f"▶️ Vertical Jump Assessment indítása job_id={job.id}")
         video_path = get_local_video_path(job.video_url)
 
         try:
             # 0️⃣ Kalibráció betöltése
             anthro = get_user_anthropometry_data(job.user)
             # A loader függvény most már egy dictionary-t vagy None-t ad vissza.
-            calibration_factor = anthro.get("calibration_factor", 1.0) if anthro else 1.0
+            general_factor = anthro.get("calibration_factor", 1.0) if anthro else 1.0
+            leg_factor = anthro.get("leg_calibration_factor", 1.0) if anthro else 1.0
             
             # ❗ KRITIKUS: Elemzés indítása Kalibráció hiányában
             if not anthro:
                 error_msg = "❌ Kalibráció Hiba: A Helyből Magassági Ugrás elemzéshez antropometriai adatokra (Kalibrációra) van szükség!"
-                cls.log(error_msg)
+                self.log(error_msg)
                 job.mark_as_failed(error_msg)
                 return {"error": error_msg, "video_analysis_done": False}
                 
-            cls.log(f"✅ Kalibrációs faktor betöltve: {calibration_factor:.4f}")
+            self.log(f"✅ Kalibrációs faktorok betöltve: Általános={general_factor:.4f}, Láb={leg_factor:.4f}")
 
             # 1️⃣ Videó feldolgozása MediaPipe-pal
             raw_keypoints, skeleton_video_path, keyframes = process_video_with_mediapipe(
                 video_path, 
                 job.job_type,
-                calibration_factor=calibration_factor, 
+                calibration_factor=general_factor,
             )
-            cls.log(f"MediaPipe feldolgozás kész, {len(raw_keypoints)} frame elemzve.")
+            self.log(f"MediaPipe feldolgozás kész, {len(raw_keypoints)} frame elemzve.")
 
             # 2️⃣ Elemzés
-            analysis = cls._analyze_vertical_jump(raw_keypoints, job, calibration_factor)
+            analysis = self._analyze_vertical_jump(raw_keypoints, job, general_factor, leg_factor)
             analysis["video_analysis_done"] = True
             analysis["skeleton_video_local_path"] = skeleton_video_path
 
@@ -85,7 +87,8 @@ class VerticalJumpAssessmentService(BaseDiagnosticService):
 
             analysis["keyframes"] = cleaned_keyframes 
             analysis["calibration_used"] = bool(anthro)
-            analysis["calibration_factor"] = round(calibration_factor, 5)
+            analysis["general_calibration_factor"] = round(general_factor, 5)
+            analysis["leg_calibration_factor"] = round(leg_factor, 5)
             
             # 🆕 3️⃣ AZ EREDMÉNY MENTÉSE A GENERAL_RESULTS TÁBLÁBA ----------------
             
@@ -101,17 +104,17 @@ class VerticalJumpAssessmentService(BaseDiagnosticService):
                 
                 raw_json_metrics=analysis,
             )
-            cls.log(f"✅ Vertical Jump Assessment eredmény elmentve a general_results táblába job_id={job.id}")
+            self.log(f"✅ Vertical Jump Assessment eredmény elmentve a general_results táblába job_id={job.id}")
             # --------------------------------------------------------------------------
             
             return analysis
 
         except Exception as e:
-            cls.log(f"❌ Vertical Jump Assessment hiba job_id={job.id}: {e}")
+            self.log(f"❌ Vertical Jump Assessment hiba job_id={job.id}: {e}")
             return {"error": f"Elemzés hiba: {e}", "video_analysis_done": False}
 
-    @classmethod
-    def _analyze_vertical_jump(cls, raw_keypoints: List[Dict[str, Any]], job, calibration_factor: float) -> Dict[str, Any]:
+    
+    def _analyze_vertical_jump(self, raw_keypoints: List[Dict[str, Any]], job, general_factor: float, leg_factor: float) -> Dict[str, Any]:
         """
         A Magassági Ugrás elemzés futtatása kalibrált testarányokkal.
         A számításokat szimuláljuk, de a struktúrát a dokumentum alapján adjuk vissza.
@@ -123,11 +126,35 @@ class VerticalJumpAssessmentService(BaseDiagnosticService):
         max_valgus_angle = 0.0
         cm_frame = None
         valgus_frame = None
+
+        correction_factor = leg_factor / general_factor if general_factor and general_factor != 0 else leg_factor
         
         # ⚠️ Valós logikában ez a rész felelne a mozgás fázisainak felismeréséért (CM, Takeoff, Flight, Landing)
         for frame_data in raw_keypoints:
             # Szimuláció: A valós életben a MediaPipe kulcspontokból számolnánk!
+
+            # Kulcspontok beolvasása (F_general-lal skálázva)
+            left_hip = get_landmark_coords(frame_data, 'left_hip')
+            left_knee = get_landmark_coords(frame_data, 'left_knee')
+            left_ankle = get_landmark_coords(frame_data, 'left_ankle')
+            right_hip = get_landmark_coords(frame_data, 'right_hip') # 🆕 Ezek hiányoztak
+            right_knee = get_landmark_coords(frame_data, 'right_knee') # 🆕
+            right_ankle = get_landmark_coords(frame_data, 'right_ankle') # 🆕
             
+            # 🔹 ALSÓTEST SKÁLÁZÁSA (KORREKCIÓJA) valós méretre (F_leg)
+            lower_body_coords = [left_hip, left_knee, left_ankle, right_hip, right_knee, right_ankle]
+
+            scaled_lower_body = []
+            for p in lower_body_coords:
+                if p is not None:
+                    # Alkalmazzuk a korrekciós faktort (F_leg / F_general)
+                    scaled_lower_body.append(np.array(p) * correction_factor)
+                else:
+                    scaled_lower_body.append(None)
+            
+            # Visszaadjuk a skálázott (korrigált) alsótest értékeket a változóknak
+            [left_hip, left_knee, left_ankle, right_hip, right_knee, right_ankle] = scaled_lower_body
+
             # Keresés a legmélyebb Countermovement pontra (legkisebb térdszög)
             current_knee_angle = random.uniform(70, 140) 
             if current_knee_angle < min_cm_knee_angle:

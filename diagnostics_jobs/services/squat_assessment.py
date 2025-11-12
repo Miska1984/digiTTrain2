@@ -27,28 +27,31 @@ class SquatAssessmentService(BaseDiagnosticService):
     térdszög, törzsdőlés, mozgáskontroll.
     """
 
-    @classmethod
-    def run_analysis(cls, job):
-        cls.log(f"▶️ Squat Assessment indítása job_id={job.id}")
+    
+    def run_analysis(self):
+        job = self.job
+        self.log(f"▶️ Squat Assessment indítása job_id={job.id}")
         video_path = get_local_video_path(job.video_url)
 
         try:
             # 0️⃣ Kalibráció betöltése
             anthro = get_user_anthropometry_data(job.user)
-            calibration_factor = anthro["calibration_factor"] if anthro else 1.0
-            cls.log(f"Kalibrációs faktor (squat): {calibration_factor:.4f}")
+            general_factor = anthro.get("calibration_factor", 1.0) if anthro else 1.0
+            leg_factor = anthro.get("leg_calibration_factor", 1.0) if anthro else 1.0
+            self.log(f"Kalibrációs faktor (általános/videó): {general_factor:.4f}")
+            self.log(f"Kalibrációs faktor (láb-specifikus/elemzés): {leg_factor:.4f}")
 
             # 1️⃣ Videó feldolgozása MediaPipe-pal
             raw_keypoints, skeleton_video_path, keyframes = process_video_with_mediapipe(
                 video_path, 
                 job.job_type,
                 # 🟢 KRITIKUS JAVÍTÁS: Átadjuk a kalibrációs faktort
-                calibration_factor=calibration_factor, 
+                calibration_factor=general_factor, 
             )
-            cls.log(f"MediaPipe feldolgozás kész, {len(raw_keypoints)} frame elemzve.")
+            self.log(f"MediaPipe feldolgozás kész, {len(raw_keypoints)} frame elemzve.")
 
             # 2️⃣ Elemzés
-            analysis = cls._analyze_squat(raw_keypoints, job, calibration_factor)
+            analysis = self._analyze_squat(raw_keypoints, job, general_factor, leg_factor)
             analysis["video_analysis_done"] = True
             analysis["skeleton_video_local_path"] = skeleton_video_path
 
@@ -71,7 +74,8 @@ class SquatAssessmentService(BaseDiagnosticService):
 
             analysis["keyframes"] = cleaned_keyframes # ⬅️ A TISZTÍTOTT LISTA!
             analysis["calibration_used"] = bool(anthro)
-            analysis["calibration_factor"] = round(calibration_factor, 5)
+            analysis["general_calibration_factor"] = round(general_factor, 5)
+            analysis["leg_calibration_factor"] = round(leg_factor, 5)
             
             # 🆕 3️⃣ AZ EREDMÉNY MENTÉSE A GENERAL_RESULTS TÁBLÁBA ----------------
             
@@ -89,23 +93,29 @@ class SquatAssessmentService(BaseDiagnosticService):
 
                 raw_json_metrics=analysis,
             )
-            cls.log(f"✅ Squat Assessment eredmény elmentve a general_results táblába job_id={job.id}")
+            self.log(f"✅ Squat Assessment eredmény elmentve a general_results táblába job_id={job.id}")
             # --------------------------------------------------------------------------
             
             return analysis
 
         except Exception as e:
-            cls.log(f"❌ Squat Assessment hiba job_id={job.id}: {e}")
+            self.log(f"❌ Squat Assessment hiba job_id={job.id}: {e}")
             return {"error": f"Elemzés hiba: {e}", "video_analysis_done": False}
 
-    @classmethod
-    def _analyze_squat(cls, raw_keypoints: List[Dict[str, Any]], job, calibration_factor: float) -> Dict[str, Any]:
+    def _analyze_squat(self, raw_keypoints: List[Dict[str, Any]], job, general_factor: float, leg_factor: float) -> Dict[str, Any]:
         """A tényleges guggolás-elemzés futtatása kalibrált testarányokkal."""
+        import numpy as np
+        
         min_knee_angle, max_trunk_lean = 180.0, 0.0
         min_angle_frame, max_trunk_frame = None, None
 
+        # 🆕 KALIBRÁCIÓ KORREKCIÓS TÉNYEZŐ SZÁMÍTÁSA (CSAK EGYSZER!)
+        # A raw_keypoints már F_general-lal van skálázva.
+        # Korrekciós arány: F_leg / F_general.
+        correction_factor = leg_factor / general_factor if general_factor and general_factor != 0 else leg_factor
+
         for frame_data in raw_keypoints:
-            # Kulcspontok beolvasása
+            # Kulcspontok beolvasása (ezek F_general-lal skálázottak)
             left_hip = get_landmark_coords(frame_data, 'left_hip')
             left_knee = get_landmark_coords(frame_data, 'left_knee')
             left_ankle = get_landmark_coords(frame_data, 'left_ankle')
@@ -115,12 +125,22 @@ class SquatAssessmentService(BaseDiagnosticService):
             left_shoulder = get_landmark_coords(frame_data, 'left_shoulder')
             right_shoulder = get_landmark_coords(frame_data, 'right_shoulder')
 
-            # 🔹 Skálázás valós méretre
-            for p in [left_hip, left_knee, left_ankle, right_hip, right_knee, right_ankle, left_shoulder, right_shoulder]:
-                if p is not None:
-                    p = np.array(p) * calibration_factor
+            # Alsótest pontok listája
+            lower_body_coords = [left_hip, left_knee, left_ankle, right_hip, right_knee, right_ankle]
 
-            # Térdszög számítás
+            # 🔹 ALSÓTEST SKÁLÁZÁSA (KORREKCIÓJA) valós méretre (F_leg)
+            scaled_lower_body = []
+            for p in lower_body_coords:
+                if p is not None:
+                    # Alkalmazzuk a korrekciós faktort (F_leg / F_general)
+                    scaled_lower_body.append(np.array(p) * correction_factor)
+                else:
+                    scaled_lower_body.append(None)
+            
+            # Visszaadjuk a skálázott (korrigált) alsótest értékeket a változóknak
+            [left_hip, left_knee, left_ankle, right_hip, right_knee, right_ankle] = scaled_lower_body
+
+            # Térdszög számítás (innentől a hip/knee/ankle pontok már F_leg-gel vannak skálázva)
             if all(np.any(p) for p in [left_hip, left_knee, left_ankle]):
                 left_knee_angle = calculate_angle_3d(left_hip, left_knee, left_ankle)
             else:
@@ -135,7 +155,7 @@ class SquatAssessmentService(BaseDiagnosticService):
             if current_knee_angle < min_knee_angle:
                 min_knee_angle, min_angle_frame = current_knee_angle, frame_data
 
-            # Törzsdőlés
+            # Törzsdőlés (a vállak F_general-lal, a csípők F_leg-gel vannak skálázva, de a szög számítás stabil)
             if all(np.any(p) for p in [left_shoulder, right_shoulder, left_hip, right_hip]):
                 mid_shoulder = (left_shoulder + right_shoulder) / 2.0
                 mid_hip = (left_hip + right_hip) / 2.0
@@ -146,7 +166,7 @@ class SquatAssessmentService(BaseDiagnosticService):
             if current_trunk_lean > max_trunk_lean:
                 max_trunk_lean, max_trunk_frame = current_trunk_lean, frame_data
 
-        # Pontozás
+        # Pontozás (marad változatlan)
         ROM_optimal = 100.0
         ROM_error = abs(min_knee_angle - ROM_optimal)
         ROM_max_error = 80.0
@@ -171,12 +191,12 @@ class SquatAssessmentService(BaseDiagnosticService):
         trunk_snapshot_url = save_snapshot_to_gcs(max_trunk_frame["frame_image"], job, "trunk_lean") if max_trunk_frame and "frame_image" in max_trunk_frame else None
 
         return {
-            "overall_squat_score": float(round(overall_score, 1)),      
-            "min_knee_angle": float(round(min_knee_angle, 1)),          
-            "max_trunk_lean": float(round(max_trunk_lean, 1)),          
-            "rom_score": float(round(rom_score, 1)),                    
-            "trunk_score": float(round(trunk_score, 1)),                
-            "control_score": float(round(control_score, 1)),            
+            "overall_squat_score": float(round(overall_score, 1)),     
+            "min_knee_angle": float(round(min_knee_angle, 1)),           
+            "max_trunk_lean": float(round(max_trunk_lean, 1)),           
+            "rom_score": float(round(rom_score, 1)),                     
+            "trunk_score": float(round(trunk_score, 1)),                 
+            "control_score": float(round(control_score, 1)),             
             "feedback": feedback,
             "knee_snapshot_url": knee_snapshot_url,
             "trunk_snapshot_url": trunk_snapshot_url,

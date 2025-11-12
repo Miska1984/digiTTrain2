@@ -1,4 +1,3 @@
-{% load static %}
 <div class="report-section">
   <h2 class="section-title">🧍‍♀️ Testtartás Elemzés (Posture Assessment)</h2>
 
@@ -6,24 +5,34 @@
     <thead>
       <tr>
         <th>Mérési paraméter</th>
-        <th>Átlagos érték (°)</th>
-        <th>Maximális érték (°)</th>
+        <th>Átlagos érték</th>
+        <th>Maximális érték</th>
       </tr>
     </thead>
     <tbody>
       <tr>
-        <td>Válldőlés</td>
-        <td>{{ analysis.metrics.average_shoulder_tilt|default:"–" }}</td>
-        <td>{{ analysis.metrics.max_shoulder_tilt|default:"–" }}</td>
+        <td>Válldőlés (Laterális)</td>
+        <td>{{ analysis.metrics.average_shoulder_tilt|default:"–" }}°</td>
+        <td>{{ analysis.metrics.max_shoulder_tilt|default:"–" }}°</td>
       </tr>
       <tr>
-        <td>Csípődőlés</td>
-        <td>{{ analysis.metrics.average_hip_tilt|default:"–" }}</td>
-        <td>{{ analysis.metrics.max_hip_tilt|default:"–" }}</td>
+        <td>Csípődőlés (Laterális)</td>
+        <td>{{ analysis.metrics.average_hip_tilt|default:"–" }}°</td>
+        <td>{{ analysis.metrics.max_hip_tilt|default:"–" }}°</td>
+      </tr>
+      <tr>
+        <td>**Sagittális egyensúly (AP Proxy)**</td>
+        <td>{{ analysis.metrics.average_ap_proxy|default:"–" }} (arány)</td> 
+        <td>{{ analysis.metrics.max_ap_proxy|default:"–" }} (arány)</td> 
+      </tr>
+      <tr>
+        <td>**Laterális eltolódás (Lateral Shift)**</td>
+        <td>{{ analysis.metrics.average_lateral_shift|default:"–" }} (arány)</td> 
+        <td>{{ analysis.metrics.max_lateral_shift|default:"–" }} (arány)</td> 
       </tr>
       <tr class="highlight-row">
-        <td><strong>Összesített testtartás pontszám</strong></td>
-        <td colspan="2"><strong>{{ analysis.metrics.posture_score|default:"–" }}%</strong></td>
+        <td>**Összesített testtartás pontszám**</td>
+        <td colspan="2">**{{ analysis.metrics.posture_score|default:"–" }}%**</td>
       </tr>
     </tbody>
   </table>

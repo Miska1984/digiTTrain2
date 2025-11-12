@@ -1,52 +1,75 @@
 <h3>Vállkörzés Biomechanikai Elemzés</h3>
 
 <div class="metric">
-    Összesített Váll Pontszám: <strong>{{ analysis.overall_shoulder_score|floatformat:1 }}</strong> / 100
-    <p class="small text-muted">A Mobilitás, Kontroll és Kompenzáció szempontok alapján.</p>
+    Összesített Váll Pontszám: <strong>{{ analysis.overall_score|floatformat:1 }}</strong> / 100
+    <p class="small text-muted">A Mobilitás, Kontroll és Kompenzáció szempontok alapján.</p>
 </div>
 <hr>
 
 <div class="row">
-    <div class="col-md-6">
-        <h4>Mobilitási Mutatók (ROM)</h4>
-        <div class="metric">
-            Max. Eleváció (Bal): <strong>{{ analysis.max_elevation_angle_left|floatformat:1 }}°</strong> 
-            {% if analysis.max_elevation_angle_left < 160 %}
-                <span class="text-danger small">(<160° mobilitás hiányra utal)</span>
-            {% else %}
-                <span class="text-success small">(Optimális)</span>
-            {% endif %}
-        </div>
-        <div class="metric">
-            Max. Eleváció (Jobb): <strong>{{ analysis.max_elevation_angle_right|floatformat:1 }}°</strong>
-        </div>
-    </div>
+    <div class="col-md-6">
+        <h4>Mobilitási Mutatók (ROM)</h4>
+        <div class="metric">
+            Max. Eleváció (Bal): <strong>{{ analysis.max_elevation_angle_left|floatformat:1 }}°</strong> 
+            {% if analysis.max_elevation_angle_left < 160 %}
+                <span class="text-danger small">(<160° mobilitás hiányra utal)</span>
+            {% else %}
+                <span class="text-success small">(Optimális)</span>
+            {% endif %}
+        </div>
+        <div class="metric">
+            Max. Eleváció (Jobb): <strong>{{ analysis.max_elevation_angle_right|floatformat:1 }}°</strong>
+        </div>
+    </div>
 
-    <div class="col-md-6">
-        <h4>Kontroll és Stabilitás</h4>
-        <div class="metric">
-            Lapocka Szárnyalás Score (Lapocka Kontroll): <strong>{{ analysis.scapula_winging_score|floatformat:1 }}</strong> / 30
-        </div>
-        <div class="metric">
-            Motoros Kontroll (Jerk Index): <strong>{{ analysis.jerk_smoothness_index|floatformat:2 }}</strong> 
-        </div>
-    </div>
+    <div class="col-md-6">
+        <h4>Kontroll és Stabilitás</h4>
+        <div class="metric">
+            Lapocka Kontroll Score: <strong>{{ analysis.scapula_score|floatformat:1 }}</strong> / 30
+        </div>
+        <div class="metric">
+            Max. Kompenzációs Dőlés: <strong>{{ analysis.max_asymmetry|floatformat:1 }}°</strong> 
+        </div>
+    </div>
 </div>
 
 <hr>
 
-{% if analysis.elevation_snapshot_url %}
-<div class="snapshot">
-    <h4>Kulcspillanat – Maximális Eleváció</h4>
-    <img src="{{ analysis.elevation_snapshot_url }}" alt="Maximális Váll Elevációs Pillanatkép">
+{# 🆕 KRITIKUS JAVÍTÁS: Kalibrációs faktorok megjelenítése #}
+{% if analysis.calibration_used %}
+    <h4>📐 Antropometriai kalibráció</h4>
+    <div class="calibration-info">
+        <p>A biomechanikai elemzés kalibrált testméretekkel történt.</p>
+        <p>Általános skálázási faktor (felsőtest): <code>{{ analysis.general_calibration_factor|floatformat:5 }}</code></p>
+        <p>Láb-specifikus faktor (referencia): <code>{{ analysis.leg_calibration_factor|floatformat:5 }}</code></p>
+    </div>
+    <hr>
+{% endif %}
+
+{% if analysis.snapshot_url_left or analysis.snapshot_url_right %}
+<div class="snapshot-row">
+    <h4>Kulcspillanatok – Maximális Eleváció</h4>
+    {% if analysis.snapshot_url_left %}
+    <div class="snapshot">
+        <p>Bal kar</p>
+        <img src="{{ analysis.snapshot_url_left }}" alt="Maximális Váll Elevációs Pillanatkép (Bal)">
+    </div>
+    {% endif %}
+    {% if analysis.snapshot_url_right %}
+    <div class="snapshot">
+        <p>Jobb kar</p>
+        <img src="{{ analysis.snapshot_url_right }}" alt="Maximális Váll Elevációs Pillanatkép (Jobb)">
+    </div>
+    {% endif %}
 </div>
 {% endif %}
+
 
 <h4>Visszajelzés és Javaslatok</h4>
 <ul>
 {% for item in analysis.feedback %}
-    <li>{{ item }}</li>
+    <li>{{ item }}</li>
 {% empty %}
-    <li>Nincs specifikus korrekcióra szükség, a mozgás optimalis.</li>
+    <li>Nincs specifikus korrekcióra szükség, a mozgás optimalis.</li>
 {% endfor %}
 </ul>

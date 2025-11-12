@@ -30,27 +30,31 @@ class ShoulderCircumductionService(BaseDiagnosticService):
     Vállkörzés elemzés (ROM, lapocka kontroll, szimmetria, kompenzáció).
     """
 
-    @classmethod
-    def run_analysis(cls, job):
-        cls.log(f"▶️ Vállkörzés Assessment indítása job_id={job.id}")
+    
+    def run_analysis(self):
+        job = self.job
+        self.log(f"▶️ Vállkörzés Assessment indítása job_id={job.id}")
         video_path = get_local_video_path(job.video_url)
 
         try:
             # 0️⃣ Kalibráció
             anthro = get_user_anthropometry_data(job.user)
-            calibration_factor = anthro["calibration_factor"] if anthro else 1.0
-            cls.log(f"Kalibrációs faktor: {calibration_factor:.4f}")
+            general_factor = anthro.get("calibration_factor", 1.0) if anthro else 1.0
+            # A leg_calibration_factor-t betöltjük, de nem használjuk a számításban, mert ez egy felsőtest teszt.
+            leg_factor = anthro.get("leg_calibration_factor", 1.0) if anthro else 1.0 
+            
+            self.log(f"Kalibrációs faktor (általános/felsőtest): {general_factor:.4f}")
 
             # 1️⃣ Videó feldolgozása MediaPipe-pal
             raw_keypoints, skeleton_video_path, keyframes = process_video_with_mediapipe(
                 video_path, 
                 job.job_type,
-                calibration_factor=calibration_factor, 
+                calibration_factor=general_factor,
             )
-            cls.log(f"MediaPipe feldolgozás kész, {len(raw_keypoints)} frame elemzve.")
+            self.log(f"MediaPipe feldolgozás kész, {len(raw_keypoints)} frame elemzve.")
 
             # 2️⃣ Elemzés
-            analysis = cls._analyze_shoulder_circumduction(raw_keypoints, job, calibration_factor)
+            analysis = self._analyze_shoulder_circumduction(raw_keypoints, job, general_factor, leg_factor)
             analysis["video_analysis_done"] = True
             analysis["skeleton_video_local_path"] = skeleton_video_path
             
@@ -67,7 +71,8 @@ class ShoulderCircumductionService(BaseDiagnosticService):
 
             analysis["keyframes"] = cleaned_keyframes
             analysis["calibration_used"] = bool(anthro)
-            analysis["calibration_factor"] = round(calibration_factor, 5)
+            analysis["general_calibration_factor"] = round(general_factor, 5)
+            analysis["leg_calibration_factor"] = round(leg_factor, 5)
             
             # 🆕 3️⃣ AZ EREDMÉNY MENTÉSE ----------------
             # Kinyerjük a fő metrikákat
@@ -88,17 +93,17 @@ class ShoulderCircumductionService(BaseDiagnosticService):
                 # Az összes elemzési adat mentése JSON-ként
                 raw_json_metrics=analysis,
             )
-            cls.log(f"✅ Vállkörzés Assessment eredmény elmentve job_id={job.id}")
+            self.log(f"✅ Vállkörzés Assessment eredmény elmentve job_id={job.id}")
             # --------------------------------------------------------------------------
             
             return analysis
 
         except Exception as e:
-            cls.log(f"❌ Vállkörzés Assessment hiba job_id={job.id}: {e}")
+            self.log(f"❌ Vállkörzés Assessment hiba job_id={job.id}: {e}")
             return {"error": f"Elemzés hiba: {e}", "video_analysis_done": False}
 
-    @classmethod
-    def _analyze_shoulder_circumduction(cls, raw_keypoints: List[Dict[str, Any]], job, calibration_factor: float) -> Dict[str, Any]:
+    
+    def _analyze_shoulder_circumduction(self, raw_keypoints: List[Dict[str, Any]], job, general_factor: float, leg_factor: float) -> Dict[str, Any]:
         """A vállkörzés elemzésének futtatása (ROM, kontroll, kompenzáció)."""
         
         # 1. Metrikák inicializálása

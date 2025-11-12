@@ -4,11 +4,14 @@ import numpy as np
 import mediapipe as mp
 import os
 import logging
+import shutil
+import time
 from datetime import datetime
 from django.conf import settings
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe.framework.formats import landmark_pb2
+
 
 mp_drawing = mp.solutions.drawing_utils
 mp_pose = mp.solutions.pose
@@ -38,11 +41,13 @@ def process_video_with_mediapipe(video_path: str, job_type: str = "GENERAL", cal
     logger.info(f"📹 Videó info: {width}x{height}, {fps} FPS, {total_frames} frame")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = os.path.join("/tmp", f"mediapipe_output_{timestamp}")
-    os.makedirs(output_dir, exist_ok=True)
 
-    skeleton_video_path = os.path.join(output_dir, "skeleton_video.mp4")
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    # ✅ JAVÍTÁS: Közvetlenül a /tmp mappába mentünk, egyedi fájlnévvel.
+    # Ezzel elkerüljük a rekurzív könyvtártörlési hibákat.
+    skeleton_video_path = os.path.join("/tmp", f"skeleton_video_{timestamp}.avi")
+    # Megjegyzés: Nincs szükség os.makedirs-re, mivel a /tmp már létezik.
+    fourcc = cv2.VideoWriter_fourcc(*"XVID") 
+    
     out = cv2.VideoWriter(skeleton_video_path, fourcc, fps, (width, height))
 
     BaseOptions = python.BaseOptions
@@ -94,7 +99,9 @@ def process_video_with_mediapipe(video_path: str, job_type: str = "GENERAL", cal
             drawing_spec_connection = mp_drawing.DrawingSpec(color=(0, 0, 255), thickness=2, circle_radius=2)
 
             landmark_list = results.pose_landmarks[0]
+
             mp_landmark_list = landmark_pb2.NormalizedLandmarkList()
+            
 
             frame_keypoints = []
             frame_world_landmarks = []
@@ -104,6 +111,11 @@ def process_video_with_mediapipe(video_path: str, job_type: str = "GENERAL", cal
                 # 💡 FIGYELEM! A LandmarkList-be továbbra is a normalizált értékek mennek (vagy kihagyjuk a feltöltést), 
                 # de a raw_keypoints-ba már a SKÁLÁZOTT!
                 # Itt hagyjuk a normalizált értékeket, mert a rajzoláshoz is az kell.
+
+                l.x = lm.x
+                l.y = lm.y
+                l.z = lm.z
+                l.visibility = getattr(lm, "visibility", 1.0)
 
                 # 🟢 A raw_keypoints-ba SKÁLÁZOTT értéket teszünk!
                 scaled_x = lm.x * calibration_factor
@@ -121,13 +133,13 @@ def process_video_with_mediapipe(video_path: str, job_type: str = "GENERAL", cal
                     )
 
             # ✅ RAJZOLÁS
-            mp_drawing.draw_landmarks(
-                annotated_image,
-                mp_landmark_list,
-                mp_pose.POSE_CONNECTIONS,
-                landmark_drawing_spec=drawing_spec_landmark,
-                connection_drawing_spec=drawing_spec_connection,
-            )
+                mp_drawing.draw_landmarks(
+                    annotated_image,
+                    mp_landmark_list, # <<< EZ MÁR AZ ÚJ, BELSŐLEG KONSZISZTENS LISTA
+                    mp_pose.POSE_CONNECTIONS,
+                    landmark_drawing_spec=drawing_spec_landmark,
+                    connection_drawing_spec=drawing_spec_connection,
+                )
 
             raw_keypoints.append(frame_keypoints)
             keyframes.append({
@@ -149,6 +161,35 @@ def process_video_with_mediapipe(video_path: str, job_type: str = "GENERAL", cal
     out.release()
     landmarker.close()
 
+    # 🆕 KÉSZÍTSEN EGY BIZTONSÁGOS MÁSOLATOT (SAFE_PATH)
+    # A skeleton_video_path a sikeresen megírt fájl útvonala.
+    # -----------------------------------------------------------
+    # 🟢 KRITIKUS VÁRAKOZÁS/ELLENŐRZÉS
+    # Adunk 100 ms-ot az OS-nek a fájl IO befejezésére
+    if not os.path.exists(skeleton_video_path):
+        time.sleep(0.1) 
+        
+    if not os.path.exists(skeleton_video_path):
+        # Ha 100 ms után is hiányzik, akkor a cleanup TÉNYLEG túl gyors
+        logger.error(f"❌ A skeleton videó azonnal eltűnt, másolás sikertelen: {skeleton_video_path}")
+        return raw_keypoints, skeleton_video_path, keyframes # Visszatérünk az eredeti útvonallal, de ez is hiányzik
+    
+    # -----------------------------------------------------------
+    
+    # Egy másodperc pontosságú timestamp is elég:
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S") 
+    safe_skeleton_video_path = os.path.join("/tmp", f"sls_skeleton_final_{os.getpid()}_{timestamp}.avi")
+    
+    try:
+        shutil.copyfile(skeleton_video_path, safe_skeleton_video_path) # EZ AZ A SOR, AMI MÁR ELÉRNI A FÁJLT
+        logger.info(f"💾 Készült egy biztonsági másolat (feltöltésre): {safe_skeleton_video_path}")
+        returned_path = safe_skeleton_video_path
+        
+    except Exception as e:
+        # Ez a hiba már valószínűleg nem fordul elő
+        logger.error(f"❌ MÁSODLAGOS HIBA a skeleton videó másolásakor: {e}", exc_info=True)
+        returned_path = skeleton_video_path
+
     # 🆕 ÖSSZEFOGLALÓ
     detection_rate = (detected_frames / frame_number * 100) if frame_number > 0 else 0
     logger.info(f"🎯 {frame_number} frame feldolgozva")
@@ -160,7 +201,7 @@ def process_video_with_mediapipe(video_path: str, job_type: str = "GENERAL", cal
         logger.error(f"❌ KRITIKUS: Csak {detection_rate:.1f}% frame-ben detektálva pose!")
         logger.error("💡 Ellenőrizd: videó minőség, világítás, kamera távolság, modell fájl")
 
-    return raw_keypoints, skeleton_video_path, keyframes
+    return raw_keypoints, returned_path, keyframes
 
 def process_image_with_mediapipe(image_path: str):
     """

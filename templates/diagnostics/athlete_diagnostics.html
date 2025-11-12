@@ -1,45 +1,33 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static diagnostics_extras %}
 
 {% block content %}
 <div class="container-fluid py-4">
     <div class="row">
-        
-        {# ========================================================= #}
-        {# 1. Elemzési Lehetőségek (Bal oldal: 3/12) #}
-        {# ========================================================= #}
+        <!-- ========================================================= -->
+        <!-- 1. BAL OLDALI PANEL: Elemzési lehetőségek -->
+        <!-- ========================================================= -->
         <div class="col-md-3 mb-4">
             <div class="card shadow-sm rounded-3 border-0 h-100">
                 <div class="card-header bg-gradient-to-r from-blue-500 to-indigo-600 text-white fw-semibold">
                     Elemzési lehetőségek
                 </div>
                 <div class="card-body space-y-2">
-                    
-                    <h5 class="fw-bold mb-3">Általános Elemzések (Biomechanikai Alapok)</h5>
-                    
-                    {# GOMB: Testtartás feltöltés #}
+                    <h5 class="fw-bold mb-3">Általános Elemzések</h5>
                     <a href="{% url 'diagnostics:upload_posture_video' %}" class="btn btn-outline-secondary w-100 mb-2">
                         🧍 Testtartás Értékelés
                     </a>
-
-                    {# GOMB: Guggolás feltöltés #}
                     <a href="{% url 'diagnostics:upload_squat_video' %}" class="btn btn-outline-secondary w-100 mb-2">
                         🏋️ Guggolás Biomechanika
                     </a>
-
-                    {# GOMB: Vállkörzés feltöltés #}
                     <a href="{% url 'diagnostics:upload_shoulder_circumduction_video' %}" class="btn btn-outline-secondary w-100 mb-2">
                         🤸 Vállkörzés Biomechanika
                     </a>
-
-                    {# GOMB: Magasugrás #}
                     <a href="{% url 'diagnostics:upload_vertical_jump_video' %}" class="btn btn-outline-secondary w-100 mb-2">
-                        🤸 Magasugrás
+                        🏃 Magasugrás
                     </a>
-
-                    {# GOMB: Egylábon Állás BAL ÉS JOBB feltöltés #}
                     <a href="{% url 'diagnostics:upload_single_leg_stance_unified' %}" class="btn btn-outline-secondary w-100 mb-2">
-                        🧘 Egylábon Állás Elemzés (Bal és Jobb)
+                        🧘 Egylábon Állás Elemzés
                     </a>
 
                     <hr class="my-3">
@@ -50,245 +38,159 @@
                             <i class="fas fa-list-ul me-2"></i> Sportági elemzések listája
                         </a>
                     {% else %}
-                        <p class="text-muted text-center small">Nincs hozzárendelt sportági diagnosztika.</p>
+                        <p class="text-muted text-center small">Nincs sportági diagnosztika.</p>
                     {% endif %}
-
                 </div>
             </div>
         </div>
-        
-        {# ========================================================= #}
-        {# 2. Elemzési Feladatok és Eredmények (Jobb oldal: 9/12) #}
-        {#    Ez a sáv most kitölti a fennmaradó helyet a jobb oldalon, beleértve a középső részt is. #}
-        {# ========================================================= #}
-        <div class="col-md-9 mb-4">
-            <div class="card shadow-sm rounded-3 border-0 h-100">
-                <div class="card-header bg-gradient-to-r from-blue-500 to-indigo-600 text-white fw-semibold">
-                    Elemzési feladatok és eredmények
+
+        <!-- ========================================================= -->
+        <!-- 2. JOBB OLDAL: Diagnosztikai Eredmények -->
+        <!-- ========================================================= -->
+        <div class="col-md-9">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-light fw-semibold">
+                    🎯 Diagnosztikai eredmények
                 </div>
-                <div class="card-body p-0">
-                    <div class="table-responsive p-3">
-                        <table class="table table-striped table-hover align-middle" id="jobs-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Típus</th>
-                                    <th scope="col" class="text-center">Dátum</th>
-                                    <th scope="col" class="text-center">Státusz</th>
-                                    
-                                    <th scope="col" class="text-center">Riport</th>
-                                    
-                                </tr>
-                            </thead>
-                            <tbody id="jobs-list">
-                                {% for job in job_list %}
-                                    {# 💡 FONTOS: Job ID és Job Típus a JS számára szükséges #}
-                                    <tr data-job-id="{{ job.id }}" data-job-type="{{ job.job_type }}">
+                <div class="card-body">
+                    {% if job_list %}
+                        <div class="table-responsive">
+                            <table id="jobs-table" class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Típus</th>
+                                        <th>Sportág</th>
+                                        <th>Állapot</th>
+                                        <th>Létrehozva</th>
+                                        <th>Eredmény (PDF)</th>
+                                        <th>Skeleton Videó</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for job in job_list %}
+                                    <tr data-job-id="{{ job.id }}" 
+                                        data-job-status="{{ job.status }}" 
+                                        data-job-type="{{ job.job_type }}">
+                                        <td>{{ job.id }}</td>
                                         <td>{{ job.get_job_type_display }}</td>
-                                        <td data-cell="date" class="text-center">{{ job.created_at|date:"Y.m.d H:i" }}</td>
-                                        <td data-cell="status" class="text-center">
-                                            {# Státusz megjelenítése az első betöltéskor #}
-                                            {% if job.status == 'COMPLETED' %}
+                                        <td>{{ job.sport_type|default:"Általános" }}</td>
+                                        <td class="status-cell">
+                                            {% if job.status == "COMPLETED" %}
                                                 <span class="badge bg-success">Kész</span>
-                                            {% elif job.status == 'PROCESSING' %}
-                                                <span class="badge bg-warning text-dark">Folyamatban...</span>
-                                            {% elif job.status == 'FAILED' %}
+                                            {% elif job.status == "FAILED" %}
                                                 <span class="badge bg-danger">Hiba</span>
+                                            {% elif job.status == "PROCESSING" %}
+                                                <span class="badge bg-warning text-dark">Feldolgozás alatt</span>
                                             {% else %}
-                                                <span class="badge bg-secondary">Függőben</span>
+                                                <span class="badge bg-secondary">{{ job.status }}</span>
                                             {% endif %}
                                         </td>
-                                        <td data-cell="pdf" class="text-center">
-                                            {# PDF gomb megjelenítése #}
-                                            {# 1. Lépés: Biztonságosan kinyerjük a report_pdf_url-t a job.result-ból. Ha hiányzik, üres stringet kapunk. #}
-                                            {% with result_pdf_url=job.result.report_pdf_url|default:'' %}
-                                                {# 2. Lépés: Ellenőrizzük, hogy a modell mező VAGY a result szótár értéke létezik-e. #}
-                                                {% if job.pdf_path or result_pdf_url %}
-                                                    {# A job.pdf_path-t használjuk elsődlegesen, és ha az üres, átvált a result_pdf_url-re. #}
-                                                    <a href="{{ job.pdf_path|default:result_pdf_url }}" target="_blank" class="btn btn-sm btn-outline-danger" title="Riport megtekintése"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Riport</a>
-                                                {% else %}
-                                                    –
-                                                {% endif %}
-                                            {% endwith %}
+                                        <td>{{ job.created_at|date:"Y.m.d H:i" }}</td>
+                                        <td class="pdf-cell">
+                                            {% if job.pdf_path %}
+                                                <a href="{{ job.pdf_path }}" target="_blank" class="btn btn-sm btn-outline-danger">
+                                                    📄 PDF jelentés
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">–</span>
+                                            {% endif %}
                                         </td>
-
+                                        <td class="video-cell">
+                                            {% if job.result.skeleton_video_url %}
+                                                <a href="{{ job.result.skeleton_video_url }}" download class="btn btn-sm btn-outline-info">
+                                                    ⬇️ Skeleton videó
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">–</span>
+                                            {% endif %}
+                                        </td>
                                     </tr>
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="6" class="text-center text-muted">Még nem történt elemzés.</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info mb-0">Még nincsenek diagnosztikai eredmények.</div>
+                    {% endif %}
                 </div>
             </div>
-            
-            {# 💡 Google AdSense hirdetések: A kérés szerint a base.html-ből includolva, így itt nincs szükség rájuk. #}
-            {# Ha a hirdetés nem az egész oldal alatt jelenik meg, hanem itt kellene lennie, akkor itt lehet beilleszteni egy div-et a Google AdSense kódjával. #}
-            
         </div>
-        
     </div>
 </div>
 
-
+<!-- ========================================================= -->
+<!-- JAVASCRIPT: Job státusz frissítés és dinamikus tartalom -->
+<!-- ========================================================= -->
 <script>
-// =========================================================
-// JAVÍTOTT JAVASCRIPT BLOKK: Job Status Frissítés és Részletes Eredmény Megjelenítés
-// =========================================================
 document.addEventListener("DOMContentLoaded", () => {
-    // Beállítható paraméterek
-    const refreshInterval = 10000; // Frissítési gyakoriság: 10 másodperc.
-    const jobStatusUrlTemplate = "/diagnostics/job-status/{jobId}/"; // A Django URL sablonja
+    const refreshInterval = 10000;
+    const jobStatusUrlTemplate = "/diagnostics/job-status/{jobId}/";
 
-    /**
-     * @brief Dinamikusan létrehoz egy HTML gombot PDF linkkel.
-     */
     function createPdfButton(url) {
         return url
-            ? `<a href="${url}" target="_blank" class="btn btn-sm btn-outline-danger"><i class="bi bi-file-earmark-pdf-fill me-1"></i> Riport</a>`
-            : "–";
-    }
-    
-    /**
-     * @brief Dinamikusan létrehoz egy HTML gombot videó linkkel.
-     */
-    function createVideoButton(url) {
-        return url
-            ? `<a href="${url}" download class="btn btn-sm btn-outline-info"><i class="fas fa-download me-1"></i> Letöltés</a>`
+            ? `<a href="${url}" target="_blank" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF jelentés
+               </a>`
             : "–";
     }
 
-    /**
-     * @brief Frissíti a táblázatban lévő status badge-et és visszatér az új HTML-lel.
-     */
+    function createVideoButton(url) {
+        return url
+            ? `<a href="${url}" download class="btn btn-sm btn-outline-info">
+                <i class="fas fa-download me-1"></i> Skeleton videó
+               </a>`
+            : "–";
+    }
+
     function getStatusBadge(status) {
         switch (status) {
-            case "COMPLETED":
-                return `<span class="badge bg-success">Kész</span>`;
-            case "PROCESSING":
-                return `<span class="badge bg-warning text-dark">Folyamatban...</span>`;
-            case "FAILED":
-                return `<span class="badge bg-danger">Hiba</span>`;
-            default:
-                return `<span class="badge bg-info">Függőben</span>`;
+            case "COMPLETED": return `<span class="badge bg-success">Kész</span>`;
+            case "PROCESSING": return `<span class="badge bg-warning text-dark">Folyamatban...</span>`;
+            case "FAILED": return `<span class="badge bg-danger">Hiba</span>`;
+            default: return `<span class="badge bg-secondary">Függőben</span>`;
         }
     }
 
-    /**
-     * @brief Aszinkron módon frissíti az összes 'PENDING' vagy 'PROCESSING' státuszú feladat státuszát.
-     */
     async function refreshJobStatuses() {
         const rows = document.querySelectorAll("#jobs-table tbody tr");
-
         for (const row of rows) {
             const jobId = row.dataset.jobId;
             const currentStatus = row.dataset.jobStatus;
-            const jobType = row.dataset.jobType; // 💡 Kinyerjük a job típusát!
-
-            // Csak a függőben lévő vagy folyamatban lévő feladatokat frissítjük
-            if (!jobId || currentStatus === "COMPLETED" || currentStatus === "FAILED") {
-                continue;
-            }
+            if (!jobId || ["COMPLETED", "FAILED"].includes(currentStatus)) continue;
 
             try {
-                const url = jobStatusUrlTemplate.replace("{jobId}", jobId);
-                const res = await fetch(url);
-                
-                if (!res.ok) {
-                    console.error(`HTTP hiba ${res.status} a job_id=${jobId} lekérdezésénél.`);
-                    continue;
-                }
+                const res = await fetch(jobStatusUrlTemplate.replace("{jobId}", jobId));
+                if (!res.ok) continue;
 
                 const data = await res.json();
                 const newStatus = data.status;
-                
-                // Csak akkor frissítünk, ha az állapot változott
-                if (newStatus !== currentStatus) {
-                    console.log(`✅ Job ${jobId} frissítve: ${currentStatus} -> ${newStatus}`);
-                    
-                    const statusCell = row.querySelector(".status-cell");
-                    const resultCell = row.querySelector(".result-col");
-                    const pdfCell = row.querySelector(".pdf-cell");
-                    const videoCell = row.querySelector(".video-cell");
+                if (newStatus === currentStatus) continue;
 
-                    // Frissítjük a sor adatait és megjelenítését
-                    row.dataset.jobStatus = newStatus; 
-                    statusCell.innerHTML = getStatusBadge(newStatus); 
-                    
-                    if (newStatus === "COMPLETED") {
-                        const resultData = data.result;
-                        let resultHtml = resultData?.overall_rating || "–"; // Alapértelmezett érték
+                const statusCell = row.querySelector(".status-cell");
+                const pdfCell = row.querySelector(".pdf-cell");
+                const videoCell = row.querySelector(".video-cell");
 
-                        // 🆕 POSTURE ASSESSMENT LOGIKA (Testtartás)
-                        if (jobType === 'POSTURE_ASSESSMENT' && resultData) {
-                            const shoulderTilt = resultData.avg_shoulder_tilt_deg ? resultData.avg_shoulder_tilt_deg.toFixed(1) + '°' : '–';
-                            const hipTilt = resultData.avg_hip_tilt_deg ? resultData.avg_hip_tilt_deg.toFixed(1) + '°' : '–';
-                            
-                            resultHtml = `
-                                <div class="small fw-bold mb-1">${resultData.overall_rating || '–'}</div>
-                                <div class="small text-muted">Váll dőlés: ${shoulderTilt}</div>
-                                <div class="small text-muted">Csípő dőlés: ${hipTilt}</div>
-                            `;
-                        } 
-                        // 🆕 SQUAT ASSESSMENT LOGIKA (Guggolás)
-                        else if (jobType === 'SQUAT_ASSESSMENT' && resultData) {
-                            const avgRom = resultData.avg_rom_deg ? resultData.avg_rom_deg.toFixed(1) + '°' : '–';
-                            const overallScore = resultData.overall_score ? resultData.overall_score.toFixed(0) : '–';
+                row.dataset.jobStatus = newStatus;
+                if (statusCell) statusCell.innerHTML = getStatusBadge(newStatus);
 
-                            resultHtml = `
-                                <div class="small fw-bold mb-1">${resultData.overall_rating || '–'}</div>
-                                <div class="small text-muted">Átl. ROM: ${avgRom}</div>
-                                <div class="small text-muted">Pontszám: ${overallScore} / 100</div>
-                            `;
-                        }
-
-                        // 🆕 SINGLE LEG STANCE LOGIKA (Egylábon Állás)
-                        else if ((jobType === 'SINGLE_LEG_STANCE_LEFT' || jobType === 'SINGLE_LEG_STANCE_RIGHT') && resultData) {
-                            const overallScore = resultData.overall_score ? resultData.overall_score.toFixed(0) : '–';
-                            // feltételezzük, hogy a kulcs duration_sec
-                            const durationSec = resultData.duration_sec ? resultData.duration_sec.toFixed(1) + ' mp' : '–'; 
-
-                            resultHtml = `
-                                <div class="small fw-bold mb-1">${resultData.overall_rating || '–'}</div>
-                                <div class="small text-muted">Pontszám: ${overallScore} / 100</div>
-                                <div class="small text-muted">Kitartás: ${durationSec}</div>
-                            `;
-                        }
-
-
-                        // Frissítjük a cellákat
-                        resultCell.innerHTML = resultHtml; 
-                        
-                        // PDF URL-t tartalmazhatja a job (data.pdf_path) VAGY a result dict (data.result.report_pdf_url)
-                        pdfCell.innerHTML = createPdfButton(data.pdf_path || data.result?.report_pdf_url);
-                        // Vázolt videó URL-je a result dict-ből
-                        videoCell.innerHTML = createVideoButton(data.result?.skeleton_video_url); 
-                        
-                    } else if (newStatus === "FAILED") {
-                         // Hiba esetén
-                        resultCell.innerHTML = "–"; 
-                        pdfCell.innerHTML = "–";
-                        videoCell.innerHTML = "–";
-                    } else if (newStatus === "PROCESSING") {
-                        // Folyamatban lévő joboknál
-                        resultCell.innerHTML = "–"; 
-                        pdfCell.innerHTML = "–";
-                        videoCell.innerHTML = "–";
-                    }
+                if (newStatus === "COMPLETED") {
+                    const r = data.result || {};
+                    if (pdfCell) pdfCell.innerHTML = createPdfButton(data.pdf_path || r.report_pdf_url);
+                    if (videoCell) videoCell.innerHTML = createVideoButton(
+                        r.skeleton_video_url || r.skeleton_video_left_url || r.skeleton_video_right_url
+                    );
                 }
-
             } catch (err) {
-                console.warn(`❌ Nem sikerült frissíteni a job_id=${jobId} állapotát. Hiba:`, err);
+                console.warn(`❌ Nem sikerült frissíteni a job_id=${jobId}:`, err);
             }
         }
     }
 
-    // Első futtatás és a frissítési ciklus beállítása
     setTimeout(() => {
         refreshJobStatuses();
         setInterval(refreshJobStatuses, refreshInterval);
-    }, 100); 
+    }, 200);
 });
 </script>
 {% endblock %}

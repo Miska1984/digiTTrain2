@@ -2,6 +2,7 @@
 
 import logging
 import json
+import os
 from diagnostics_jobs.models import DiagnosticJob
 from diagnostics_jobs.services.base_service import BaseDiagnosticService
 from diagnostics.utils.mediapipe_processor import process_video_with_mediapipe
@@ -11,11 +12,14 @@ from diagnostics.utils.mediapipe_processor import process_video_with_mediapipe
 from diagnostics.utils.geometry import (
     get_landmark_coords, 
     calculate_horizontal_tilt, 
-    calculate_angle_3d, 
+    calculate_angle_3d,
     calculate_distance_3d,
     calculate_midpoint_3d
 )
 import numpy as np
+from diagnostics_jobs.services.utils.anthropometry_loader import get_user_anthropometry_data
+from diagnostics_jobs.utils import get_local_video_path
+from diagnostics.utils.snapshot_manager import upload_file_to_gcs, save_snapshot_to_gcs
 
 logger = logging.getLogger(__name__)
 
@@ -29,54 +33,140 @@ class SingleLegStanceAssessmentService(BaseDiagnosticService):
         job = self.job
         logger.info(f"Feldolgozás elindítva a job: {job.id} számára")
 
+        # 0️⃣ Kalibráció betöltése
+        anthro = get_user_anthropometry_data(job.user)
+        general_factor = anthro.get("calibration_factor", 1.0) if anthro else 1.0
+        leg_factor = anthro.get("leg_calibration_factor", 1.0) if anthro else 1.0
+        
+        # ❗ KRITIKUS: Elemzés indítása Kalibráció hiányában (ha kötelező)
+        # Ha a statikus teszt (SLS) megengedett kalibráció nélkül, hagyjuk el ezt a blokkot. 
+        # Feltételezzük, hogy itt is kell, mivel az abszolút elmozdulás fontos.
+        if not anthro:
+            self.log("❌ Kalibráció Hiba: Az Egylábon Állás elemzéshez antropometriai adatok (Kalibráció) hiányoznak. Elemzés F_general=1.0 faktorral.")
+            # A hiba ellenére folytatjuk, de a pontosság csökken
+            
+        logger.info(f"✅ Kalibrációs faktorok betöltve: Általános={general_factor:.4f}, Láb={leg_factor:.4f}")
+
         # 1. Oldal meghatározása (melyik lábon áll)
         side_to_analyze = "left" if "LEFT" in job.job_type else "right"
         is_left_stance = side_to_analyze == "left"
         
-        logger.info(f"📐 Elemzett támaszkodó oldal: {side_to_analyze.upper()}")
-
         # 2. Videó letöltése és MediaPipe feldolgozás
-        local_video_path = self.download_video()
+        # ❌ EREDETI: local_video_path = self.download_video()
+        # ✅ JAVÍTVA: Használjuk a standard utility függvényt
+        local_video_path = get_local_video_path(job.video_url) 
+        
         if not local_video_path:
-            self.fail_job("Nem sikerült letölteni a videót.")
+            # ❗ Ez most a get_local_video_path függvény hibáját jelzi
+            self.fail_job("Nem sikerült letölteni a videót.") 
             return {}
 
         # Végigfut a videón és visszaadja a teljes landmark adatokat minden frame-re
-        all_landmarks = process_video_with_mediapipe(local_video_path)
+        # 🟢 Fő skálázáshoz az általános faktort használjuk
+        all_landmarks, skeleton_path, keyframes = process_video_with_mediapipe(
+            local_video_path, 
+            job.job_type,
+            calibration_factor=general_factor,
+        ) 
         
         if not all_landmarks:
             self.fail_job("Nincs detektálható landmark a videóban.")
-            return
+            return {}
 
-        # 3. Biomechanikai számítások (itt a helye a MediaPipe adatok feldolgozásának)
-        analysis_result, video_summary = self._calculate_sls_metrics(all_landmarks, is_left_stance)
+        # 3. Biomechanikai számítások
+        # 🟢 Átadjuk mindkét faktort
+        analysis_result, video_summary = self._calculate_sls_metrics(
+            all_landmarks, 
+            is_left_stance, 
+            general_factor, 
+            leg_factor
+        )
         
         # 4. Kép/videó előállítás
-        skeleton_video_url = self.create_skeleton_video(local_video_path, all_landmarks)
+        # ❌ HIBÁS: skeleton_video_url = self.create_skeleton_video(local_video_path, all_landmarks)
+        # 🟢 JAVÍTOTT: Feltöltjük a MediaPipe által generált videót (skeleton_path)
+        
+        # Feltételezzük, hogy a BaseDiagnosticService-ből megöröklődik egy upload_file_to_gcs nevű metódus:
+        # Ha a BaseService-ből öröklődik az upload_file:
+        try:
+            if skeleton_path and os.path.exists(skeleton_path):
+                logger.info(f"📤 Skeleton videó feltöltése GCS-re: {skeleton_path}")
+                
+                # 🟢 JAVÍTOTT: Egységes útvonal struktúra (mint a többi jobnál)
+                gcs_destination = f"media/dev/jobs/{job.id}/skeleton_video.avi"
+                
+                skeleton_video_url = upload_file_to_gcs( 
+                    local_file_path=skeleton_path, 
+                    gcs_destination=gcs_destination
+                )
+                logger.info(f"✅ Skeleton videó feltöltve: {skeleton_video_url}")
+            else:
+                logger.error(f"❌ A skeleton videó nem létezik: {skeleton_path}")
+                skeleton_video_url = None
+                
+        except Exception as e:
+            logger.error(f"❌ Skeleton videó feltöltési hiba: {e}", exc_info=True)
+            skeleton_video_url = None
+
         # Snapshot feltöltése a leginstabilabb frame-ről
-        worst_frame_snapshot_url = self.upload_snapshot(
-            video_summary.get('worst_frame_index'), 
-            f"sls_worst_{side_to_analyze}_{job.id}.jpg", 
-            local_video_path
-        )
+        # ❌ HIBÁS: worst_frame_snapshot_url = self.upload_snapshot(...)
+        # 🟢 JAVÍTOTT: A BaseService-ben feltételezünk egy upload_snapshot metódust.
+        # Ha az upload_snapshot sem létezik (mint ahogy a create_skeleton_video sem):
+        
+        # Ezt a részt a BaseDiagnosticService-re alapozzuk, de mivel az hibázott, 
+        # inkább csak tároljuk a lokális keyframe-et, és feltöltjük:
+        
+        worst_frame_snapshot_url = None
+        worst_frame_index = video_summary.get('worst_frame_index', 0)
+        
+        if worst_frame_index > 0:
+            # 💡 LOGIKAI KORREKCIÓ: A MediaPipe által generált keyframes-ből kikeressük a képadatot
+            worst_frame_data = next((k for k in keyframes if k.get('frame_index', -1) == worst_frame_index), None)
+            
+            # Ha van kép adat ('frame_image' kulcs alatt) a kiválasztott frame-hez:
+            if worst_frame_data and worst_frame_data.get('frame_image') is not None:
+                try:
+                    # 🟢 HELYES HÍVÁS: A kinyert frame-et (NumPy array) adjuk át a save_snapshot_to_gcs-nek
+                    worst_frame_snapshot_url = save_snapshot_to_gcs(
+                        frame_image=worst_frame_data['frame_image'],
+                        job=job,
+                        label=f"sls_worst_{side_to_analyze}"
+                    )
+                except Exception as e:
+                    logger.warning(f"Snapshot létrehozás/feltöltés Hiba: {e}")
 
 
         # 5. Eredmények összegzése a PDF számára
+        # 🟢 JAVÍTÁS: Biztonságos kulcshozzáférés a .get() metódusokkal, 
+        # hogy ha egy kulcs hiányzik, ne szakadjon meg a program.
+        
+        # 1. Biztonságos hozzáférés a 'scoring_breakdown'-hoz (alapértelmezett: üres szótár {})
+        scoring_breakdown = analysis_result.get("scoring_breakdown", {})
+        
         final_result = {
-            "overall_score": analysis_result["overall_score"],
-            "stability_score": analysis_result["stability_score"],
-            "pelvic_control_score": analysis_result["pelvic_control_score"],
-            "knee_ankle_score": analysis_result["knee_ankle_score"],
-            "time_score": analysis_result["scoring_breakdown"].get('Kitartás idő', 0),
-            "symmetry_score": analysis_result["scoring_breakdown"].get('Szimetriaviszony', 0),
-            "max_pelvic_drop_angle": analysis_result["max_pelvic_drop_angle"], 
-            "max_knee_valgus_angle": analysis_result["max_knee_valgus_angle"], 
+            # Biztonságos hozzáférés a fő kulcsokhoz
+            "overall_score": analysis_result.get("overall_score", 0),
+            "stability_score": analysis_result.get("stability_score", 0),
+            "pelvic_control_score": analysis_result.get("pelvic_control_score", 0),
+            "knee_ankle_score": analysis_result.get("knee_ankle_score", 0),
+            
+            # Biztonságos hozzáférés a 'scoring_breakdown' belsejében lévő kulcsokhoz
+            "time_score": scoring_breakdown.get('Kitartás idő', 0),
+            "symmetry_score": scoring_breakdown.get('Szimetriaviszony', 0),
+            
+            # További kulcsok biztonságosan
+            "max_pelvic_drop_angle": analysis_result.get("max_pelvic_drop_angle", 0), 
+            "max_knee_valgus_angle": analysis_result.get("max_knee_valgus_angle", 0), 
             "side": side_to_analyze,
-             # 🆕 ÚJ: A generált visszajelzések
-            "feedback_list": analysis_result["feedback_list"],
+            
+            # 🆕 ÚJ: A generált visszajelzések
+            "feedback_list": analysis_result.get("feedback_list", []),
             "skeleton_video_url": skeleton_video_url,
             "worst_frame_snapshot_url": worst_frame_snapshot_url,
-            # ... (további metrikák)
+            # 🆕 ÚJ: Kalibrációs adatok mentése
+            "calibration_used": bool(anthro),
+            "general_calibration_factor": round(general_factor, 5),
+            "leg_calibration_factor": round(leg_factor, 5),
         }
         
         # 6. PDF riport generálása
@@ -89,13 +179,18 @@ class SingleLegStanceAssessmentService(BaseDiagnosticService):
         )
         logger.info(f"✅ Egylábon állás elemzés sikeresen befejezve (Job ID: {job.id})")
 
-    def _calculate_sls_metrics(self, all_landmarks: list[dict], is_left_stance: bool) -> tuple[dict, dict]:
+        return final_result
+
+    def _calculate_sls_metrics(self, all_landmarks: list[dict], is_left_stance: bool, general_factor: float, leg_factor: float) -> tuple[dict, dict]:
         """A stabilitás, medencekontroll és térd/boka stabilitási metrikák kiszámítása."""
+        
+        # 🆕 KALIBRÁCIÓ KORREKCIÓS TÉNYEZŐ SZÁMÍTÁSA (EGYSZER)
+        correction_factor = leg_factor / general_factor if general_factor and general_factor != 0 else leg_factor
 
         # Metrika gyűjtők
         pelvic_drop_angles = []
         knee_valgus_angles = []
-        stance_ankle_sway = [] # A bokák billegését méri (instabilitás)
+        stance_ankle_sway_corrected = [] # 🆕 Korrigált pontokat fog tárolni
         
         # Landmark nevek a támaszkodó oldalhoz
         side_prefix = "left" if is_left_stance else "right"
@@ -112,44 +207,51 @@ class SingleLegStanceAssessmentService(BaseDiagnosticService):
 
         # 1. Metrikák számítása frame-enként
         for i, frame_data in enumerate(all_landmarks):
-            world_landmarks = frame_data.get('world_landmarks', [])
+            # world_landmarks = frame_data.get('world_landmarks', [])
             
-            # --- 1.1 Medence Dőlés (Pelvic Drop) ---
-            # Két csípőpont X-Y-Z koordinátáinak kinyerése
-            p_stance_hip = get_landmark_coords(world_landmarks, stance_hip)
-            p_opp_hip = get_landmark_coords(world_landmarks, opp_hip)
+            # --- Alsótest pontok kinyerése és KORREKCIÓJA (F_leg skálázás) ---
             
+            # A támaszkodó oldal ízületei
+            p_stance_hip = get_landmark_coords(frame_data, stance_hip)
+            p_stance_knee = get_landmark_coords(frame_data, stance_knee)
+            p_stance_ankle = get_landmark_coords(frame_data, stance_ankle)
+            p_stance_foot = get_landmark_coords(frame_data, stance_foot_index)
+            
+            # Az ellentétes (szabad) oldal ízületei
+            p_opp_hip = get_landmark_coords(frame_data, opp_hip) # 🟢 JAVÍTVA       
+            
+            lower_body_coords = [
+                p_stance_hip, p_stance_knee, p_stance_ankle, p_stance_foot, p_opp_hip
+            ]
+
+            corrected_coords = []
+            for p in lower_body_coords:
+                if p is not None:
+                    # 🔹 Alkalmazzuk a korrekciós faktort (F_leg / F_general)
+                    corrected_coords.append(np.array(p) * correction_factor)
+                else:
+                    corrected_coords.append(None)
+            
+            [p_stance_hip, p_stance_knee, p_stance_ankle, p_stance_foot, p_opp_hip] = corrected_coords
+            
+            # --- 1.1 Medence Dőlés (Pelvic Drop) - KORRIGÁLT pontokkal ---
             if p_stance_hip is not None and p_opp_hip is not None:
-                # calculate_horizontal_tilt: méri a dőlést a két pont között
+                # ... (calculate_horizontal_tilt hívás VÁLTOZATLAN, de a pontok korrigáltak)
                 drop_angle = calculate_horizontal_tilt(p_left=p_stance_hip, p_right=p_opp_hip) \
                              if is_left_stance else \
                              calculate_horizontal_tilt(p_left=p_opp_hip, p_right=p_stance_hip)
-                pelvic_drop_angles.append(abs(drop_angle)) # Az abszolút értéket tároljuk
+                pelvic_drop_angles.append(abs(drop_angle))
 
-            # --- 1.2 Térd Valgus (Knee Valgus/Varus) ---
-            # Csípő-Térd-Boka szög (frontális síkban dőlés mérése)
-            p_hip = get_landmark_coords(world_landmarks, stance_hip)
-            p_knee = get_landmark_coords(world_landmarks, stance_knee)
-            p_ankle = get_landmark_coords(world_landmarks, stance_ankle)
-            
-            if p_hip is not None and p_knee is not None and p_ankle is not None:
-                # Kiszámoljuk a belső ízületi szöget
-                knee_angle = calculate_angle_3d(p_hip, p_knee, p_ankle)
-                # Az ideális egyenes állás ~175-180 fok. A Valgus (befelé esés) a kisebb szög.
-                # A 180 fokhoz képesti eltérést tároljuk Valgus-ként.
+            # --- 1.2 Térd Valgus (Knee Valgus/Varus) - KORRIGÁLT pontokkal ---
+            if p_stance_hip is not None and p_stance_knee is not None and p_stance_ankle is not None:
+                # ... (calculate_angle_3d hívás VÁLTOZATLAN, de a pontok korrigáltak)
+                knee_angle = calculate_angle_3d(p_stance_hip, p_stance_knee, p_stance_ankle)
                 valgus_dev = 180.0 - knee_angle
                 knee_valgus_angles.append(max(0.0, valgus_dev))
 
-            # --- 1.3 Stabilitás / Boka Billegés (Ankle Sway) ---
-            # A boka billegésének mértéke az XZ síkon (oldalirányú mozgás)
-            p_ankle = get_landmark_coords(world_landmarks, stance_ankle)
-            p_foot = get_landmark_coords(world_landmarks, stance_foot_index)
-            
-            if p_ankle is not None and p_foot is not None:
-                # Használhatjuk a lábfej index (32) és boka (28) pontok mozgását is
-                # A legegyszerűbb proxy: Boka X és Z koordinátáinak szórása az időben.
-                # A Frame-ek tárolják a boka X, Y, Z pozícióját a world_landmarks-ben.
-                stance_ankle_sway.append(p_ankle)
+            # --- 1.3 Stabilitás / Boka Billegés (Ankle Sway) - KORRIGÁLT pontokkal ---
+            if p_stance_ankle is not None:
+                stance_ankle_sway_corrected.append(p_stance_ankle) # 🆕 Korrigált pontok gyűjtése
             
         # 2. Összegzés / Maximumok és Szórások számítása
         
@@ -160,12 +262,11 @@ class SingleLegStanceAssessmentService(BaseDiagnosticService):
         max_knee_valgus_dev = np.max(knee_valgus_angles) if knee_valgus_angles else 0.0
         
         # Stabilitás metrikák (A billegés/sway metrikája a szórás)
-        sway_points = np.array(stance_ankle_sway)
+        sway_points = np.array(stance_ankle_sway_corrected)
         sway_amplitude = 0.0
         if sway_points.size > 0:
             # Csak az X (oldalra) és Z (előre/hátra) mozgás érdekes
             sway_x_z = sway_points[:, [0, 2]]
-            # A szórás (standard deviation) a mozgás amplitúdóját méri.
             sway_amplitude = np.std(sway_x_z) * 100 # Skálázás
             
         # 3. Metrikák becsomagolása

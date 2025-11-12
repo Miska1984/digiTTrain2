@@ -65,3 +65,40 @@ def save_snapshot_to_gcs(frame_image, job, label="snapshot"):
                 logger.debug(f"Lokális átmeneti fájl törölve: {temp_path}")
             except Exception as remove_e:
                 logger.warning(f"Nem sikerült törölni a lokális fájlt: {temp_path}. Hiba: {remove_e}")
+
+def upload_file_to_gcs(local_file_path: str, gcs_destination: str) -> str | None:
+    """
+    Általános fájl feltöltése a GCS-re publikus eléréssel.
+    """
+    if not os.path.exists(local_file_path):
+        logger.error(f"Fájl nem található a feltöltéshez: {local_file_path}")
+        return None
+        
+    try:
+        client = get_storage_client()
+        bucket = client.bucket(settings.GS_BUCKET_NAME)
+
+        blob = bucket.blob(gcs_destination)
+        
+        # Feltöltés a lokális fájlból
+        blob.upload_from_filename(local_file_path)
+        
+        # ❌ TÖRÖLNI KELL EZT:
+        # blob.make_public() 
+        
+        # 🟢 HELYES URL GENERÁLÁSA, ha a vödör publikus (Csak a beépített public_url-t használjuk)
+        uploaded_url = blob.public_url
+        logger.info(f"✅ Fájl feltöltve GCS-re: {uploaded_url}")
+        return uploaded_url
+        
+    except Exception as e:
+        logger.error(f"❌ Általános GCS feltöltési hiba ({local_file_path} -> {gcs_destination}): {e}")
+        return None
+    finally:
+        # Fájl törlése, ha átmeneti helyről dolgozunk (bár a videó letöltött, biztonságos)
+        if local_file_path and os.path.exists(local_file_path) and local_file_path.startswith('/tmp'):
+            try:
+                os.remove(local_file_path)
+            except Exception as remove_e:
+                logger.warning(f"Nem sikerült törölni a lokális fájlt: {local_file_path}. Hiba: {remove_e}")
+

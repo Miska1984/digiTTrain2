@@ -1,65 +1,74 @@
-<h3>Helyből Magassági Ugrás Biomechanikai Elemzés</h3>
+<h3>Helyből Magassági Ugrás (Vertical Jump) Elemzés</h3>
 
 <div class="metric">
-    Összesített Ugrás Pontszám: <strong>{{ analysis.overall_jump_score|floatformat:1 }}</strong> / 100
-    {% if analysis.overall_jump_score > 84.9 %}
-        <span class="text-success small">(Kiváló neuromuszkuláris teljesítmény )</span>
-    {% elif analysis.overall_jump_score > 69.9 %}
-        <span class="text-warning small">(Jó, kisebb kompenzációk )</span>
-    {% else %}
-        <span class="text-danger small">(Közepes / Korrekció szükséges )</span>
-    {% endif %}
-    <p class="small text-muted">A pontszám alapja: Robbanékonyság (40p), Landolási Kontroll (30p), Valgus Kontroll (20p) és Szimmetria (10p)[cite: 21].</p>
+    Összesített Pontszám: <strong>{{ analysis.overall_jump_score|floatformat:1 }}</strong> / 100
+    <p class="small text-muted">Erőfejlesztés, Landolási Kontroll és Aszimmetria alapján.</p>
 </div>
 <hr>
 
 <div class="row">
-    <div class="col-md-6">
-        <h4>Teljesítmény és Dinamika (Erőkifejtés: 40p)</h4>
-        <div class="metric">
-            Ugrásmagasság: <strong>{{ analysis.jump_height_cm|floatformat:1 }} cm</strong> [cite: 30]
-        </div>
-        <div class="metric">
-            Elrugaszkodás Dinamika (Takeoff Index): <strong>{{ analysis.takeoff_speed_index|floatformat:2 }}</strong> [cite: 32]
-        </div>
-        <div class="metric">
-            Térdhajlítás Mélysége: <strong>{{ analysis.countermovement_depth_deg|floatformat:1 }}°</strong> [cite: 31]
-        </div>
-    </div>
-    
-    <div class="col-md-6">
-        <h4>Landolási Kontroll (30p) és Kockázat (20p)</h4>
-        <div class="metric">
-            Landolási Kontroll Score: <strong>{{ analysis.landing_control_score|floatformat:1 }}</strong> / 100 [cite: 37]
-        </div>
-        <div class="metric">
-            Max. Térd Valgus Szög: <strong>{{ analysis.max_valgus_angle|floatformat:1 }}°</strong> [cite: 33]
-            {% if analysis.max_valgus_angle > 15 %}
-                <span class="text-danger small">(Magas ACL sérüléskockázatot jelez. [cite: 17])</span>
-            {% else %}
-                <span class="text-success small">(Kontrollált)</span>
-            {% endif %}
-        </div>
-        <div class="metric">
-            Szimmetria Score (Bal-Jobb arány): <strong>{{ analysis.jump_symmetry_score|floatformat:1 }}</strong> / 100 [cite: 38]
-        </div>
-    </div>
+    <div class="col-md-6">
+        <h4>Erőfejlesztés (Explosiveness)</h4>
+        <div class="metric">
+            Ugrásmagasság (Cm): <strong>{{ analysis.jump_height_cm|floatformat:1 }} cm</strong> 
+        </div>
+        <div class="metric">
+            Countermovement Mélység: <strong>{{ analysis.countermovement_depth_deg|floatformat:1 }}°</strong>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <h4>Landolási Kontroll (Sérüléskockázat)</h4>
+        <div class="metric">
+            Max. Valgus Szög: <strong>{{ analysis.max_valgus_angle|floatformat:1 }}°</strong>
+            {% if analysis.max_valgus_angle > 12.0 %}
+                <span class="text-danger small">(Magas ACL kockázat)</span>
+            {% elif analysis.max_valgus_angle > 8.0 %}
+                <span class="text-warning small">(Mérsékelt kockázat)</span>
+            {% endif %}
+        </div>
+        <div class="metric">
+            Landolási Kontroll Score: <strong>{{ analysis.landing_control_score|floatformat:1 }}</strong> / 100
+        </div>
+    </div>
 </div>
 
 <hr>
 
-{% if analysis.snapshot_urls.landing %}
-<div class="snapshot">
-    <h4>Kulcspillanat – Landolás Fázis</h4>
-    <img src="{{ analysis.snapshot_urls.landing }}" alt="Ugrás Landolási Pillanatkép">
+{# 🆕 KRITIKUS JAVÍTÁS: Kalibrációs faktorok megjelenítése #}
+{% if analysis.calibration_used %}
+    <h4>📐 Antropometriai kalibráció</h4>
+    <div class="calibration-info">
+        <p>A biomechanikai elemzés kalibrált testméretekkel történt.</p>
+        <p>Általános skálázási faktor (felsőtest): <code>{{ analysis.general_calibration_factor|floatformat:5 }}</code></p>
+        <p>Láb-specifikus korrekciós faktor (alsótest): <code>{{ analysis.leg_calibration_factor|floatformat:5 }}</code></p>
+    </div>
+    <hr>
+{% endif %}
+
+{% if analysis.snapshot_urls %}
+<div class="snapshot-row">
+    <h4>Kulcspillanatok</h4>
+    {% if analysis.snapshot_urls.takeoff %}
+    <div class="snapshot">
+        <h5>Elrugaszkodás (Countermovement)</h5>
+        <img src="{{ analysis.snapshot_urls.takeoff }}" alt="Elrugaszkodás Pillanatkép">
+    </div>
+    {% endif %}
+    {% if analysis.snapshot_urls.landing %}
+    <div class="snapshot">
+        <h5>Landolás (Valgus)</h5>
+        <img src="{{ analysis.snapshot_urls.landing }}" alt="Landolás Pillanatkép">
+    </div>
+    {% endif %}
 </div>
 {% endif %}
 
-<h4>Visszajelzés és Korrekciók</h4>
+<h4>Visszajelzés és Javaslatok</h4>
 <ul>
 {% for item in analysis.feedback %}
-    <li>{{ item }}</li>
+    <li>{{ item }}</li>
 {% empty %}
-    <li>Kiváló teljesítmény és kontroll. </li>
+    <li>Nincs specifikus korrekcióra szükség, a teljesítmény optimalis.</li>
 {% endfor %}
 </ul>
