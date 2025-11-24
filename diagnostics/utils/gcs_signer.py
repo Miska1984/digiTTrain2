@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 # Feltételezve, hogy a 'gcp_service_account.json' a BASE_DIR-ben van.
 GCP_SA_KEY_PATH = os.path.join(settings.BASE_DIR, 'gcp_service_account.json')
 GCS_BUCKET_NAME = settings.GS_BUCKET_NAME
+CLOUD_RUN_SA_EMAIL = 'digittrain-projekt@appspot.gserviceaccount.com'
 
 
 def get_storage_client():
@@ -90,6 +91,7 @@ def generate_signed_upload_url(file_name: str, content_type: str) -> dict:
             method="PUT",
             expiration=timedelta(minutes=15),
             content_type=content_type,
+            service_account_email=CLOUD_RUN_SA_EMAIL
         )
 
         return {
