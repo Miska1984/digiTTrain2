@@ -72,24 +72,28 @@ def generate_signed_upload_url(file_name: str, content_type: str) -> dict:
         blob_path = f"videos/uploads/{file_name}"
         blob = bucket.blob(blob_path)
 
-        logger.info(f"🪶 Aláírás indítása fájlhoz: {blob_path}")
+        logger.info(f"🪶 Aláírás indítása fájlhoz: {blob_path} SA-val: {CLOUD_RUN_SA_EMAIL}")
 
+        # 🟢 KRITIKUS JAVÍTÁS: Ezzel a sorral delegáljuk az aláírást az IAM-nek!
         signed_url = blob.generate_signed_url(
             version="v4",
             method="PUT",
             expiration=timedelta(minutes=15),
             content_type=content_type,
+            
+            # ❗ EZ A MEGOLDÁS AZ EREDETI HIBÁRA!
+            service_account_email=CLOUD_RUN_SA_EMAIL 
         )
 
         return {
             "success": True,
             "signed_url": signed_url,
             "file_name": blob_path,
-            "public_url": f"https://storage.googleapis.com/{settings.GS_BUCKET_NAME}/{blob_path}",
+            "public_url": f"https://storage.googleapis.com/{settings.GS_BUCKET_NAME}/{blob_path}"
         }
 
-    except FileNotFoundError as e:
-        return {"success": False, "error": str(e)}
     except Exception as e:
         logger.error(f"❌ Hiba az aláírt URL generálásakor: {e}")
+        return {"success": False, "error": f"Hiba az aláírt URL generálásakor: {e}"}
+    except FileNotFoundError as e:
         return {"success": False, "error": str(e)}
