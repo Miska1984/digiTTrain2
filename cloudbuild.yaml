@@ -1,4 +1,4 @@
-# Cloud Build cache gyorsítás
+# Cloud Build beállítások
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: E2_HIGHCPU_8
@@ -25,15 +25,25 @@ steps:
         echo "ENVIRONMENT: production" >> .env.yaml
         echo "GCP_SA_KEY_PATH: /app/gcp_service_account.json" >> .env.yaml
 
-  # 1️⃣ Docker image build
+  # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "🔑 GCP service account kulcs letöltése..."
+        gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json
+        ls -l ./gcp_service_account.json
+
+  # 2️⃣ Docker image build
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
 
-  # 2️⃣ Docker image push
+  # 3️⃣ Docker image push
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-  # 3️⃣ Migrációs job (adatbázis frissítés)
+  # 4️⃣ Migráció futtatása
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -53,37 +63,26 @@ steps:
           --args "manage.py","migrate","--verbosity","3" \
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+        gcloud run jobs execute migrate-job --region=europe-west1
 
-  # 4️⃣ Futtatjuk a migrate-job-ot
+  # 5️⃣ Deploy Cloud Run szolgáltatás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - run
-      - jobs
-      - execute
-      - migrate-job
-      - --region=europe-west1
-
-  # 5️⃣ Initial adatok betöltése (populate_initial_data)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        gcloud run jobs update initial-data-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
-          --region europe-west1 \
-          --command "python" \
-          --args "manage.py","populate_initial_data" \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-        || gcloud run jobs create initial-data-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
-          --region europe-west1 \
-          --command "python" \
-          --args "manage.py","populate_initial_data" \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - deploy
+      - digit-train-web
+      - --image
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest
+      - --region
+      - europe-west1
+      - --platform
+      - managed
+      - --allow-unauthenticated
+      - --env-vars-file
+      - .env.yaml
+      - --add-cloudsql-instances
+      - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
 
   # 6️⃣ Futtatjuk az initial-data-job-ot
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
