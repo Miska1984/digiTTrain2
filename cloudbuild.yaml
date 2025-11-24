@@ -25,14 +25,14 @@ steps:
         echo "ENVIRONMENT: production" >> .env.yaml
         echo "GCP_SA_KEY_PATH: /app/gcp_service_account.json" >> .env.yaml
 
-  # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből
+  # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből (FIXED)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
-     - -c
-      - |
-        echo "🔑 GCP service account kulcs letöltése..."
-        gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json
+      - '-c'
+      - >
+        echo "🔑 GCP service account kulcs letöltése...";
+        gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json;
         ls -l ./gcp_service_account.json
 
   # 2️⃣ Docker image build
