@@ -3,7 +3,6 @@ options:
   logging: CLOUD_LOGGING_ONLY
   machineType: E2_HIGHCPU_8
   diskSizeGb: 20
-  dynamic_substitutions: true
   substitution_option: ALLOW_LOOSE
 
 steps:
