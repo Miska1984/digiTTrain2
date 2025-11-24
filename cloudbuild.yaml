@@ -23,6 +23,7 @@ steps:
         echo "GS_PROJECT_ID: digittrain-projekt" >> .env.yaml
         echo "GS_LOCATION: europe-west1" >> .env.yaml
         echo "ENVIRONMENT: production" >> .env.yaml
+        echo "GCP_SA_KEY_PATH: /app/gcp_service_account.json" >> .env.yaml
 
   # 1️⃣ Docker image build
   - name: 'gcr.io/cloud-builders/docker'

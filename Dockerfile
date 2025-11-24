@@ -55,6 +55,11 @@ RUN mkdir -p ./static/dist && \
 # ----------------------------
 COPY . .
 
+# 🔐 Szolgáltatási fiók kulcs másolása a konténerbe
+COPY gcp_service_account.json /app/gcp_service_account.json
+
+# Környezeti változó, hogy a Django-kód megtalálja
+ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
 
 RUN if [ -f assets/pose_landmarker_full.task ]; then echo "MediaPipe assets found."; else echo "WARNING: MediaPipe asset not found in assets/pose_landmarker_full.task" && exit 1; fi
 
