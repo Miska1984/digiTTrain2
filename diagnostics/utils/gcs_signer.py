@@ -95,9 +95,7 @@ def generate_signed_upload_url(file_name: str, content_type: str) -> dict:
             method="PUT",
             expiration=timedelta(minutes=15),
             content_type=content_type,
-            
-            # ❗ EZ OLDJA MEG A CLOUD RUN-OS HIBÁT AZ IAM-EN KERESZTÜL
-            service_account_email=CLOUD_RUN_SA_EMAIL 
+            credentials=client._credentials,  # Compute Engine token
         )
 
         return {
