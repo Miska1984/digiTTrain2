@@ -1,113 +1,116 @@
-# diagnostics/analysis_views/squat_views.py - GCS Kompatibilis Változat (Javított, Abszolút URL-lel)
+# diagnostics/analysis_views/squat_views.py - EGYENLEG ELLENŐRZÉSSEL
 
 import os
-import json # Szükséges a JSON adatok olvasásához
+import json
 from django.http import JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.contrib import messages
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required 
-from django.conf import settings # 🆕 Új import a GS_BUCKET_NAME eléréséhez
+from django.conf import settings
 
 from diagnostics_jobs.models import DiagnosticJob
 from diagnostics_jobs.cloud_tasks import enqueue_diagnostic_job
 from diagnostics.forms import SquatDiagnosticUploadForm
-from diagnostics.utils.video_handler import handle_uploaded_video # Nem kell a GCS miatt
 
-# ----------------------------------------------------------
-# Segédfüggvény: Elemző Job létrehozása és indítása (GCS)
-# ----------------------------------------------------------
+# 🆕 ÚJ IMPORTOK
+from billing.utils import dedicate_analysis, get_analysis_balance
+
+
 def _process_video_upload(request, form_class, job_type, title, sport_type="general"):
-    """
-    Közös logika a Job létrehozásához, miután a frontend közvetlenül a GCS-re töltött fel.
-    A POST kérésben JSON-ként érkező video_url-t használja.
-    """
-    print(f"\n======== {title} Job Létrehozás (GCS URL-lel) ========")
+    """Közös logika egyenleg ellenőrzéssel."""
+    print(f"\n======== {title} Job Létrehozás ========")
 
     if request.method == "POST":
         try:
-            # POST adatok JSON-ként való olvasása (a frontend AJAX hívásából)
             data = json.loads(request.body)
-
-            print(f"🔗 [DEBUG] Fogadott JSON adat: {data}")
-
-            # A gcs_object_name csak a relatív GCS útvonal (pl.: videos/uploads/...):
             gcs_object_key = data.get('video_url') 
             
             if not gcs_object_key:
-                raise ValueError("A feltöltött videó GCS útvonala (video_url) hiányzik a kérésben. Ellenőrizd a frontend JSON kulcsát.")
+                raise ValueError("GCS útvonal hiányzik.")
 
-            # ✅ JAVÍTÁS: A TELJES ABSZOLÚT URL KÉPZÉSE!
-            # A settings.MEDIA_URL (pl. https://.../media/dev/ ) és a relatív útvonal összefűzése.
+            # 🆕 1. EGYENLEG ELLENŐRZÉSE
+            current_balance = get_analysis_balance(request.user)
+            
+            if current_balance < 1:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'INSUFFICIENT_BALANCE',
+                    'message': 'Nincs elegendő elemzési egyenleged!',
+                    'current_balance': current_balance
+                }, status=402)
+
             bucket_base_url = f"https://storage.googleapis.com/{settings.GS_BUCKET_NAME}/"
             full_video_url = f"{bucket_base_url}{gcs_object_key}"
 
-            print(f"🔗 [Job Creation] GCS Objektum Kulcs: {gcs_object_key}")
-            print(f"🔗 [Job Creation] Képzett TELJES URL: {full_video_url}")
-
-            notes = data.get('notes', '...')
-
-            # 1. DiagnosticJob létrehozása
+            # 2. Job létrehozása
             job = DiagnosticJob.objects.create(
                 user=request.user,
                 sport_type=sport_type,
                 job_type=job_type,
-                # 🚨 A JAVÍTOTT, TELJES URL mentése a video_url mezőbe!
-                video_url=full_video_url, 
-            )  # A 'notes' mező továbbra is kihagyva!
-        
-            print(f"✅ Job #{job.id} létrehozva: {job.job_type}")
+                video_url=full_video_url,
+                status=DiagnosticJob.JobStatus.PENDING,
+            )
+            print(f"✅ Job #{job.id} létrehozva")
             
-            # 2. Elemzés indítása (GCP Cloud Task / Helyi Celery)
+            # 🆕 3. ELEMZÉS LEVONÁSA
+            success, new_balance = dedicate_analysis(request.user, job)
+            
+            if not success:
+                job.status = DiagnosticJob.JobStatus.FAILED
+                job.error_message = "Nem sikerült levonni az elemzést."
+                job.save()
+                return JsonResponse({
+                    'success': False,
+                    'error': 'DEDUCTION_FAILED',
+                    'message': job.error_message
+                }, status=500)
+            
+            # 4. Job ütemezése
+            job.status = DiagnosticJob.JobStatus.QUEUED
+            job.save()
+            
             try:
                 enqueue_diagnostic_job(job.id)
                 
-                # SIKER ESETÉN MÁR JSON-T AD VISSZA
                 return JsonResponse({
                     "success": True, 
                     "job_id": job.id, 
-                    "message": "✅ Videó feltöltve (GCS). Az elemzés elindult a háttérben!"
+                    "message": "✅ Elemzés elindult!",
+                    "remaining_balance": new_balance
                 }, status=201)
                 
             except Exception as e:
-                # Ha az ütemezés sikertelen
-                job.mark_as_failed(f"Hiba az ütemezés közben: {e}")
-                print(f"❌ Hiba történt az ütemezés közben: {e}")
+                job.mark_as_failed(f"Hiba: {e}")
                 return JsonResponse({
                     "success": False, 
-                    "error": f"Hiba az elemzés indításakor: {e}"
+                    "error": f"Hiba: {e}"
                 }, status=500)
 
         except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Hibás JSON formátum."}, status=400)
+            return JsonResponse({"success": False, "error": "Hibás JSON."}, status=400)
         except Exception as e:
-            print(f"❌ Hiba történt a Job létrehozásakor/ütemezésekor: {e}")
-            return JsonResponse({"success": False, "error": f"Hiba az elemzés indításakor: {e}"}, status=500)
+            return JsonResponse({"success": False, "error": f"Hiba: {e}"}, status=500)
     
-    else:  # GET request (űrlap megjelenítése)
+    else:  # GET
         form = form_class()
-    
-        # Rendereljük a squat feltöltő template-et
-        return render(request, 'diagnostics/upload_squat_video.html', {
+        context = {
             'form': form, 
-            'title': title
-        })
+            'title': title,
+            'analysis_balance': get_analysis_balance(request.user)
+        }
+        return render(request, 'diagnostics/upload_squat_video.html', context)
 
-# ----------------------------------------------------------
-# 1. Guggolás Elemzés View (Publikus)
-# ----------------------------------------------------------
 
 @login_required
 @require_http_methods(["GET", "POST"])
 def upload_squat_video(request):
-    """
-    Guggolás mozgáselemző videó feltöltése és elemzés indítása.
-    """
+    """Gugolás elemző videó feltöltése."""
     return _process_video_upload(
         request, 
         form_class=SquatDiagnosticUploadForm,
         job_type=DiagnosticJob.JobType.SQUAT_ASSESSMENT,
-        title="Guggolás Értékelés",
+        title="Gugolás Értékelés",
         sport_type="general" 
     )

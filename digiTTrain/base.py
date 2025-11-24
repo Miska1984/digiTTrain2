@@ -79,7 +79,7 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     
     # 3. CUSTOM LOGIKA (CSAK A HITELÉSÍTÉS UTÁN FUT! CSAK ADDIG LEGYEN KI KOMMENTELVE AMEDDIG A FEJELSZTÉS MEGY)
-    # 'billing.middleware.InterstitialAdMiddleware', # 💥 A CUSTOM MIDDLEWARE HELYE
+    'billing.middleware.InterstitialAdMiddleware', # 💥 A CUSTOM MIDDLEWARE HELYE
     
     # 4. UTOLSÓ BIZTONSÁGI INTÉZKEDÉSEK
     "django.middleware.clickjacking.XFrameOptionsMiddleware",

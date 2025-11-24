@@ -1,55 +1,144 @@
 {% extends 'base.html' %}
 {% load static %}
 
-{% block title %}Credit Szerzés Hirdetésnézésért{% endblock %}
+{% block title %}Ingyenes Elemzés Szerzés - DigiTTrain{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <h1 class="text-3xl font-bold mb-6 text-gray-800">
-        <i class="bi bi-gift-fill me-2"></i> Ingyenes Credit Szerzés
+        <i class="bi bi-gift-fill me-2"></i> Ingyenes Elemzés Szerzése
     </h1>
 
     <div class="row justify-content-center">
         
         {# FŐ TARTALOM OSZLOP #}
         <div class="col-lg-8">
-            <div class="card shadow p-4 mb-4 text-center">
-                <h2 class="text-2xl font-semibold mb-3 text-indigo-700">Nézzen meg egy rövid videóhirdetést!</h2>
-                
-                <p class="text-muted mb-4">
-                    Minden teljes hirdetésnézésért **50 Creditet** írunk jóvá az egyenlegén. 
-                    Ezzel a Credittel futtathatja a Gépi Látás és a Várható Forma elemzési algoritmusokat.
-                </p>
-                
-                {# ------------------ HIRDETÉS FELÜLET (PLACEHOLDER) ------------------ #}
-                <div class="ad-container bg-light p-5 border border-primary rounded mb-5 mx-auto" style="max-width: 600px;">
-                    <i class="bi bi-camera-video-fill display-3 text-primary"></i>
-                    <p class="mt-3 fs-5 fw-bold text-primary">VIDEÓ HIRDETÉS BETÖLTÉS alatt...</p>
-                    <p class="small text-muted">A videó automatikusan elindul. Kérem, várja meg a végét (kb. 30 másodperc).</p>
-                    
-                    {# JAVASLAT: Valódi integráció esetén itt egy JavaScript API hívás történne, 
-                       ami csak a videó lejátszása után engedélyezné a Credit igénylést. #}
+            
+            {# SOROZAT STÁTUSZ KÁRTYA #}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="bi bi-calendar-check me-2"></i> 5 Napos Hirdetésnézési Kihívás
+                    </h4>
                 </div>
-                
-                {# ------------------ CREDIT IGÉNYLŐ GOMB ------------------ #}
-                <div id="credit-claim-section">
-                    <p class="lead fw-bold text-success">
-                        <i class="bi bi-check-circle-fill me-1"></i> A hirdetés lejátszása véget ért.
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <h2 class="display-4 fw-bold text-info">{{ current_streak }}/5 nap</h2>
+                        <p class="lead text-muted">
+                            {% if current_streak >= 5 %}
+                                🎉 Gratulálunk! Elérted az 5 napot!
+                            {% else %}
+                                Még {{ remaining_days }} nap és kapsz +1 ingyenes elemzést!
+                            {% endif %}
+                        </p>
+                    </div>
+                    
+                    {# PROGRESS BAR #}
+                    <div class="progress mb-4" style="height: 30px;">
+                        <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" 
+                             role="progressbar" 
+                             style="width: {{ current_streak|floatformat:0 }}0%;" 
+                             aria-valuenow="{{ current_streak }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="5">
+                            {{ current_streak }}/5 nap teljesítve
+                        </div>
+                    </div>
+                    
+                    {# JUTALOM LEÍRÁSA #}
+                    <div class="alert alert-success">
+                        <h5 class="alert-heading">
+                            <i class="bi bi-trophy-fill me-2"></i> Jutalom
+                        </h5>
+                        <p class="mb-0">
+                            <strong>+1 ingyenes elemzés</strong> automatikusan hozzáadódik az egyenlegedhez 
+                            5 egymást követő nap hirdetésnézése után!
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            {# HIRDETÉS FELÜLET #}
+            <div class="card shadow p-4 mb-4 text-center">
+                {% if can_view_today %}
+                    <h2 class="text-2xl font-semibold mb-3 text-primary">
+                        <i class="bi bi-play-circle-fill me-2"></i> Nézz meg egy rövid hirdetést!
+                    </h2>
+                    
+                    <p class="text-muted mb-4">
+                        Kérjük, tekintsd meg a hirdetést a támogatásunkért. Minden nap számít! 📅
                     </p>
                     
-                    <form id="claimForm" method="post" action="{% url 'ad_credit_earn' %}" class="d-inline">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-success btn-lg px-5" id="claimButton">
-                            <i class="bi bi-coin me-2"></i> Igényelje az 50 Creditet!
-                        </button>
-                    </form>
+                    {# ------------------ HIRDETÉS PLACEHOLDER ------------------ #}
+                    <div class="ad-container bg-light p-5 border border-primary rounded mb-5 mx-auto" style="max-width: 600px;">
+                        
+                        {# IDE JÖN A GOOGLE ADSENSE KÓD #}
+                        <ins class="adsbygoogle"
+                             style="display:block"
+                             data-ad-client="ca-pub-7737967729637742"
+                             data-ad-slot="1234567890"
+                             data-ad-format="auto"
+                             data-full-width-responsive="true"></ins>
+                        <script>
+                             (adsbygoogle = window.adsbygoogle || []).push({});
+                        </script>
+                        
+                        <div class="mt-3">
+                            <i class="bi bi-camera-video-fill display-3 text-primary"></i>
+                            <p class="mt-3 fs-5 fw-bold text-primary">HIRDETÉS BETÖLTÉS alatt...</p>
+                            <p class="small text-muted">A hirdetés automatikusan elindul. Kérjük, várja meg a végét (kb. 15-30 másodperc).</p>
+                        </div>
+                    </div>
                     
-                    <p class="small text-muted mt-3">Az igénylés után azonnal visszakerül a Vezérlőpultra.</p>
-                </div>
+                    {# ------------------ MEGERŐSÍTŐ GOMB ------------------ #}
+                    <div id="confirmSection">
+                        <p class="lead fw-bold text-success mb-4">
+                            <i class="bi bi-check-circle-fill me-1"></i> Megnézted a hirdetést?
+                        </p>
+                        
+                        <form method="post" action="{% url 'billing:ad_credit_earn' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success btn-lg px-5">
+                                <i class="bi bi-check2-circle me-2"></i> Igen, megnéztem!
+                            </button>
+                        </form>
+                        
+                        <p class="small text-muted mt-3">
+                            A megerősítés után automatikusan rögzítjük a mai napot a sorozatodban.
+                        </p>
+                    </div>
+                {% else %}
+                    {# MA MÁR NÉZETT HIRDETÉST #}
+                    <div class="alert alert-info">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <strong>Ma már megnézted a hirdetést!</strong>
+                    </div>
+                    <p class="text-muted">Gyere vissza holnap, hogy folytasd a sorozatodat! 🗓️</p>
+                    
+                    <a href="{% url 'billing:billing_dashboard' %}" class="btn btn-primary mt-3">
+                        <i class="bi bi-arrow-left me-1"></i> Vissza a Vezérlőpultra
+                    </a>
+                {% endif %}
                 
             </div>
             
-            <a href="{% url 'billing_dashboard' %}" class="btn btn-outline-secondary mt-3">
+            {# SZABÁLYOK #}
+            <div class="card shadow p-4 bg-light">
+                <h3 class="text-xl font-semibold mb-3">
+                    <i class="bi bi-info-circle-fill me-2"></i> Hogyan működik?
+                </h3>
+                <ol class="list-group list-group-numbered">
+                    <li class="list-group-item">Nézz meg <strong>1 hirdetést naponta</strong> 📺</li>
+                    <li class="list-group-item">Tedd ezt meg <strong>5 egymást követő napon</strong> keresztül 📅</li>
+                    <li class="list-group-item">Az 5. nap után <strong>automatikusan kapsz +1 ingyenes elemzést</strong> 🎁</li>
+                    <li class="list-group-item">A sorozat újraindul, és újra kezdheted! 🔄</li>
+                </ol>
+                <p class="text-muted small mt-3">
+                    <i class="bi bi-exclamation-triangle me-1"></i> Ha kihagysz egy napot, a sorozat nullázódik és elölről kell kezdened.
+                </p>
+            </div>
+            
+            <a href="{% url 'billing:billing_dashboard' %}" class="btn btn-outline-secondary mt-4">
                 <i class="bi bi-arrow-left me-1"></i> Vissza a Pénzügyi Vezérlőpultra
             </a>
             
@@ -58,24 +147,25 @@
     </div>
 </div>
 
+{% endblock content %}
+
 {% block extra_js %}
 <script>
-    // A valós hirdetési rendszerekben ezt a gombot csak a videó lejátszása után tesszük aktívvá.
-    // Mivel most placeholder-t használunk, a gomb alapból aktív, de itt van a kód struktúra:
+    // Opcionális: Timer vagy egyéb validáció a hirdetés megtekintésére
+    // Jelenleg a gomb mindig aktív, de lehet időzítőt hozzáadni
     
-    // document.addEventListener('DOMContentLoaded', function() {
-    //     const claimButton = document.getElementById('claimButton');
-    //     
-    //     // Kezdetben inaktív a gomb
-    //     claimButton.disabled = true;
-    //     claimButton.textContent = 'Kérem, várja meg a hirdetés végét...';
-    //
-    //     // Képzelt funkció: 30 másodperc után aktiválódik a gomb
-    //     setTimeout(function() {
-    //         claimButton.disabled = false;
-    //         claimButton.textContent = 'Igényelje az 50 Creditet!';
-    //         document.querySelector('.lead').textContent = 'A hirdetés lejátszása véget ért.';
-    //     }, 30000); // 30 másodperces várakozás
-    // });
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('✅ Hirdetésnézési oldal betöltve');
+        
+        // Példa: 15 másodperc után engedélyezni a gombot (opcionális)
+        // const submitButton = document.querySelector('button[type="submit"]');
+        // if (submitButton) {
+        //     submitButton.disabled = true;
+        //     setTimeout(() => {
+        //         submitButton.disabled = false;
+        //         submitButton.textContent = '✅ Igen, megnéztem!';
+        //     }, 15000); // 15 másodperc
+        // }
+    });
 </script>
 {% endblock extra_js %}

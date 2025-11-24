@@ -15,7 +15,8 @@ from django.core.files.base import ContentFile
 from diagnostics_jobs.models import DiagnosticJob
 from diagnostics_jobs.cloud_tasks import enqueue_diagnostic_job
 from diagnostics_jobs.tasks import run_diagnostic_job
-from billing.models import UserCreditBalance, AlgorithmPricing, TransactionHistory
+from billing.models import UserWallet, JobPrice, FinancialTransaction
+from billing.utils import refund_analysis
 from .utils.gcs_signer import generate_signed_upload_url
 from django.views.decorators.http import require_http_methods
 
@@ -92,7 +93,10 @@ def create_diagnostic_job(request):
     if request.method != "POST":
         return JsonResponse({"success": False, "error": "POST metódus szükséges"}, status=405)
 
+    billing_transaction_id = None # Inicializálás a függvény elején
+
     try:
+        # 1. ADATOK KINYERÉSE ÉS ELLENŐRZÉSE
         data = json.loads(request.body)
         user_id = data.get("user_id")
         sport_type = data.get("sport_type", "general")
@@ -100,33 +104,61 @@ def create_diagnostic_job(request):
         gcs_object_key = data.get("video_url")
         notes = data.get("notes", "")
         
-        # Kredit ellenőrzés és levonás logikája (a feltöltött fájl alapján)
-        try:
-            # Feltételezés: Az AlgorithmPricing modell tartalmazza a get_from_job_type metódust
-            algorithm_type = AlgorithmPricing.AlgorithmType.get_from_job_type(job_type)
-            pricing = AlgorithmPricing.objects.get(algorithm_type=algorithm_type)
-            
-            if not UserCreditBalance.can_afford(user_id, pricing.credit_cost):
-                return JsonResponse({"success": False, "error": "Nincs elegendő kredit a művelethez."}, status=403)
-                
-            UserCreditBalance.deduct_credits(user_id, pricing.credit_cost, f"{job_type} elemzés indítása")
-
-        except AlgorithmPricing.DoesNotExist:
-            # Ezt a birkózás miatt vesszük ki, ha a sport_type nincs még beárazva
-            if job_type == DiagnosticJob.JobType.WRESTLING:
-                 pass # Ideiglenes engedélyezés, amíg a birkózás kikerül a rendszerből
-            else:
-                return JsonResponse({"success": False, "error": f"Nincs ár beállítva az algoritmushoz: {job_type}"}, status=400)
-        except Exception as e:
-            return JsonResponse({"success": False, "error": f"Hiba a kredit kezelés során: {str(e)}"}, status=500)
-
-        if not all([user_id, sport_type, job_type, gcs_object_key]): # 🟢 Ellenőrzés gcs_object_key-re
+        # Alapvető mezők ellenőrzése
+        if not all([user_id, sport_type, job_type, gcs_object_key]):
             return JsonResponse({"success": False, "error": "Hiányzó kötelező mező (user_id, job_type, video_url/GCS kulcs)"}, status=400)
-
+            
         user = User.objects.filter(id=user_id).first()
         if not user:
              return JsonResponse({"success": False, "error": "A felhasználó nem található"}, status=404)
 
+        # 2. PÉNZÜGYI TRANZAKCIÓ ÉS KREDIT FOGLALÁS
+        # --------------------------------------------------
+        try:
+            # Job árának lekérdezése
+            job_price_type = JobPrice.JobType.get_from_job_type(job_type) 
+            pricing = JobPrice.objects.get(job_type=job_price_type)
+            
+            # Pénztárca lekérdezése
+            wallet = UserWallet.objects.get(user=user) # Használjuk a már lekérdezett 'user' objektumot
+
+            # Egyenleg ellenőrzése
+            if wallet.balance_ft < pricing.base_price_ft:
+                return JsonResponse({"success": False, "error": "Nincs elegendő kredit a művelethez."}, status=403)
+            
+            # Tranzakció Foglalás (PRE-AUTHORIZATION)
+            billing_transaction = FinancialTransaction.objects.create(
+                user=user,
+                transaction_type=FinancialTransaction.TransactionType.JOB_RUN,
+                amount_ft=-pricing.base_price_ft,
+                description=f"{job_type} elemzés foglalása",
+                transaction_status=FinancialTransaction.TransactionStatus.PENDING
+            )
+            
+            # Levonás a pénztárcából
+            wallet.balance_ft -= pricing.base_price_ft
+            wallet.save(update_fields=['balance_ft'])
+            
+            billing_transaction_id = billing_transaction.id
+            logger.info(f"💰 [BILLING] Pénz foglalva. Tranzakció ID: {billing_transaction_id}. Új egyenleg: {wallet.balance_ft}")
+
+        except JobPrice.DoesNotExist:
+            if job_type == DiagnosticJob.JobType.WRESTLING:
+                 pass # Ideiglenes engedélyezés a birkózáshoz (ahogy kérte)
+            else:
+                 return JsonResponse({"success": False, "error": f"Nincs ár beállítva az algoritmushoz: {job_type}"}, status=400)
+        
+        except UserWallet.DoesNotExist:
+            return JsonResponse({"success": False, "error": "A felhasználó pénztárcája nem található."}, status=404)
+        
+        except Exception as e:
+            # Bármilyen hiba a pénzügyi tranzakció előkészítése során.
+            logger.error(f"Hiba a tranzakció előkészítés során: {str(e)}", exc_info=True)
+            return JsonResponse({"success": False, "error": f"Hiba a tranzakció előkészítés során: {str(e)}"}, status=500)
+        # --------------------------------------------------
+
+
+        # 3. DIAGNOSZTIKAI FELADAT LÉTREHOZÁSA
         GCS_BUCKET_NAME = settings.GS_BUCKET_NAME
         full_video_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{gcs_object_key}"
 
@@ -134,12 +166,13 @@ def create_diagnostic_job(request):
             user=user,
             sport_type=sport_type,
             job_type=job_type,
-            video_url=full_video_url, # ⬅️ EZT AZ ABSZOLÚT URL-T KELL MENTENI!
+            video_url=full_video_url,
             notes=notes,
             status=DiagnosticJob.JobStatus.PENDING,
+            billing_transaction_id=billing_transaction_id # Tranzakció ID átadása a Job-nak
         )
 
-        # Aszinkron task indítása
+        # 4. ASZINKRON TASK INDÍTÁSA ÉS HIBA KEZELÉS
         try:
             if settings.ENABLE_CLOUD_TASKS:
                 enqueue_diagnostic_job(job.id)
@@ -147,21 +180,33 @@ def create_diagnostic_job(request):
                 run_diagnostic_job(job.id)
 
         except Exception as e:
-            job.mark_as_failed(f"Hiba az indításkor: {str(e)}")
+            # Ha a task ütemezése meghiúsul, a Job-ot jelöljük hibásként ÉS visszaállítjuk a pénzt.
+            logger.error(f"Hiba a feladat ütemezésekor: {str(e)}", exc_info=True)
+            
+            job.mark_as_failed(f"Hiba a task ütemezésekor: {str(e)}")
+            
+            # Kézi rollback: PÉNZ VISSZAADÁSA
+            if billing_transaction_id:
+                 # Feltételezzük, hogy a finalize_transaction kezeli a tranzakció törlését és a pénz visszautalását a Wallet-be.
+                 refund_analysis(billing_transaction_id, is_successful=False, job_error_message=f"Hiba a task ütemezésekor: {str(e)}")
+            
             return JsonResponse({"success": False, "error": f"Hiba a feladat indításakor: {str(e)}"}, status=500)
 
 
+        # 5. SIKERES VÁLASZ
         return JsonResponse({
             "success": True, 
             "message": "A diagnosztikai feladat elküldve feldolgozásra.",
             "job_id": job.id,
             "status": job.status,
             "job_type": job.job_type,
+            "billing_transaction_id": billing_transaction_id,
         }, status=201)
 
     except json.JSONDecodeError:
         return JsonResponse({"success": False, "error": "Érvénytelen JSON formátum"}, status=400)
     except Exception as e:
+        logger.critical(f"Kritikus hiba a create_diagnostic_job-ban: {str(e)}", exc_info=True)
         return JsonResponse({"success": False, "error": f"Ismeretlen hiba: {str(e)}"}, status=500)
         
 # -----------------------------------------------------------
@@ -260,14 +305,20 @@ def diagnostics_dashboard(request):
     """
     A sportoló fő diagnosztikai felülete (UI).
     """
+    from billing.utils import get_analysis_balance  # 🆕 Import hozzáadása
+    
     # Lekérjük a bejelentkezett felhasználó összes diagnosztikai feladatát
     job_list = DiagnosticJob.objects.filter(
         user=request.user
-    ).order_by('-created_at')  # Legújabb legyen elől
+    ).order_by('-created_at')
+    
+    # 🆕 Elemzési egyenleg lekérése
+    analysis_balance = get_analysis_balance(request.user)
     
     return render(request, 'diagnostics/athlete_diagnostics.html', {
         'title': 'Sportoló Diagnosztikai Dashboard',
-        'job_list': job_list,  # ✅ EZ HIÁNYZOTT!
+        'job_list': job_list,
+        'analysis_balance': analysis_balance,  # 🆕 Egyenleg hozzáadása
     })
 
 # -----------------------------------------------------------

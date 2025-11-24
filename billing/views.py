@@ -1,240 +1,250 @@
-from django.shortcuts import render, redirect, get_object_or_404
+# billing/views.py
+from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_POST
 from django.contrib import messages
 from django.utils import timezone
 from django.db import transaction
-from django.conf import settings
-from users.models import User
+from datetime import timedelta
+from decimal import Decimal
 
+from .forms import CombinedPurchaseForm
 from .models import (
-    UserCreditBalance,
-    InvoiceRequest,
+    UserSubscription, 
+    UserAnalysisBalance,
+    AnalysisTransaction,
+    AdViewStreak,
     SubscriptionPlan,
-    UserSubscription,
-    AlgorithmPricing,
-    TransactionHistory
+    JobPrice,
+    TopUpInvoice  # ⬅️ fontos!
 )
-from .forms import TopUpForm, AdFreeToggleForm  # Ezeket a formokat később megírjuk!
+from .utils import get_analysis_balance, check_ad_streak, reward_ad_view
+
+import logging
+logger = logging.getLogger(__name__)
 
 
-# ----------------------------------------------------------------------
-# SEGÉDFÜGGVÉNYEK
-# ----------------------------------------------------------------------
-
-def get_credit_balance(user):
-    """Lekéri vagy létrehozza a felhasználó Credit egyenlegét."""
-    balance, created = UserCreditBalance.objects.get_or_create(user=user)
-    return balance
-
-# ----------------------------------------------------------------------
-# 1. VEZÉRLŐPULT (DASHBOARD)
-# ----------------------------------------------------------------------
+# ==============================================================================
+# 1. PÉNZÜGYI VEZÉRLŐPULT (Dashboard)
+# ==============================================================================
 
 @login_required
-def billing_dashboard(request):
-    """Megjeleníti a felhasználó Credit egyenlegét és az előfizetés státuszát."""
-    balance = get_credit_balance(request.user)
+def billing_dashboard_view(request):
+    """Megjeleníti a felhasználó egyenlegét, előfizetését és tranzakcióit"""
     
-    # A Hirdetésmentes státusz már globálisan elérhető a context_processors.py által
+    # 1. Elemzési egyenleg lekérése
+    analysis_balance = get_analysis_balance(request.user)
+    
+    # 2. Aktív előfizetés lekérése
+    current_subscription = UserSubscription.objects.filter(
+        user=request.user,
+        end_date__gt=timezone.now()
+    ).select_related('plan').first()
+    
+    # 3. Hirdetésnézési sorozat
+    current_streak, can_view_today = check_ad_streak(request.user)
+    try:
+        streak_obj = AdViewStreak.objects.get(user=request.user)
+        total_rewards = streak_obj.total_rewards_earned
+    except AdViewStreak.DoesNotExist:
+        total_rewards = 0
+    
+    # 4. Tranzakciók (utolsó 10)
+    transactions = AnalysisTransaction.objects.filter(
+        user=request.user
+    ).order_by('-timestamp')[:10]
+    
+
     
     context = {
-        'credit_balance': balance.balance_amount,
-        'transactions': TransactionHistory.objects.filter(user=request.user).order_by('-timestamp')[:10],
-        'ad_free_status': request.user.subscription.is_active if hasattr(request.user, 'subscription') else False,
+        'analysis_balance': analysis_balance,
+        'current_subscription': current_subscription,
+        'current_streak': current_streak,
+        'can_view_ad_today': can_view_today,
+        'total_ad_rewards': total_rewards,
+        'transactions': transactions,
     }
+    
     return render(request, 'billing/dashboard.html', context)
 
 
-# ----------------------------------------------------------------------
-# 2. CREDIT FELTÖLTÉS ÉS SZÁMLA IGÉNYLÉS (TOP-UP)
-# ----------------------------------------------------------------------
+# ==============================================================================
+# 2. VÁSÁRLÁS (Előfizetés / Elemzési csomag)
+# ==============================================================================
 
 @login_required
-def top_up_view(request):
+@transaction.atomic
+def purchase_view(request):
     """
-    Kezeli a pénzügyi feltöltést, a számla igénylést és a célfelhasználó kijelölését.
+    Kombinált nézet elemzési csomagok (Credit) és hirdetésmentes előfizetés vásárlására.
+    Létrehozza a TopUpInvoice-t, amit az admin később jóváhagy.
     """
+    analysis_packages = JobPrice.objects.all().order_by('price_ft')
+    ad_free_plans = SubscriptionPlan.objects.filter(is_ad_free=True).order_by('duration_days')
 
-    # Lekérjük az összes felhasználót, akinek fel lehet tölteni (pl. sportolók, vagy saját maga)
-    # Most minden felhasználót megengedi:
-    target_users = User.objects.all()
+    # 🔥 ÚJ: Függőben lévő számlák lekérése
+    pending_invoices = TopUpInvoice.objects.filter(
+        user=request.user,
+        status='PENDING'
+    ).select_related('subscription_plan', 'related_analysis_package').order_by('-request_date')
+
+    if not analysis_packages.exists() and not ad_free_plans.exists():
+        messages.error(request, "Nincsenek elérhető csomagok vásárlásra.")
+        return redirect('billing:billing_dashboard')
 
     if request.method == 'POST':
-        # Feltételezzük, hogy a TopUpForm tartalmazza az összeget, számlázási adatokat és a target_user-t
-        form = TopUpForm(request.POST, user=request.user, target_user_queryset=target_users) 
-        if form.is_valid():
-            
-            amount_ft = form.cleaned_data['amount_ft']
-            target_user = form.cleaned_data['target_user']
-            
-            # --- Ideiglenes Tranzakció/Számlázási Rögzítés ---
-            
-            # Létrehozzuk a számlaigénylést, ami fizetési bizonylatként/kérésként is szolgál
-            invoice_request = InvoiceRequest.objects.create(
-                user=request.user,
-                amount_ft=amount_ft,
-                target_user=target_user,
-                billing_name=form.cleaned_data['billing_name'],
-                billing_address=form.cleaned_data['billing_address'],
-                tax_number=form.cleaned_data.get('tax_number'),
-                status='PENDING'
-            )
-
-            # Megjegyzés: Itt *nem* történik meg azonnal a Credit jóváírása. 
-            # Ez egy kézi/banki átutalásos folyamatot feltételez, ahol az admin utólag könyveli le a fizetést,
-            # majd jóváírja a Creditet (valószínűleg egy Admin Action segítségével).
-            
-            messages.success(request, f'A {amount_ft} Ft értékű Credit feltöltési kérés rögzítve lett ({target_user.username} számára). A számlát hamarosan elkészítjük.')
-            return redirect('billing_dashboard')
-    else:
-        form = TopUpForm(user=request.user, target_user_queryset=target_users)
+        form = CombinedPurchaseForm(
+            request.POST, 
+            user=request.user,
+            analysis_packages=analysis_packages,
+            ad_free_plans=ad_free_plans
+        )
         
+        if form.is_valid():
+            data = form.cleaned_data
+            purchase_type = data['purchase_type']
+            amount_ft = Decimal(0)
+            invoice_type = ''
+            related_package = None
+            related_plan = None
+
+            if purchase_type == 'AD_FREE':
+                related_plan = data['subscription_plan']
+                amount_ft = related_plan.price_ft
+                invoice_type = 'AD_FREE_SUBSCRIPTION'  # ✅ JAVÍTVA
+                description = f"Hirdetésmentes előfizetés: {related_plan.name}"
+
+            elif purchase_type == 'ANALYSIS_PACKAGE':
+                related_package = data['analysis_package']
+                amount_ft = related_package.price_ft
+                invoice_type = 'ANALYSIS_PACKAGE'  # ✅ JAVÍTVA
+                description = f"Elemzési csomag: {related_package.name} ({related_package.analysis_count} db)"
+
+            # =============== Számlázási igény rögzítése ===============
+            invoice = TopUpInvoice.objects.create(
+                user=request.user,
+                target_user=request.user,
+                amount_ft=amount_ft,
+                invoice_type=invoice_type,
+                status='PENDING',
+                request_date=timezone.now(),
+                related_analysis_package=related_package,
+                subscription_plan=related_plan,
+                billing_name=data['billing_name'],
+                billing_address=data['billing_address'],
+                tax_number=data.get('tax_number', ''),
+                billing_email=data['billing_email'],
+            )
+            # =============================================================
+
+            logger.info(f"💰 Számlázási igény létrehozva: {invoice} (összeg: {amount_ft} Ft)")
+            messages.success(
+                request,
+                f"✅ Számlaigénylés rögzítve! Hamarosan visszajelzést kapsz e-mailben: {data['billing_email']}."
+            )
+            return redirect('billing:billing_dashboard')
+
+    else:
+        form = CombinedPurchaseForm(
+            user=request.user,
+            analysis_packages=analysis_packages,
+            ad_free_plans=ad_free_plans
+        )
+
     context = {
         'form': form,
-        'pending_invoices': InvoiceRequest.objects.filter(user=request.user, status='PENDING')
+        'analysis_packages': analysis_packages,
+        'ad_free_plans': ad_free_plans,
+        'pending_invoices': pending_invoices,  # ✅ ÚJ
     }
-    return render(request, 'billing/top_up.html', context)
+    return render(request, 'billing/purchase.html', context) 
 
 
-# ----------------------------------------------------------------------
-# 3. HIRDETÉSNÉZÉSÉRT JÁRÓ CREDIT (AD-FOR-CREDIT)
-# ----------------------------------------------------------------------
-
-@login_required
-@require_POST
-@transaction.atomic
-def ad_credit_earn_view(request):
-    """
-    A hirdetés megnézése utáni Credit jóváírása.
-    Feltételezi, hogy egy hirdetés nézés 50 Creditet ér.
-    """
-    CREDIT_PER_AD = settings.CREDIT_PER_AD if hasattr(settings, 'CREDIT_PER_AD') else 50.00
-    
-    user = request.user
-    balance = get_credit_balance(user)
-    
-    # 1. Credit jóváírása
-    balance.balance_amount += CREDIT_PER_AD
-    balance.save()
-    
-    # 2. Tranzakció rögzítése
-    TransactionHistory.objects.create(
-        user=user,
-        transaction_type='AD_EARN',
-        amount=CREDIT_PER_AD,
-        description=f'Hirdetés nézésért szerzett Credit ({CREDIT_PER_AD} Credit)',
-    )
-    
-    messages.success(request, f'Sikeresen jóváírtuk az 50 Creditet! Jelenlegi egyenleg: {balance.balance_amount} Credit.')
-    
-    # Valószínűleg egy AJAX hívásnak kell válaszolnia, de most egyszerű átirányítással dolgozunk
-    return redirect('billing_dashboard')
-
-
-# ----------------------------------------------------------------------
-# 4. HIRDETÉSMENTES ELŐFIZETÉS AKTIVÁLÁSA/MEGÚJÍTÁSA
-# ----------------------------------------------------------------------
+# ==============================================================================
+# 3. HIRDETÉS MEGTEKINTÉSE (Ingyenes elemzésért)
+# ==============================================================================
 
 @login_required
-@require_POST
-@transaction.atomic
-def toggle_ad_free(request):
+def ad_for_credit_view(request):
     """
-    A hirdetésmentes előfizetés megvásárlása Credit vagy közvetlen fizetés felhasználásával.
+    Hirdetés megtekintése 5 egymást követő napon keresztül.
+    Jutalom: +1 ingyenes elemzés
     """
-    # 1. Megkeressük a hirdetésmentes csomagot
-    AD_FREE_PLAN_NAME = settings.AD_FREE_PLAN_NAME if hasattr(settings, 'AD_FREE_PLAN_NAME') else 'Ad-Free'
     
-    try:
-        ad_free_plan = SubscriptionPlan.objects.get(name=AD_FREE_PLAN_NAME)
-    except SubscriptionPlan.DoesNotExist:
-        messages.error(request, 'A hirdetésmentes előfizetés csomag nem található. Kérem, lépjen kapcsolatba az adminisztrátorral.')
+    # Sorozat állapotának lekérése
+    current_streak, can_view_today = check_ad_streak(request.user)
+    
+    if request.method == 'POST':
+        # Felhasználó megnézte a hirdetést és megnyomta a gombot
+        if not can_view_today:
+            messages.warning(request, "⚠️ Ma már megnézted a hirdetést. Gyere vissza holnap!")
+            return redirect('billing_dashboard')
+        
+        # Hirdetés megtekintésének rögzítése
+        success, new_streak, rewarded = reward_ad_view(request.user)
+        
+        if rewarded:
+            messages.success(
+                request,
+                f"🎉 Gratulálunk! 5 egymást követő nap teljesítve! "
+                f"+1 ingyenes elemzést kaptál ajándékba!"
+            )
+        elif success:
+            remaining = 5 - new_streak
+            messages.info(
+                request,
+                f"✅ Hirdetés rögzítve! Jelenlegi sorozat: {new_streak}/5 nap. "
+                f"Még {remaining} nap és kapsz +1 ingyenes elemzést!"
+            )
+        
         return redirect('billing_dashboard')
-        
-    user = request.user
     
-    # Itt most feltételezzük a közvetlen, havi 1500 Ft-os fizetést (a felvetés szerint)
-    # A bonyolultabb Credit-ből történő fizetést később implementálhatjuk.
+    # GET kérés: Hirdetési oldal megjelenítése
+    context = {
+        'current_streak': current_streak,
+        'can_view_today': can_view_today,
+        'remaining_days': max(0, 5 - current_streak) if can_view_today else 0,
+    }
     
-    # Jelenleg csak a funkció elindítását rögzítjük
-    
-    # Valódi Fizetésfeldolgozás (pl. Stripe/SimplePay) hiányában ezt a lépést imitáljuk.
-    # Ez a kód feltételezi, hogy a felhasználó már "megvásárolta" a csomagot.
-    
-    # 2. Lejárat dátumának kiszámítása
-    try:
-        # Ha már van aktív előfizetése, a lejárat a jelenlegi lejárati dátumhoz adódik hozzá
-        user_sub = UserSubscription.objects.get(user=user)
-        # Ha az előfizetés lejárt, vagy lejárat előtt van, a dátumot a jelenlegi lejárati dátumhoz igazítjuk
-        new_start_date = user_sub.end_date if user_sub.end_date > timezone.now() else timezone.now()
-        
-    except UserSubscription.DoesNotExist:
-        # Ha nincs még előfizetése, a kezdés a mostani időpont
-        new_start_date = timezone.now()
-        
-        # Létrehozzuk az új UserSubscription objektumot
-        user_sub = UserSubscription(user=user, plan=ad_free_plan)
-    
-    # 3. Dátumok frissítése
-    user_sub.plan = ad_free_plan
-    user_sub.start_date = new_start_date
-    user_sub.end_date = new_start_date + timezone.timedelta(days=ad_free_plan.duration_days)
-    user_sub.is_active = True
-    user_sub.save()
-    
-    # 4. Tranzakció rögzítése (ez most csak a rendszer számára rögzít)
-    TransactionHistory.objects.create(
-        user=user,
-        transaction_type='SUB_PAY',
-        amount=ad_free_plan.price_ft, # Itt Ft-ot tárolunk az egyszerűség kedvéért
-        description=f'Előfizetés fizetés: {ad_free_plan.name}',
-    )
-    
-    messages.success(request, f'Sikeresen aktiváltuk a hirdetésmentes csomagot! Lejár: {user_sub.end_date.strftime("%Y.%m.%d")}')
-    return redirect('billing_dashboard')
+    return render(request, 'billing/ad_for_credit.html', context)
 
 
-# ----------------------------------------------------------------------
-# 5. ALGORITMUS FUTTATÁS (API VÉGPONT)
-# ----------------------------------------------------------------------
+# ==============================================================================
+# 4. HIRDETÉSMENTESSÉG AKTIVÁLÁS/KIKAPCSOLÁS
+# ==============================================================================
 
 @login_required
-@require_POST
-@transaction.atomic
-def run_algorithm(request, algorithm_name):
+def toggle_ad_free_view(request):
     """
-    Ez egy API végpont, amely elvonja a Creditet, és jelzi, hogy az algoritmus futtatható.
+    Hirdetésmentes előfizetés gyors aktiválása.
+    Ez az oldal átirányít a purchase_view-ra.
     """
-    user = request.user
     
-    # 1. Algoritmus árának lekérése
-    try:
-        pricing = AlgorithmPricing.objects.get(algorithm_name=algorithm_name)
-    except AlgorithmPricing.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'Hiba: Az algoritmus nem található vagy nincs árazva.'}, status=404)
-        
-    cost = pricing.cost_per_run
-    balance = get_credit_balance(user)
+    # Aktuális előfizetés lekérése
+    current_subscription = UserSubscription.objects.filter(
+        user=request.user,
+        end_date__gt=timezone.now(),
+        plan__is_ad_free=True
+    ).select_related('plan').first()
     
-    # 2. Credit ellenőrzése
-    if balance.balance_amount < cost:
-        return JsonResponse({'success': False, 'message': f'Nincs elegendő Credit az algoritmus futtatásához. Szükséges: {cost} Credit. Jelenlegi: {balance.balance_amount} Credit.'}, status=403)
+    if request.method == 'POST':
+        # Ha van aktív előfizetés, akkor kikapcsolás (törlés)
+        if current_subscription:
+            # Kikapcsolás: end_date-et most-ra állítjuk
+            current_subscription.end_date = timezone.now()
+            current_subscription.save(update_fields=['end_date'])
+            
+            messages.info(request, "ℹ️ Hirdetésmentesség kikapcsolva.")
+            return redirect('billing_dashboard')
+        else:
+            # Ha nincs előfizetés, átirányítás vásárlásra
+            messages.info(request, "ℹ️ Válasszon hirdetésmentes csomagot a vásárláshoz.")
+            return redirect('billing_purchase')
+    
+    # GET kérés: Megerősítő oldal
+    context = {
+        'current_subscription': current_subscription,
+    }
+    
+    return render(request, 'billing/toggle_ad_free.html', context)
 
-    # 3. Credit elvonása
-    balance.balance_amount -= cost
-    balance.save()
 
-    # 4. Tranzakció rögzítése
-    TransactionHistory.objects.create(
-        user=user,
-        transaction_type='ALGO_RUN',
-        amount=-cost, # Negatív összeg a levonás jelzésére
-        description=f'Algoritmus futtatása: {algorithm_name}',
-    )
-    
-    # 5. Sikeres válasz (ez után indul el a háttérben az igazi algoritmus)
-    # JsonResponse-t feltételez, importáljuk a szükséges csomagot:
-    from django.http import JsonResponse
-    
-    return JsonResponse({'success': True, 'message': 'Credit sikeresen elvonva, az elemzés elindult.'}, status=200)

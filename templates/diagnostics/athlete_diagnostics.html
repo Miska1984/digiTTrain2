@@ -3,6 +3,37 @@
 
 {% block content %}
 <div class="container-fluid py-4">
+    
+    {# 🆕 ÚJ: ELEMZÉSI EGYENLEG BANNER #}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4 class="mb-1 fw-bold">
+                            <i class="bi bi-graph-up-arrow me-2"></i> Elérhető Elemzések
+                        </h4>
+                        <p class="mb-0 small opacity-90">
+                            Jelenlegi egyenleg: <strong class="fs-3">{{ analysis_balance }} db</strong>
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        {% if analysis_balance < 5 %}
+                            <a href="{% url 'billing:billing_purchase' %}" class="btn btn-warning btn-lg">
+                                <i class="bi bi-cart-plus-fill me-2"></i> Vásárlás
+                            </a>
+                        {% else %}
+                            <span class="badge bg-success fs-5 px-4 py-2">Elegendő egyenleg</span>
+                        {% endif %}
+                        <a href="{% url 'billing:ad_credit_earn' %}" class="btn btn-outline-light btn-sm mt-2">
+                            <i class="bi bi-gift-fill me-1"></i> Ingyenes elemzés szerzése
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <!-- ========================================================= -->
         <!-- 1. BAL OLDALI PANEL: Elemzési lehetőségek -->
@@ -14,29 +45,64 @@
                 </div>
                 <div class="card-body space-y-2">
                     <h5 class="fw-bold mb-3">Általános Elemzések</h5>
-                    <a href="{% url 'diagnostics:upload_posture_video' %}" class="btn btn-outline-secondary w-100 mb-2">
-                        🧍 Testtartás Értékelés
-                    </a>
-                    <a href="{% url 'diagnostics:upload_squat_video' %}" class="btn btn-outline-secondary w-100 mb-2">
-                        🏋️ Guggolás Biomechanika
-                    </a>
-                    <a href="{% url 'diagnostics:upload_shoulder_circumduction_video' %}" class="btn btn-outline-secondary w-100 mb-2">
-                        🤸 Vállkörzés Biomechanika
-                    </a>
-                    <a href="{% url 'diagnostics:upload_vertical_jump_video' %}" class="btn btn-outline-secondary w-100 mb-2">
-                        🏃 Magasugrás
-                    </a>
-                    <a href="{% url 'diagnostics:upload_single_leg_stance_unified' %}" class="btn btn-outline-secondary w-100 mb-2">
-                        🧘 Egylábon Állás Elemzés
-                    </a>
+                    
+                    {# 🆕 Gombokhoz egyenleg ellenőrzés #}
+                    {% if analysis_balance > 0 %}
+                        <a href="{% url 'diagnostics:upload_posture_video' %}" class="btn btn-outline-secondary w-100 mb-2">
+                            🧍 Testtartás Értékelés
+                        </a>
+                        <a href="{% url 'diagnostics:upload_squat_video' %}" class="btn btn-outline-secondary w-100 mb-2">
+                            🏋️ Gugolás Biomechanika
+                        </a>
+                        <a href="{% url 'diagnostics:upload_shoulder_circumduction_video' %}" class="btn btn-outline-secondary w-100 mb-2">
+                            🤸 Vállkörzés Biomechanika
+                        </a>
+                        <a href="{% url 'diagnostics:upload_vertical_jump_video' %}" class="btn btn-outline-secondary w-100 mb-2">
+                            🏃 Magasugrás
+                        </a>
+                        <a href="{% url 'diagnostics:upload_single_leg_stance_unified' %}" class="btn btn-outline-secondary w-100 mb-2">
+                            🧘 Egylábon Állás Elemzés
+                        </a>
+                    {% else %}
+                        {# Ha nincs egyenleg, letiltott gombok #}
+                        <button class="btn btn-outline-secondary w-100 mb-2" disabled>
+                            🧍 Testtartás Értékelés <span class="badge bg-danger ms-2">0 db</span>
+                        </button>
+                        <button class="btn btn-outline-secondary w-100 mb-2" disabled>
+                            🏋️ Gugolás Biomechanika <span class="badge bg-danger ms-2">0 db</span>
+                        </button>
+                        <button class="btn btn-outline-secondary w-100 mb-2" disabled>
+                            🤸 Vállkörzés Biomechanika <span class="badge bg-danger ms-2">0 db</span>
+                        </button>
+                        <button class="btn btn-outline-secondary w-100 mb-2" disabled>
+                            🏃 Magasugrás <span class="badge bg-danger ms-2">0 db</span>
+                        </button>
+                        <button class="btn btn-outline-secondary w-100 mb-2" disabled>
+                            🧘 Egylábon Állás <span class="badge bg-danger ms-2">0 db</span>
+                        </button>
+                        
+                        <div class="alert alert-warning mt-3">
+                            <i class="bi bi-exclamation-triangle me-1"></i>
+                            <strong>Nincs elemzési egyenleged!</strong><br>
+                            <a href="{% url 'billing:billing_purchase' %}" class="alert-link">Vásárolj csomagot</a> vagy 
+                            <a href="{% url 'billing:ad_credit_earn' %}" class="alert-link">szerezz ingyen</a>!
+                        </div>
+                    {% endif %}
 
                     <hr class="my-3">
 
                     <h5 class="fw-bold mb-3">Sportspecifikus elemzések</h5>
                     {% if request.user.user_roles.all %}
-                        <a href="{% url 'diagnostics:sport_diagnostics_list' %}" class="btn btn-primary w-100 mb-2">
-                            <i class="fas fa-list-ul me-2"></i> Sportági elemzések listája
-                        </a>
+                        {% if analysis_balance > 0 %}
+                            <a href="{% url 'diagnostics:sport_diagnostics_list' %}" class="btn btn-primary w-100 mb-2">
+                                <i class="fas fa-list-ul me-2"></i> Sportági elemzések listája
+                            </a>
+                        {% else %}
+                            <button class="btn btn-primary w-100 mb-2" disabled>
+                                <i class="fas fa-list-ul me-2"></i> Sportági elemzések 
+                                <span class="badge bg-danger ms-2">0 db</span>
+                            </button>
+                        {% endif %}
                     {% else %}
                         <p class="text-muted text-center small">Nincs sportági diagnosztika.</p>
                     {% endif %}
@@ -49,8 +115,9 @@
         <!-- ========================================================= -->
         <div class="col-md-9">
             <div class="card shadow-sm border-0">
-                <div class="card-header bg-light fw-semibold">
-                    🎯 Diagnosztikai eredmények
+                <div class="card-header bg-light fw-semibold d-flex justify-content-between align-items-center">
+                    <span>🎯 Diagnosztikai eredmények</span>
+                    <span class="badge bg-primary">Összesen: {{ job_list.count }} elemzés</span>
                 </div>
                 <div class="card-body">
                     {% if job_list %}
@@ -93,17 +160,27 @@
                                                     📄 PDF jelentés
                                                 </a>
                                             {% else %}
-                                                <span class="text-muted">–</span>
+                                                <span class="text-muted">—</span>
                                             {% endif %}
                                         </td>
                                         <td class="video-cell">
-                                            {% if job.result.skeleton_video_url %}
-                                                <a href="{{ job.result.skeleton_video_url }}" download class="btn btn-sm btn-outline-info">
-                                                    ⬇️ Skeleton videó
-                                                </a>
-                                            {% else %}
-                                                <span class="text-muted">–</span>
-                                            {% endif %}
+                                            {% with result=job.result %}
+                                                {% if "SINGLE_LEG_STANCE_LEFT" in job.job_type and result.skeleton_video_left_url %}
+                                                    <a href="{{ result.skeleton_video_left_url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                                        <i class="bi bi-camera-reels me-1"></i> Bal Videó
+                                                    </a>
+                                                {% elif "SINGLE_LEG_STANCE_RIGHT" in job.job_type and result.skeleton_video_right_url %}
+                                                    <a href="{{ result.skeleton_video_right_url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                                        <i class="bi bi-camera-reels me-1"></i> Jobb Videó
+                                                    </a>
+                                                {% elif result.skeleton_video_url %}
+                                                    <a href="{{ result.skeleton_video_url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                                        <i class="bi bi-camera-reels me-1"></i> Videó
+                                                    </a>
+                                                {% else %}
+                                                    <span class="text-muted">—</span>
+                                                {% endif %}
+                                            {% endwith %}
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -111,7 +188,10 @@
                             </table>
                         </div>
                     {% else %}
-                        <div class="alert alert-info mb-0">Még nincsenek diagnosztikai eredmények.</div>
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Még nincsenek diagnosztikai eredmények. Kezdj el elemzéseket!
+                        </div>
                     {% endif %}
                 </div>
             </div>
@@ -132,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ? `<a href="${url}" target="_blank" class="btn btn-sm btn-outline-danger">
                 <i class="bi bi-file-earmark-pdf-fill me-1"></i> PDF jelentés
                </a>`
-            : "–";
+            : "—";
     }
 
     function createVideoButton(url) {
@@ -140,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
             ? `<a href="${url}" download class="btn btn-sm btn-outline-info">
                 <i class="fas fa-download me-1"></i> Skeleton videó
                </a>`
-            : "–";
+            : "—";
     }
 
     function getStatusBadge(status) {

@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Vásárlás - DigiTTrain{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">
+        <i class="bi bi-cart-plus-fill me-2"></i> Vásárlás
+    </h1>
+
+    <p class="text-gray-600 mb-8">
+        Válasszon a hirdetésmentesség és az elemzési csomagok közül!
+    </p>
+
+    <div class="row">
+        
+        {# ------------------ VÁSÁRLÁSI ŰRLAP ------------------ #}
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow p-4">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Vásárlási Igénylés</h2>
+                
+                <form method="post" novalidate id="purchaseForm">
+                    {% csrf_token %}
+
+                    {# 1. TÍPUSVÁLASZTÁS (Radio buttons) #}
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Mit szeretne vásárolni?</label>
+                        <div class="d-flex flex-column gap-3">
+                            {% for radio in form.purchase_type %}
+                                <div class="form-check">
+                                    {{ radio.tag }}
+                                    <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                        {% if radio.choice_value == 'AD_FREE' %}
+                                            🔕 {{ radio.choice_label }}
+                                        {% else %}
+                                            📊 {{ radio.choice_label }}
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.purchase_type.errors %}
+                            <div class="text-danger small mt-1">{{ form.purchase_type.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <hr class="my-4">
+
+                    {# 2. HIRDETÉSMENTESSÉG CSOMAG (Csak AD_FREE esetén látható) #}
+                    <div id="adFreeSection" style="display: none;">
+                        <h4 class="text-lg font-semibold mb-3 text-primary">
+                            <i class="bi bi-patch-check me-2"></i> Hirdetésmentes Csomagok
+                        </h4>
+                        <div class="mb-4">
+                            <label for="{{ form.subscription_plan.id_for_label }}" class="form-label">
+                                {{ form.subscription_plan.label }}
+                            </label>
+                            {% render_field form.subscription_plan class+="form-select form-select-lg" %}
+                            {% if form.subscription_plan.errors %}
+                                <div class="text-danger small mt-1">{{ form.subscription_plan.errors }}</div>
+                            {% endif %}
+                            
+                            {# 🔥 ÚJ: Csomagok áttekintése #}
+                            {% if ad_free_plans %}
+                            <div class="mt-3">
+                                <small class="text-muted d-block mb-2">Elérhető csomagok:</small>
+                                {% for plan in ad_free_plans %}
+                                <div class="alert alert-info py-2 px-3 mb-2">
+                                    <strong>{{ plan.name }}</strong> - {{ plan.price_ft|floatformat:0 }} Ft / {{ plan.duration_days }} nap
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# 3. ELEMZÉSI CSOMAG (Csak ANALYSIS_PACKAGE esetén látható) #}
+                    <div id="analysisSection" style="display: none;">
+                        <h4 class="text-lg font-semibold mb-3 text-success">
+                            <i class="bi bi-graph-up-arrow me-2"></i> Elemzési Csomagok
+                        </h4>
+                        <div class="mb-4">
+                            <label for="{{ form.analysis_package.id_for_label }}" class="form-label">
+                                {{ form.analysis_package.label }}
+                            </label>
+                            {% render_field form.analysis_package class+="form-select form-select-lg" %}
+                            {% if form.analysis_package.errors %}
+                                <div class="text-danger small mt-1">{{ form.analysis_package.errors }}</div>
+                            {% endif %}
+                            
+                            {# 🔥 ÚJ: Csomagok áttekintése #}
+                            {% if analysis_packages %}
+                            <div class="mt-3">
+                                <small class="text-muted d-block mb-2">Elérhető csomagok:</small>
+                                {% for pkg in analysis_packages %}
+                                <div class="alert alert-success py-2 px-3 mb-2">
+                                    <strong>{{ pkg.name }}</strong> - {{ pkg.analysis_count }} db elemzés / {{ pkg.price_ft|floatformat:0 }} Ft
+                                    <small class="text-muted">({{ pkg.price_ft|floatformat:0|add:"-"|add:pkg.analysis_count|floatformat:0 }} Ft/db)</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    {# 4. SZÁMLÁZÁSI ADATOK (Közös minden típusnál) #}
+                    <h4 class="text-lg font-semibold mb-3">
+                        <i class="bi bi-receipt me-2"></i> Számlázási Adatok
+                    </h4>
+
+                    <div class="row g-3 mb-4">
+                        {# Számlázási Név #}
+                        <div class="col-md-6">
+                            <label for="{{ form.billing_name.id_for_label }}" class="form-label">
+                                {{ form.billing_name.label }}
+                            </label>
+                            {% render_field form.billing_name class+="form-control" %}
+                            {% if form.billing_name.errors %}
+                                <div class="text-danger small">{{ form.billing_name.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        {# Számlázási E-mail #}
+                        <div class="col-md-6">
+                            <label for="{{ form.billing_email.id_for_label }}" class="form-label">
+                                {{ form.billing_email.label }}
+                            </label>
+                            {% render_field form.billing_email class+="form-control" type="email" %}
+                            {% if form.billing_email.errors %}
+                                <div class="text-danger small">{{ form.billing_email.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        {# Adószám (opcionális) #}
+                        <div class="col-md-6">
+                            <label for="{{ form.tax_number.id_for_label }}" class="form-label">
+                                {{ form.tax_number.label }}
+                            </label>
+                            {% render_field form.tax_number class+="form-control" %}
+                            <div class="form-text">Csak cégek esetén kötelező.</div>
+                            {% if form.tax_number.errors %}
+                                <div class="text-danger small">{{ form.tax_number.errors }}</div>
+                            {% endif %}
+                        </div>
+
+                        {# Számlázási Cím #}
+                        <div class="col-12">
+                            <label for="{{ form.billing_address.id_for_label }}" class="form-label">
+                                {{ form.billing_address.label }}
+                            </label>
+                            {% render_field form.billing_address class+="form-control" rows="3" %}
+                            {% if form.billing_address.errors %}
+                                <div class="text-danger small">{{ form.billing_address.errors }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg mt-3">
+                        <i class="bi bi-envelope-check me-2"></i> Vásárlási Igénylés Elküldése
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+        {# ------------------ FÜGGŐBEN LÉVŐ VÁSÁRLÁSOK ------------------ #}
+        <div class="col-lg-4">
+            <div class="card shadow p-4 bg-light">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Függőben Lévő Igénylések</h2>
+                
+                {% if pending_invoices %}
+                    <ul class="list-group list-group-flush">
+                        {% for invoice in pending_invoices %}
+                            <li class="list-group-item d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <h5 class="mb-1 text-primary">{{ invoice.amount_ft|floatformat:0 }} Ft</h5>
+                                    <p class="mb-1 small text-muted">
+                                        {% if invoice.invoice_type == 'AD_FREE_SUBSCRIPTION' %}
+                                            🔕 {{ invoice.subscription_plan.name }}
+                                        {% elif invoice.invoice_type == 'ANALYSIS_PACKAGE' %}
+                                            📊 {{ invoice.related_analysis_package.name }} ({{ invoice.related_analysis_package.analysis_count }} db)
+                                        {% else %}
+                                            💰 Egyenleg feltöltés
+                                        {% endif %}
+                                    </p>
+                                    <p class="mb-0 small text-danger">⏳ Függőben: Várjuk az utalást!</p>
+                                </div>
+                                <span class="badge bg-secondary rounded-pill">{{ invoice.request_date|date:"m.d" }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-info">Nincs függőben lévő vásárlási igénylése.</div>
+                {% endif %}
+                
+                <hr class="my-3">
+                <p class="small text-muted">
+                    <i class="bi bi-info-circle me-1"></i> A fizetés részleteit a kérelem elküldése után kapja meg e-mailben.
+                </p>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const purchaseTypeRadios = document.querySelectorAll('input[name="purchase_type"]');
+    const adFreeSection = document.getElementById('adFreeSection');
+    const analysisSection = document.getElementById('analysisSection');
+    
+    const subscriptionPlanField = document.querySelector('#id_subscription_plan');
+    const analysisPackageField = document.querySelector('#id_analysis_package');
+
+    function toggleSections(selectedType) {
+        if (selectedType === 'AD_FREE') {
+            adFreeSection.style.display = 'block';
+            analysisSection.style.display = 'none';
+            
+            if (subscriptionPlanField) subscriptionPlanField.disabled = false;
+            if (analysisPackageField) analysisPackageField.disabled = true;
+            
+        } else if (selectedType === 'ANALYSIS_PACKAGE') {
+            adFreeSection.style.display = 'none';
+            analysisSection.style.display = 'block';
+            
+            if (subscriptionPlanField) subscriptionPlanField.disabled = true;
+            if (analysisPackageField) analysisPackageField.disabled = false;
+        }
+    }
+
+    purchaseTypeRadios.forEach(radio => {
+        radio.addEventListener('change', (event) => {
+            toggleSections(event.target.value);
+        });
+    });
+
+    // Kezdeti állapot
+    const initialSelected = document.querySelector('input[name="purchase_type"]:checked');
+    if (initialSelected) {
+        toggleSections(initialSelected.value);
+    } else {
+        // Alapértelmezett: elemzési csomag
+        const defaultRadio = document.querySelector('input[name="purchase_type"][value="ANALYSIS_PACKAGE"]');
+        if (defaultRadio) {
+            defaultRadio.checked = true;
+            toggleSections('ANALYSIS_PACKAGE');
+        }
+    }
+});
+</script>
+{% endblock extra_js %}

@@ -1,3 +1,4 @@
+# diagnostics_jobs/tasks.py
 import os
 import shutil
 import logging
@@ -6,12 +7,13 @@ from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
 from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 
-
-# 1. MODELL IMPORT: Job és a profil
-from .models import DiagnosticJob, UserAnthropometryProfile # 🆕 UserAnthropometryProfile hozzáadva!
+from .models import DiagnosticJob, UserAnthropometryProfile
 from diagnostics.pdf_utils import generate_pdf_report 
+
+# 🆕 ÚJ IMPORT: Billing utils
+from billing.utils import refund_analysis, get_analysis_balance
+from billing.models import UserAnalysisBalance
 
 # Service-ek
 from .services.anthropometry_calibration_service import AnthropometryCalibrationService
@@ -33,35 +35,48 @@ SERVICE_MAP = {
     DiagnosticJob.JobType.SINGLE_LEG_STANCE_RIGHT: SingleLegStanceAssessmentService,
 }
 
+
 def _convert_numpy_to_python(data):
     """
     Rekurzívan átalakítja a NumPy típusokat (ndarray, np.float, stb.)
     natív Python típusokká (list, float, int), hogy JSON-ba menthető legyen.
     """
     if isinstance(data, dict):
-        # Ha szótár, iterálj végig a kulcsokon
         return {k: _convert_numpy_to_python(v) for k, v in data.items()}
     elif isinstance(data, list):
-        # Ha lista, iterálj végig az elemeken
         return [_convert_numpy_to_python(item) for item in data]
     elif isinstance(data, np.ndarray):
-        # NumPy tömb konvertálása listává
         return data.tolist()
     elif isinstance(data, (np.float32, np.float64, np.number)):
-        # NumPy skalárok konvertálása Python float-tá
         return float(data)
-    # Ha nem NumPy, hagyd érintetlenül
     return data
+
 
 @shared_task
 def run_diagnostic_job(job_id):
     """
-    Dinámuikus mozgáselemzés feldolgozása, profil frissítés vagy PDF-riport generálás.
+    Dinamikus mozgáselemzés feldolgozása, profil frissítés vagy PDF-riport generálás.
+    
+    🆕 VÁLTOZÁS: 
+    - Sikertelen job esetén visszatérítjük az elemzést!
+    - FIGYELEM: Az elemzés levonása a view-ban történik (dedicate_analysis)
     """
-    pdf_path = None # PDF elérési út inicializálása
+    pdf_path = None
+    job = None
     
     try:
         job = DiagnosticJob.objects.get(id=job_id)
+        
+        # 🔥 KRITIKUS: Ellenőrizzük, hogy van-e elegendő egyenleg
+        # (Ez csak egy biztonsági ellenőrzés, a fő ellenőrzés a view-ban van)
+        current_balance = get_analysis_balance(job.user)
+        if current_balance < 0:
+            error_msg = "❌ Nincs elegendő elemzési egyenleg! Az elemzés már le lett vonva, de valami hiba történt."
+            job.mark_as_failed(error_msg)
+            logger.error(f"❌ [TASK] Egyenleg hiba job_id={job_id}, user={job.user.username}")
+            # NE térítsd vissza, mert már le van vonva!
+            return
+        
         job.mark_as_processing()
 
         service_class = SERVICE_MAP.get(job.job_type)
@@ -74,35 +89,6 @@ def run_diagnostic_job(job_id):
         service_instance = service_class(job=job)
         result_data = service_instance.run_analysis()
 
-        
-        # =========================================================================
-        # 🆕 2. KÜLÖNLEGES LOGIKA: ANTROPOMETRIAI PROFIL FRISSÍTÉSE
-        # =========================================================================
-        if job.job_type == DiagnosticJob.JobType.ANTHROPOMETRY_CALIBRATION:
-            logger.info(f"💾 [TASK] Antropometriai adatok mentése job_id={job.id}")
-            
-            # Lekérjük a felhasználó profilját
-            try:
-                profile = UserAnthropometryProfile.objects.get(user=job.user)
-                
-                # A Service által becsült adatok frissítése
-                estimated_height = result_data.get("estimated_height_cm")
-                
-                if estimated_height:
-                    profile.height_cm = estimated_height
-                    
-                # Feltételezve, hogy a service más adatokat is becsül:
-                if result_data.get("estimated_shoulder_width_cm"):
-                     profile.shoulder_width_cm = result_data["estimated_shoulder_width_cm"]
-                
-                profile.save()
-                logger.info(f"✅ Profil frissítve! Új magasság: {profile.height_cm} cm")
-
-            except UserAnthropometryProfile.DoesNotExist:
-                 logger.error(f"❌ Nincs antropometriai profil job_id={job.id}. A Job sikeresen befejeződött, de a profil frissítése sikertelen.")
-            
-            # Visszaadjuk a Job-nak a feliratozott kép URL-jét, de PDF-et NEM generálunk.
-            # A skeleton videót valószínűleg itt is generálja a Service, így az is feltöltődik a következő lépésben.
         # =========================================================================
         # 🆕 2. KÜLÖNLEGES LOGIKA: ANTROPOMETRIAI PROFIL FRISSÍTÉSE
         # =========================================================================
@@ -157,7 +143,6 @@ def run_diagnostic_job(job_id):
             except Exception as e:
                 logger.warning(f"⚠️ Annotált kép feltöltése sikertelen: {e}")
 
-
         # 3️⃣ Skeleton videó feltöltése
         if "skeleton_video_local_path" in result_data:
             local_path = result_data.pop("skeleton_video_local_path")
@@ -172,7 +157,6 @@ def run_diagnostic_job(job_id):
                     path_in_storage = default_storage.save(storage_path, video_file)
                 
                 skeleton_url = default_storage.url(path_in_storage)
-                
                 result_data["skeleton_video_url"] = skeleton_url
                 logger.info(f"🎥 Skeleton videó feltöltve: {skeleton_url}")
                 
@@ -182,7 +166,6 @@ def run_diagnostic_job(job_id):
                 logger.warning(f"⚠️ Skeleton videó feltöltése sikertelen: {e}")
 
         # 4️⃣ PDF riport generálása (Csak ha nem Antropometria Elemzés)
-        # Antropometriánál NINCS PDF riport!
         if job.job_type != DiagnosticJob.JobType.ANTHROPOMETRY_CALIBRATION:
             pdf_path = generate_pdf_report(job, result_data) 
             
@@ -193,19 +176,41 @@ def run_diagnostic_job(job_id):
         else:
             logger.info("📄 PDF riport kihagyva: Antropometriai Job.")
 
-
         # 5️⃣ Mentés
         final_result_data = _convert_numpy_to_python(result_data)      
         job.mark_as_completed(final_result_data, pdf_path=pdf_path)
-        logger.info(f"🏁 [TASK] Elemzés sikeresen befejeződött job_id={job.id}")
+        logger.info(f"🏁 [TASK] Elemzés sikeresen befejezve job_id={job.id}")
+        
+        # 🆕 6️⃣ SIKERES JOB: NEM KELL SEMMIT CSINÁLNI
+        # Az elemzés már le van vonva a views.py-ban (dedicate_analysis)
+        logger.info(f"✅ [BILLING] Elemzés sikeresen befejezve, levonás már megtörtént.")
 
     except DiagnosticJob.DoesNotExist:
         logger.error(f"❌ [TASK] DiagnosticJob #{job_id} nem található.")
+        # Ha a Job nem található, nincs mit visszatéríteni
+        
     except NotImplementedError as e:
-        # Hiba esetén a jobot azonnal FAILED státuszba rakja
-        job.mark_as_failed(str(e))
-        logger.error(f"❌ [TASK] Implementációs hiba job_id={job_id}: {e}")
+        error_msg = str(e)
+        if job:
+            job.mark_as_failed(error_msg)
+            logger.error(f"❌ [TASK] Implementációs hiba job_id={job_id}: {e}")
+            
+            # 🆕 VISSZATÉRÍTÉS: Sikertelen job esetén
+            try:
+                refund_analysis(job.user, job, reason="Implementációs hiba")
+                logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
+            except Exception as refund_error:
+                logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")
+
     except Exception as e:
-        # Minden más kritikus hiba
-        job.mark_as_failed(f"Kritikus elemzési hiba: {e}")
-        logger.critical(f"❌ [TASK] Kritikus hiba job_id={job_id}: {e}", exc_info=True)
+        error_msg = f"Kritikus elemzési hiba: {e}"
+        if job:
+            job.mark_as_failed(error_msg)
+            logger.critical(f"❌ [TASK] Kritikus hiba job_id={job_id}: {e}", exc_info=True)
+            
+            # 🆕 VISSZATÉRÍTÉS: Sikertelen job esetén
+            try:
+                refund_analysis(job.user, job, reason=f"Kritikus hiba: {str(e)}")
+                logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
+            except Exception as refund_error:
+                logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")

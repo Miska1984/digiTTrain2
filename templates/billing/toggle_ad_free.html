@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+{% load widget_tweaks %}
+
+{% block title %}Hirdetésmentesség Aktiválása{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="text-3xl font-bold mb-6 text-gray-800">
+        <i class="bi bi-patch-check-fill me-2"></i> Hirdetésmentes Csomag Aktiválása (Teszt)
+    </h1>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow p-4 mb-4">
+                
+                {% if current_subscription %}
+                    <div class="alert alert-success mb-4">
+                        <h4 class="alert-heading">Aktív Előfizetés!</h4>
+                        <p class="mb-0">A hirdetésmentesség jelenleg érvényes: **{{ current_subscription.end_date|date:"Y.m.d H:i" }}**-ig.</p>
+                        <hr>
+                        <p class="mb-0 small">Az új csomag aktiválása kiterjeszti ezt a dátumot.</p>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning mb-4">
+                        Jelenleg **nincs** aktív hirdetésmentes előfizetése.
+                    </div>
+                {% endif %}
+
+                <h2 class="text-2xl font-semibold mb-4 text-primary">Válassza ki a csomagot az aktiváláshoz</h2>
+                
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    <div class="mb-4">
+                        <label for="{{ form.plan.id_for_label }}" class="form-label fw-bold">{{ form.plan.label }}</label>
+                        {% render_field form.plan class+="form-select form-select-lg" %}
+                        {% if form.plan.errors %}
+                            <div class="text-danger small mt-1">{{ form.plan.errors|join:", " }}</div>
+                        {% endif %}
+                        <div class="form-text">A választott csomag azonnal aktiválásra kerül.</div>
+                    </div>
+                    
+                    {{ form.is_subscription_request }}
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-check-circle me-2"></i> Előfizetés Aktiválása / Megújítása
+                    </button>
+                </form>
+            </div>
+            
+            <a href="{% url 'billing_dashboard' %}" class="btn btn-outline-secondary mt-3">
+                <i class="bi bi-arrow-left me-1"></i> Vissza a Vezérlőpultra
+            </a>
+            
+        </div>
+    </div>
+</div>
+{% endblock content %}

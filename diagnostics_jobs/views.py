@@ -14,7 +14,6 @@ import uuid
 import logging
 from datetime import datetime, timedelta
 
-
 from .models import DiagnosticJob, UserAnthropometryProfile
 from .forms import AnthropometryProfileForm, AnthropometryCalibrationForm
 from .services.anthropometry_calibration_service import AnthropometryCalibrationService
@@ -23,78 +22,94 @@ from .cloud_tasks import enqueue_diagnostic_job
 from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
 from diagnostics.utils.gcs_signer import get_storage_client
 
+# 🆕 ÚJ IMPORT: Billing utils
+from billing.utils import dedicate_analysis, get_analysis_balance
+
 User = get_user_model()
 logger = logging.getLogger(__name__)
+
 
 @csrf_exempt
 def create_diagnostic_job(request):
     """
-    Új diagnosztikai feladat létrehozása.
-    Automatikusan csatolja a sportoló legfrissebb biometrikus adatait.
+    Új diagnosztikai feladat létrehozása és ELEMZÉS LEVONÁSA az egyenlegből.
     """
     if request.method != "POST":
         return JsonResponse({"error": "POST metódus szükséges"}, status=405)
 
+    user = request.user
+    
     try:
         data = json.loads(request.body)
         user_id = data.get("user_id")
         sport_type = data.get("sport_type", "general")
-        job_type = data.get("job_type", "general")
-        video_url = data.get("video_url")
-
-        if not all([user_id, sport_type, job_type, video_url]):
-            return JsonResponse({"error": "Hiányzó kötelező mezők"}, status=400)
-
-        user = User.objects.filter(id=user_id).first()
-        if not user:
-            return JsonResponse({"error": "Felhasználó nem található"}, status=404)
-
-        # 🔹 Legfrissebb biometrikus adatok lekérése
-        latest_weight = WeightData.objects.filter(user=user).order_by('-created_at').first()
-        latest_hrv = HRVandSleepData.objects.filter(user=user).order_by('-recorded_at').first()
-        latest_feedback = WorkoutFeedback.objects.filter(user=user).order_by('-workout_date').first()
-
-        # 🔹 Diagnosztikai feladat létrehozása
+        job_type_code = data.get("job_type")
+        
+        # 1. Alapvető validáció
+        if not job_type_code or job_type_code not in DiagnosticJob.JobType.values:
+            return JsonResponse({'success': False, 'error': 'Érvénytelen job_type kód.'}, status=400)
+        
+        # 🆕 2. ELEMZÉSI EGYENLEG ELLENŐRZÉSE
+        current_balance = get_analysis_balance(user)
+        
+        if current_balance < 1:
+            return JsonResponse({
+                'success': False, 
+                'error': 'INSUFFICIENT_BALANCE',
+                'message': 'Nincs elegendő elemzési egyenleged! Vásárolj elemzési csomagot vagy nézz hirdetéseket.',
+                'current_balance': current_balance
+            }, status=402)  # 402 Payment Required
+        
+        # 3. DiagnosticJob létrehozása (még PENDING státuszban)
         job = DiagnosticJob.objects.create(
             user=user,
             sport_type=sport_type,
-            job_type=job_type,
-            video_url=video_url,
-            weight_snapshot=latest_weight,
-            hrv_snapshot=latest_hrv,
-            workout_feedback_snapshot=latest_feedback,
+            job_type=job_type_code,
+            status=DiagnosticJob.JobStatus.PENDING,
         )
 
-        # ✅ KRITIKUS JAVÍTÁS: Feladat ütemezése (Celery/Cloud Tasks)
-        try:
-            enqueue_diagnostic_job(job.id)
-        except Exception as e:
-            # Ha az ütemezés sikertelen, jelezzük, de a job létrejött
+        # 🆕 4. ELEMZÉS LEVONÁSA AZ EGYENLEGBŐL
+        success, new_balance = dedicate_analysis(user, job)
+
+        if not success:
+            job.status = DiagnosticJob.JobStatus.FAILED 
+            job.error_message = f"Nem sikerült levonni az elemzést. Egyenleg: {new_balance} db."
+            job.save(update_fields=['status', 'error_message'])
+            
             return JsonResponse({
-                "success": True,
-                "job_id": job.id,
-                "status": job.status,
-                "warning": f"A job létrejött, de az ütemezés sikertelen: {str(e)}",
-                "attached_data": {
-                    "weight_snapshot": bool(latest_weight),
-                    "hrv_snapshot": bool(latest_hrv),
-                    "workout_feedback_snapshot": bool(latest_feedback),
-                }
-            }, status=201)
-
+                'success': False, 
+                'error': 'DEDUCTION_FAILED',
+                'message': job.error_message
+            }, status=500)
+        
+        # 5. Sikeres levonás: Átállítjuk QUEUED-re és elindítjuk
+        job.status = DiagnosticJob.JobStatus.QUEUED
+        job.save(update_fields=['status'])
+        
+        # Celery Task ütemezése
+        enqueue_diagnostic_job(job.id)
+        
         return JsonResponse({
-            "success": True,
-            "job_id": job.id,
-            "status": job.status,
-            "attached_data": {
-                "weight_snapshot": bool(latest_weight),
-                "hrv_snapshot": bool(latest_hrv),
-                "workout_feedback_snapshot": bool(latest_feedback),
-            }
-        }, status=201)
-
+            'success': True,
+            'job_id': job.id,
+            'message': f"Elemzés elindítva! -1 db elemzés levonva.",
+            'remaining_balance': new_balance
+        })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Érvénytelen JSON formátum.'}, status=400)
     except Exception as e:
-        return JsonResponse({"error": str(e)}, status=500)
+        logger.exception("Hiba a job indításakor")
+        
+        if 'job' in locals():
+            job.status = DiagnosticJob.JobStatus.FAILED
+            job.error_message = f'Ismeretlen hiba: {str(e)}'
+            job.save(update_fields=['status', 'error_message'])
+            
+        return JsonResponse({
+            'success': False,
+            'error': f'Ismeretlen hiba: {type(e).__name__}: {str(e)}'
+        }, status=500)
 
 
 @csrf_exempt
@@ -109,44 +124,53 @@ def run_job_view(request):
             if not job_id:
                 return JsonResponse({"error": "job_id hiányzik"}, status=400)
 
-            # ✅ JAVÍTÁS: Aszinkron hívás .delay()-jel
             run_diagnostic_job.delay(job_id)
             return JsonResponse({"success": True, "job_id": job_id})
         except Exception as e:
             return JsonResponse({"error": str(e)}, status=500)
     return JsonResponse({"error": "POST metódus szükséges"}, status=405)
 
+
 # =========================================================================
-# 🆕 Job Indítás View (AJAX/POST kérésekhez)
+# 🆕 Job Indítás View (AJAX/POST kérésekhez) - JAVÍTOTT VERZIÓ
 # =========================================================================
 
 @login_required
-@require_http_methods(["POST"]) # Csak POST-ot fogad el a feltöltés indításához!
+@require_http_methods(["POST"])
 def upload_anthropometry_video(request):
     """
     Antropometriai elemző videó feltöltése és elemzés indítása.
+    🆕 EGYENLEG ELLENŐRZÉSSEL!
     """
     job_type = DiagnosticJob.JobType.ANTHROPOMETRY_ASSESSMENT
 
     if request.method == "POST":
         try:
-            # POST adatok JSON-ként való olvasása (a frontend AJAX hívásából)
             data = json.loads(request.body)
             gcs_object_name = data.get('video_url')
             
             if not gcs_object_name:
                 return JsonResponse({"success": False, "error": "Hiányzó 'video_url' a kérésben."}, status=400)
 
+            # 🆕 1. EGYENLEG ELLENŐRZÉSE
+            current_balance = get_analysis_balance(request.user)
+            
+            if current_balance < 1:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'INSUFFICIENT_BALANCE',
+                    'message': 'Nincs elegendő elemzési egyenleged!',
+                    'current_balance': current_balance
+                }, status=402)
+
             try:
                 GCS_BUCKET_NAME = settings.GS_BUCKET_NAME
             except AttributeError:
-                # Fallback, ha a settings.py-ban nem így hívják a beállítást
                 GCS_BUCKET_NAME = settings.GS_STATIC_BUCKET_NAME 
                 
             full_video_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{gcs_object_name}"
 
-
-            # 1. Job létrehozása (PENDING státuszban)
+            # 2. Job létrehozása (PENDING státuszban)
             job = DiagnosticJob.objects.create(
                 user=request.user,
                 sport_type='general', 
@@ -155,23 +179,40 @@ def upload_anthropometry_video(request):
                 status=DiagnosticJob.JobStatus.PENDING
             )
             
-            # 2. Job ütemezése Celery/Cloud Tasks-ban
+            # 🆕 3. ELEMZÉS LEVONÁSA
+            success, new_balance = dedicate_analysis(request.user, job)
+            
+            if not success:
+                job.status = DiagnosticJob.JobStatus.FAILED
+                job.error_message = "Nem sikerült levonni az elemzést."
+                job.save()
+                return JsonResponse({
+                    'success': False,
+                    'error': 'DEDUCTION_FAILED',
+                    'message': job.error_message
+                }, status=500)
+            
+            # 4. Job ütemezése
+            job.status = DiagnosticJob.JobStatus.QUEUED
+            job.save()
             enqueue_diagnostic_job(job.id) 
 
             return JsonResponse({
                 "success": True, 
                 "job_id": job.id,
-                "message": "A videó sikeresen feltöltve. Az elemzés elindult a háttérben!"
+                "message": "A videó sikeresen feltöltve. Az elemzés elindult!",
+                "remaining_balance": new_balance
             }, status=201)
                 
         except json.JSONDecodeError:
             return JsonResponse({"success": False, "error": "Hibás JSON formátum."}, status=400)
         except Exception as e:
-            # Hiba a Job létrehozásakor/ütemezésekor
-            print(f"❌ Hiba történt a Job létrehozásakor/ütemezésekor: {e}")
-            return JsonResponse({"success": False, "error": f"Hiba az elemzés indításakor: {e}"}, status=500)
+            logger.exception("Hiba a Job létrehozásakor")
+            return JsonResponse({"success": False, "error": f"Hiba: {e}"}, status=500)
     
-    return JsonResponse({"success": False, "error": "Csak POST kérés fogadható el az elemzés indításához."}, status=405)
+    return JsonResponse({"success": False, "error": "Csak POST kérés fogadható el."}, status=405)
+
+
 
 # ================================================================
 # 🧍‍♂️ ANTROPOMETRIAI PROFIL NÉZET
@@ -179,7 +220,7 @@ def upload_anthropometry_video(request):
 @login_required
 def anthropometry_profile_view(request):
     """Antropometriai adatok megtekintése, kalibráció és manuális frissítés."""
-    # 1️⃣ Profil lekérése/létrehozása
+    
     try:
         latest_weight = WeightData.objects.filter(user=request.user).latest('workout_date')
         default_weight = latest_weight.morning_weight
@@ -191,7 +232,6 @@ def anthropometry_profile_view(request):
         defaults={'weight_kg': default_weight}
     )
 
-    # 2️⃣ POST feldolgozás (kalibráció vagy manuális mentés)
     if request.method == "POST":
         # Ha képfeltöltés is van → kalibráció
         if 'front_photo' in request.FILES and 'side_photo' in request.FILES:
@@ -204,11 +244,10 @@ def anthropometry_profile_view(request):
             messages.success(request, "✅ Antropometriai adatok sikeresen frissítve!")
             return redirect(reverse("diagnostics_jobs:anthropometry_profile_view"))
         else:
-            messages.error(request, "⚠️ Hibás adatmegadás! Kérlek ellenőrizd a mezőket.")
+            messages.error(request, "⚠️ Hibás adatmegadás!")
     else:
         form = AnthropometryProfileForm(instance=profile)
 
-    # 3️⃣ Legutóbbi kalibrációs job lekérése
     latest_anthropometry_job = DiagnosticJob.objects.filter(
         user=request.user,
         job_type=DiagnosticJob.JobType.ANTHROPOMETRY_CALIBRATION
@@ -218,17 +257,33 @@ def anthropometry_profile_view(request):
         "form": form,
         "profile": profile,
         "latest_anthropometry_job": latest_anthropometry_job,
-        "title": "Antropometriai Profil"
+        "title": "Antropometriai Profil",
+        # 🆕 Egyenleg hozzáadása
+        "analysis_balance": get_analysis_balance(request.user)
     }
     return render(request, "diagnostics_jobs/anthropometry_profile.html", context)
 
 
 # ================================================================
-# 📸 KALIBRÁCIÓ FOTÓ FELTÖLTÉS KEZELŐ
+# 📸 KALIBRÁCIÓ FOTÓ FELTÖLTÉS KEZELŐ - JAVÍTOTT VERZIÓ
 # ================================================================
 def handle_calibration_upload(request, profile):
-    """Feltölt két fotót, létrehoz egy DiagnosticJob-ot és futtatja a kalibrációt (kettős faktorral)."""
+    """
+    Feltölt két fotót, létrehoz egy DiagnosticJob-ot és futtatja a kalibrációt.
+    🆕 EGYENLEG ELLENŐRZÉSSEL!
+    """
     try:
+        # 🆕 1. EGYENLEG ELLENŐRZÉSE
+        current_balance = get_analysis_balance(request.user)
+        
+        if current_balance < 1:
+            messages.error(
+                request,
+                f"❌ Nincs elegendő elemzési egyenleged! Jelenlegi: {current_balance} db. "
+                "Vásárolj elemzési csomagot!"
+            )
+            return redirect(reverse("diagnostics_jobs:anthropometry_profile_view"))
+        
         calibration_form = AnthropometryCalibrationForm(request.POST, request.FILES)
         if not calibration_form.is_valid():
             for field, errors in calibration_form.errors.items():
@@ -236,19 +291,17 @@ def handle_calibration_upload(request, profile):
                     messages.error(request, f"❌ {field}: {error}")
             return redirect(reverse("diagnostics_jobs:anthropometry_profile_view"))
 
-        # 🔹 Felhasználó által megadott értékek
         user_height = float(request.POST.get("user_stated_height_m"))
-        user_thigh = float(request.POST.get("user_stated_thigh_cm"))
-        user_shin = float(request.POST.get("user_stated_shin_cm"))
+        user_thigh = float(request.POST.get("user_stated_thigh_cm", 0))
+        user_shin = float(request.POST.get("user_stated_shin_cm", 0))
 
         front_photo = request.FILES["front_photo"]
         side_photo = request.FILES["side_photo"]
 
-        # 🔹 Feltöltés GCS-be
         front_gcs_path = upload_photo_to_gcs(front_photo, request.user, "front")
         side_gcs_path = upload_photo_to_gcs(side_photo, request.user, "side")
 
-        # 🔹 Job létrehozása
+        # 2. Job létrehozása
         job = DiagnosticJob.objects.create(
             user=request.user,
             sport_type="CALIBRATION",
@@ -261,13 +314,22 @@ def handle_calibration_upload(request, profile):
             status=DiagnosticJob.JobStatus.PENDING,
         )
 
-        # 🔹 Kalibráció futtatása
+        # 🆕 3. ELEMZÉS LEVONÁSA
+        success, new_balance = dedicate_analysis(request.user, job)
+        
+        if not success:
+            job.status = DiagnosticJob.JobStatus.FAILED
+            job.error_message = "Nem sikerült levonni az elemzést."
+            job.save()
+            messages.error(request, f"❌ {job.error_message}")
+            return redirect(reverse("diagnostics_jobs:anthropometry_profile_view"))
+
+        # 4. Kalibráció futtatása (SZINKRON!)
         service = AnthropometryCalibrationService(job.id)
         service.run_analysis(job)
 
         job.refresh_from_db()
 
-        # 🔹 Eredmény feldolgozás
         if job.status == DiagnosticJob.JobStatus.COMPLETED:
             result = job.result or {}
             confidence = result.get("calibration_confidence", 0)
@@ -275,7 +337,6 @@ def handle_calibration_upload(request, profile):
             leg_factor = job.leg_calibration_factor
             annotated_url = result.get("annotated_image_url")
 
-            # 🔹 Profil frissítése mindkét faktorral
             profile.calibration_factor = main_factor
             if leg_factor:
                 profile.leg_calibration_factor = leg_factor
@@ -294,7 +355,8 @@ def handle_calibration_upload(request, profile):
                 f"✅ Kalibráció sikeresen befejezve<br>"
                 f"Teljes faktor: {main_factor:.4f}<br>"
                 f"Láb-specifikus faktor: {f'{leg_factor:.4f}' if leg_factor is not None else '—'}<br>"
-                f"Megbízhatóság: {confidence * 100:.0f}%"
+                f"Megbízhatóság: {confidence * 100:.0f}%<br>"
+                f"Fennmaradó egyenleg: {new_balance} db"
             )
             messages.success(request, msg)
         else:
@@ -311,10 +373,7 @@ def handle_calibration_upload(request, profile):
 # ☁️ GCS FOTÓ FELTÖLTŐ HELPER
 # ================================================================
 def upload_photo_to_gcs(photo_file, user, photo_type):
-    """
-    Kép feltöltése GCS-be, Uniform Bucket Access kompatibilisen.
-    Ha a bucket nem publikus, akkor Signed URL-t generál.
-    """
+    """Kép feltöltése GCS-be."""
     try:
         ext = photo_file.name.split(".")[-1].lower()
         unique_id = uuid.uuid4().hex[:8]
@@ -322,19 +381,14 @@ def upload_photo_to_gcs(photo_file, user, photo_type):
         filename = f"{photo_type}_{timestamp}_{unique_id}.{ext}"
         gcs_path = f"calibration_photos/user_{user.id}/{filename}"
 
-        # 🔹 GCS kliens beolvasása a gcs_signer-ből
         client = get_storage_client()
         bucket = client.bucket(settings.GS_BUCKET_NAME)
         blob = bucket.blob(gcs_path)
 
-        # 🔹 Feltöltés
         blob.upload_from_file(photo_file, content_type=photo_file.content_type, rewind=True)
 
-        # 🔹 URL meghatározás
-        # Ha publikus bucket, a public_url működni fog:
         url = f"https://storage.googleapis.com/{settings.GS_BUCKET_NAME}/{gcs_path}"
 
-        # 🔹 Ha nem publikus, akkor Signed URL (Uniform Bucket Access esetén)
         if not settings.DEBUG:
             try:
                 url = blob.generate_signed_url(
@@ -343,9 +397,9 @@ def upload_photo_to_gcs(photo_file, user, photo_type):
                     method="GET"
                 )
             except Exception as e:
-                logger.warning(f"Nem sikerült Signed URL-t generálni: {e}")
+                logger.warning(f"Signed URL generálási hiba: {e}")
 
-        logger.info(f"✅ Fotó feltöltve GCS-re: {url}")
+        logger.info(f"✅ Fotó feltöltve: {url}")
         return url
 
     except Exception as e:
@@ -354,17 +408,29 @@ def upload_photo_to_gcs(photo_file, user, photo_type):
 
 
 # ================================================================
-# 🆕 API ENDPOINT: AJAX-os Kalibráció (Opcionális)
+# 🆕 API ENDPOINT: AJAX-os Kalibráció - JAVÍTOTT VERZIÓ
 # ================================================================
 @login_required
 @require_http_methods(["POST"])
 @csrf_exempt
 def calibrate_anthropometry_api(request):
     """
-    API endpoint AJAX kérésekhez (ha a frontend fetch-el hívja).
+    API endpoint AJAX kérésekhez.
+    🆕 EGYENLEG ELLENŐRZÉSSEL!
     """
     try:
-        # Validálás
+        # 🆕 1. EGYENLEG ELLENŐRZÉSE
+        current_balance = get_analysis_balance(request.user)
+        
+        if current_balance < 1:
+            return JsonResponse({
+                'success': False,
+                'error': 'INSUFFICIENT_BALANCE',
+                'message': 'Nincs elegendő elemzési egyenleged!',
+                'current_balance': current_balance
+            }, status=402)
+        
+        # 2. Validálás
         if 'front_photo' not in request.FILES or 'side_photo' not in request.FILES:
             return JsonResponse({
                 'success': False,
@@ -388,7 +454,7 @@ def calibrate_anthropometry_api(request):
                 'error': 'Érvényes magasság: 1.40 - 2.30 méter'
             }, status=400)
         
-        # Feltöltés és Job létrehozás
+        # 3. Feltöltés és Job létrehozás
         front_photo = request.FILES['front_photo']
         side_photo = request.FILES['side_photo']
         
@@ -405,7 +471,20 @@ def calibrate_anthropometry_api(request):
             status=DiagnosticJob.JobStatus.PENDING 
         )
         
-        # Szinkron elemzés
+        # 🆕 4. ELEMZÉS LEVONÁSA
+        success, new_balance = dedicate_analysis(request.user, job)
+        
+        if not success:
+            job.status = DiagnosticJob.JobStatus.FAILED
+            job.error_message = "Nem sikerült levonni az elemzést."
+            job.save()
+            return JsonResponse({
+                'success': False,
+                'error': 'DEDUCTION_FAILED',
+                'message': job.error_message
+            }, status=500)
+        
+        # 5. Szinkron elemzés
         service = AnthropometryCalibrationService(job.id)
         service.run_analysis(job)
         
@@ -420,7 +499,8 @@ def calibrate_anthropometry_api(request):
                 'confidence': result.get('calibration_confidence', 0),
                 'warnings': result.get('quality_warnings', []),
                 'measurements': result.get('measurements', {}),
-                'annotated_image_url': result.get('annotated_image_url')
+                'annotated_image_url': result.get('annotated_image_url'),
+                'remaining_balance': new_balance
             })
         else:
             return JsonResponse({
@@ -430,6 +510,7 @@ def calibrate_anthropometry_api(request):
             }, status=500)
             
     except Exception as e:
+        logger.exception("API kalibráció hiba")
         return JsonResponse({
             'success': False,
             'error': str(e)

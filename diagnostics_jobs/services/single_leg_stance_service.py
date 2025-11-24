@@ -51,6 +51,10 @@ class SingleLegStanceAssessmentService(BaseDiagnosticService):
         side_to_analyze = "left" if "LEFT" in job.job_type else "right"
         is_left_stance = side_to_analyze == "left"
         
+        # 🆕 ÚJ: EREDMÉNY KULCS ÉS FÁJLNÉV UTÓTAG MEGHATÁROZÁSA
+        video_result_key = f"skeleton_video_{side_to_analyze}_url" # Pl: skeleton_video_left_url
+        unique_filename = f"skeleton_video_{side_to_analyze}.avi" # Pl: skeleton_video_left.avi
+        
         # 2. Videó letöltése és MediaPipe feldolgozás
         # ❌ EREDETI: local_video_path = self.download_video()
         # ✅ JAVÍTVA: Használjuk a standard utility függvényt
@@ -85,15 +89,17 @@ class SingleLegStanceAssessmentService(BaseDiagnosticService):
         # 4. Kép/videó előállítás
         # ❌ HIBÁS: skeleton_video_url = self.create_skeleton_video(local_video_path, all_landmarks)
         # 🟢 JAVÍTOTT: Feltöltjük a MediaPipe által generált videót (skeleton_path)
-        
+        skeleton_video_url = None
         # Feltételezzük, hogy a BaseDiagnosticService-ből megöröklődik egy upload_file_to_gcs nevű metódus:
         # Ha a BaseService-ből öröklődik az upload_file:
         try:
             if skeleton_path and os.path.exists(skeleton_path):
                 logger.info(f"📤 Skeleton videó feltöltése GCS-re: {skeleton_path}")
                 
-                # 🟢 JAVÍTOTT: Egységes útvonal struktúra (mint a többi jobnál)
-                gcs_destination = f"media/dev/jobs/{job.id}/skeleton_video.avi"
+                # 🟢 JAVÍTÁS 1: A GCS célútvonal oldalspecifikussá tétele
+                # Így lesz: media/dev/jobs/173/skeleton_video_left.avi
+                # ÉS: media/dev/jobs/174/skeleton_video_right.avi
+                gcs_destination = f"media/dev/jobs/{job.id}/{unique_filename}" 
                 
                 skeleton_video_url = upload_file_to_gcs( 
                     local_file_path=skeleton_path, 
@@ -161,12 +167,13 @@ class SingleLegStanceAssessmentService(BaseDiagnosticService):
             
             # 🆕 ÚJ: A generált visszajelzések
             "feedback_list": analysis_result.get("feedback_list", []),
-            "skeleton_video_url": skeleton_video_url,
+            video_result_key: skeleton_video_url,
             "worst_frame_snapshot_url": worst_frame_snapshot_url,
             # 🆕 ÚJ: Kalibrációs adatok mentése
             "calibration_used": bool(anthro),
             "general_calibration_factor": round(general_factor, 5),
             "leg_calibration_factor": round(leg_factor, 5),
+            "side": side_to_analyze,
         }
         
         # 6. PDF riport generálása

@@ -29,7 +29,27 @@ class DiagnosticJob(models.Model):
     job_type = models.CharField(max_length=50, choices=JobType.choices, default=JobType.MOVEMENT_ASSESSMENT)
     video_url = models.URLField(verbose_name="Videó elérési út (Cloud Storage)", null=True, blank=True) # Videó nem kell a kalibrációhoz
     status = models.CharField(max_length=20, choices=JobStatus.choices, default=JobStatus.PENDING)
-    
+
+    # ----------------------------------------------------------------------
+    # 💥 ÚJ MEZŐK A SZÁMLÁZÁSI MODELLHEZ (Billing Integration)
+    # ----------------------------------------------------------------------
+
+    calculated_cost_ft = models.DecimalField(
+        max_digits=10, 
+        decimal_places=2, 
+        null=True, 
+        blank=True, 
+        verbose_name="Kiszámított költség (Ft)",
+        help_text="A felhasználóra vonatkozó, kedvezményekkel számított futtatási költség."
+    )
+
+    billing_transaction_id = models.IntegerField(
+        null=True, 
+        blank=True,
+        verbose_name="Kapcsolódó számlázási tranzakció ID",
+        help_text="A függőben lévő (PENDING) FinancialTransaction ID-je a foglaláshoz."
+    )
+
     # ----------------------------------------------------------------------
     # 🆕 ÚJ MEZŐK A KÉT KÉP ALAPJÁN TÖRTÉNŐ ANTROPOMETRIAI KALIBRÁCIÓHOZ
     # ----------------------------------------------------------------------

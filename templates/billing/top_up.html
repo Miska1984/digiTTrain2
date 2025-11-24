@@ -1,79 +1,119 @@
 {% extends 'base.html' %}
 {% load widget_tweaks %}
 
-{% block title %}Credit Feltöltés & Számlaigénylés{% endblock %}
+{% block title %}Credit Feltöltés & Előfizetési Számlaigénylés{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <h1 class="text-3xl font-bold mb-6 text-gray-800">
-        <i class="bi bi-currency-dollar me-2"></i> Credit Feltöltés & Számlaigénylés
+        <i class="bi bi-currency-dollar me-2"></i> Credit Feltöltés & Előfizetés
     </h1>
 
     <div class="row">
         
-        {# ------------------ FELTÖLTÉSI ŰRLAP ------------------ #}
+        {# ------------------ SZÁMLAIGÉNYLÉS ŰRLAP ------------------ #}
         <div class="col-lg-8 mb-4">
             <div class="card shadow p-4">
-                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">1. Feltöltési Kérelem Létrehozása</h2>
-                <p class="text-muted mb-4">Adja meg a feltöltendő összeget, és kérje el a számlázási adatokat. A Credit a fizetés beérkezése után kerül jóváírásra.</p>
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">1. Számlaigénylési Kérelem Létrehozása</h2>
+                <p class="text-muted mb-4">Válasszon számlaigénylési típust, adja meg a részleteket, és kérje el a számlázási adatokat.</p>
                 
-                <form method="post" novalidate>
+                <form method="post" novalidate id="invoiceRequestForm">
                     {% csrf_token %}
 
-                    <div class="row g-3 mb-4">
-                        {# Összeg #}
-                        <div class="col-md-6">
-                            <label for="{{ form.amount_ft.id_for_label }}" class="form-label">{{ form.amount_ft.label }}</label>
-                            {% render_field form.amount_ft class+="form-control form-control-lg" %}
-                            <div class="form-text">{{ form.amount_ft.help_text }}</div>
-                            {% for error in form.amount_ft.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-
-                        {# Célfelhasználó #}
-                        <div class="col-md-6">
-                            <label for="{{ form.target_user.id_for_label }}" class="form-label">{{ form.target_user.label }}</label>
-                            {% render_field form.target_user class+="form-select form-control-lg" %}
-                            <div class="form-text">{{ form.target_user.help_text }}</div>
-                            {% for error in form.target_user.errors %}
-                                <div class="text-danger small">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    
-                    <h3 class="text-xl font-semibold mb-3 text-gray-700 border-top pt-3">2. Számlázási Adatok</h3>
-
-                    <div class="mb-3">
-                        <label for="{{ form.billing_name.id_for_label }}" class="form-label">{{ form.billing_name.label }}</label>
-                        {% render_field form.billing_name class+="form-control" %}
-                        {% for error in form.billing_name.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    
-                    <div class="mb-3">
-                        <label for="{{ form.billing_address.id_for_label }}" class="form-label">{{ form.billing_address.label }}</label>
-                        {% render_field form.billing_address class+="form-control" %}
-                        {% for error in form.billing_address.errors %}
-                            <div class="text-danger small">{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                    
+                    {# ------------------ 1. Típusválasztás (invoice_type) ------------------ #}
                     <div class="mb-4">
-                        <label for="{{ form.tax_number.id_for_label }}" class="form-label">{{ form.tax_number.label }}</label>
-                        {% render_field form.tax_number class+="form-control" %}
-                        <div class="form-text">{{ form.tax_number.help_text }}</div>
+                        <label class="form-label font-bold">{{ form.invoice_type.label }}</label>
+                        <div class="d-flex flex-wrap gap-4">
+                            {# A rádiógombok iterálása #}
+                            {% for radio in form.invoice_type %}
+                                <div class="form-check form-check-inline">
+                                    {{ radio.tag }}
+                                    <label class="form-check-label" for="{{ radio.id_for_label }}">
+                                        {{ radio.choice_label }}
+                                    </label>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% if form.invoice_type.errors %}
+                            <div class="text-danger small">{{ form.invoice_type.errors }}</div>
+                        {% endif %}
+                    </div>
+                    
+                    <hr class="my-4">
+
+                    <div class="row g-3 mb-4">
+                        
+                        {# ------------------ 2. TÍPUS-SPECIFIKUS MEZŐK ------------------ #}
+
+                        {# Credit Feltöltés Összeg #}
+                        <div class="col-md-6" data-target="credit-field">
+                            <label for="{{ form.amount_ft.id_for_label }}" class="form-label">{{ form.amount_ft.label }}</label>
+                            {# A 'form-control-lg' a design miatt van, de a JS kezeli a disabled attribútumot #}
+                            {% render_field form.amount_ft class+="form-control form-control-lg" %}
+                            <div class="form-text">{{ form.amount_ft.help_text|default:"Adja meg a feltöltendő összeget Ft-ban." }}</div>
+                            {% if form.amount_ft.errors %}<div class="text-danger small">{{ form.amount_ft.errors }}</div>{% endif %}
+                        </div>
+
+                        {# Credit Feltöltés Cél Felhasználó #}
+                        <div class="col-md-6" data-target="credit-field">
+                            <label for="{{ form.target_user.id_for_label }}" class="form-label">{{ form.target_user.label }}</label>
+                            {% render_field form.target_user class+="form-select form-select-lg" %}
+                            <div class="form-text">{{ form.target_user.help_text|default:"A felhasználó, akinek a Credit jóváírásra kerül." }}</div>
+                            {% if form.target_user.errors %}<div class="text-danger small">{{ form.target_user.errors }}</div>{% endif %}
+                        </div>
+
+                        {# Előfizetési Csomag (csak AD_FREE esetén látható) #}
+                        <div class="col-12" data-target="subscription-field" style="display:none;">
+                            <label for="{{ form.subscription_plan.id_for_label }}" class="form-label">{{ form.subscription_plan.label }}</label>
+                            {% render_field form.subscription_plan class+="form-select form-select-lg" %}
+                            <p class="text-info mt-2">
+                                <i class="bi bi-info-circle me-1"></i> A kiválasztott csomag ára automatikusan meg fog jelenni a számlán.
+                            </p>
+                            {% if form.subscription_plan.errors %}<div class="text-danger small">{{ form.subscription_plan.errors }}</div>{% endif %}
+                        </div>
+
+                        {# ------------------ 3. KÖZÖS SZÁMLÁZÁSI ADATOK ------------------ #}
+                        
+                        {# Számlázási Név #}
+                        <div class="col-md-6">
+                            <label for="{{ form.billing_name.id_for_label }}" class="form-label">{{ form.billing_name.label }}</label>
+                            {% render_field form.billing_name class+="form-control" %}
+                            {% if form.billing_name.errors %}<div class="text-danger small">{{ form.billing_name.errors }}</div>{% endif %}
+                        </div>
+                        
+                        {# Számlázási E-mail #}
+                        <div class="col-md-6">
+                            <label for="{{ form.billing_email.id_for_label }}" class="form-label">{{ form.billing_email.label }}</label>
+                            {% render_field form.billing_email class+="form-control" type="email" %}
+                            {% if form.billing_email.errors %}<div class="text-danger small">{{ form.billing_email.errors }}</div>{% endif %}
+                        </div>
+
+                        {# Adószám #}
+                        <div class="col-md-6">
+                            <label for="{{ form.tax_number.id_for_label }}" class="form-label">{{ form.tax_number.label }}</label>
+                            {% render_field form.tax_number class+="form-control" %}
+                            <div class="form-text">Opcionális, cégek esetén érdemes megadni.</div>
+                            {% if form.tax_number.errors %}<div class="text-danger small">{{ form.tax_number.errors }}</div>{% endif %}
+                        </div>
+                        
+                        {# Számlázási Cím #}
+                        <div class="col-12">
+                            <label for="{{ form.billing_address.id_for_label }}" class="form-label">{{ form.billing_address.label }}</label>
+                            {% render_field form.billing_address class+="form-control" rows="3" %}
+                            {% if form.billing_address.errors %}<div class="text-danger small">{{ form.billing_address.errors }}</div>{% endif %}
+                        </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-lg w-100">
-                        <i class="bi bi-file-earmark-text me-1"></i> Számlaigénylés Rögzítése
+                    <button type="submit" class="btn btn-primary btn-lg mt-3">
+                        <i class="bi bi-envelope-check me-2"></i> Számlaigénylés Elküldése
                     </button>
                 </form>
+
             </div>
         </div>
 
-        {# ------------------ FÜGGŐBEN LÉVŐ IGÉNYEK ------------------ #}
+        {# ------------------ FÜGGŐBEN LÉVŐ KÉRELMEK (Az eredeti kód) ------------------ #}
+        {# Ezt a részt az eredeti top_up.html-ből emeltem át, hogy a meglévő lista megjelenjen #}
         <div class="col-lg-4">
             <div class="card shadow p-4 bg-light">
                 <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Függőben Lévő Kérelmek</h2>
@@ -84,7 +124,11 @@
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 <div>
                                     <h5 class="mb-1 text-primary">{{ invoice.amount_ft|floatformat:0 }} Ft</h5>
-                                    <p class="mb-1 small text-muted">Cél: <strong>{{ invoice.target_user.username }}</strong></p>
+                                    <p class="mb-1 small text-muted">
+                                        Típus: <strong>{{ invoice.get_invoice_type_display }}</strong>
+                                        {% if invoice.subscription_plan %}<br>Csomag: <strong>{{ invoice.subscription_plan.name }}</strong>{% endif %}
+                                        {% if invoice.invoice_type == 'CREDIT_TOPUP' %}<br>Cél: <strong>{{ invoice.target_user.username }}</strong>{% endif %}
+                                    </p>
                                     <p class="mb-0 small text-danger">Függőben: Várjuk az utalást!</p>
                                 </div>
                                 <span class="badge bg-secondary rounded-pill">{{ invoice.request_date|date:"Y.m.d" }}</span>
@@ -103,3 +147,59 @@
 
 </div>
 {% endblock content %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Válasszuk ki a rádiógombokat és a target mezőket
+    const invoiceTypeRadios = document.querySelectorAll('input[name="invoice_type"]');
+    const creditFields = document.querySelectorAll('[data-target="credit-field"]');
+    const subscriptionFields = document.querySelectorAll('[data-target="subscription-field"]');
+
+    function toggleFields(selectedType) {
+        // Mezők kikeresése ID alapján a disabled beállításhoz
+        const amountField = document.querySelector('#id_amount_ft');
+        const targetUserField = document.querySelector('#id_target_user');
+        const subscriptionPlanField = document.querySelector('#id_subscription_plan');
+
+        if (selectedType === 'CREDIT_TOPUP') {
+            // 1. Megjelenítés
+            creditFields.forEach(el => el.style.display = 'block');
+            subscriptionFields.forEach(el => el.style.display = 'none');
+            
+            // 2. Disabled/Enabled beállítás
+            if (amountField) amountField.disabled = false;
+            if (targetUserField) targetUserField.disabled = false;
+            if (subscriptionPlanField) subscriptionPlanField.disabled = true;
+            
+        } else if (selectedType === 'AD_FREE_SUBSCRIPTION') {
+            // 1. Megjelenítés
+            subscriptionFields.forEach(el => el.style.display = 'block');
+            creditFields.forEach(el => el.style.display = 'none');
+            
+            // 2. Disabled/Enabled beállítás
+            // Az összeg és a cél (target_user) a model/clean metódusból jön (automatikusan a felhasználó + plan ára)
+            if (amountField) amountField.disabled = true; 
+            if (targetUserField) targetUserField.disabled = true; 
+            if (subscriptionPlanField) subscriptionPlanField.disabled = false;
+        }
+    }
+
+    // Eseménykezelő hozzáadása a rádiógombokhoz
+    invoiceTypeRadios.forEach(radio => {
+        radio.addEventListener('change', (event) => {
+            toggleFields(event.target.value);
+        });
+    });
+
+    // Kezdeti állapot beállítása (ha a form már be van töltve adatokkal)
+    const initialSelected = document.querySelector('input[name="invoice_type"]:checked');
+    if (initialSelected) {
+        toggleFields(initialSelected.value);
+    } else {
+        // Alapértelmezett beállítás (a modell alapértelmezett értéke: 'CREDIT_TOPUP')
+        toggleFields('CREDIT_TOPUP');
+    }
+});
+</script>
+{% endblock extra_js %}
