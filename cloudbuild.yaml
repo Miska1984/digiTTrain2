@@ -10,39 +10,17 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
-      - "-c"
+      - -c
       - |
-        echo "🔍 Redis Host lekérése..."
-        export REDIS_HOST=$(gcloud redis instances describe digittrain-redis \
-          --region=europe-west1 \
-          --format="get(host)")
-
-        echo "✅ Redis Host: ${REDIS_HOST}"
-
-        cat > .env.yaml <<'EOF'
-        DB_NAME: digittraindb
-        DB_USER: root
-        DB_PASS: MIshek001-1984
-        DJANGO_SETTINGS_MODULE: digiTTrain.settings
-        ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu
-        CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-        GS_BUCKET_NAME: digittrain-media-publikus-miska1984
-        GS_PROJECT_ID: digittrain-projekt
-        GS_LOCATION: europe-west1
-        ENVIRONMENT: production
-        GCP_SA_KEY_PATH: /app/gcp_service_account.json
-        REDIS_PORT: 6379
-        EOF
-
-        # Ez külön kerül bele (nem substitution)
-        echo "REDIS_HOST: ${REDIS_HOST}" >> .env.yaml
-
-        echo "✅ .env.yaml létrehozva:"
-        cat .env.yaml
-
+        # .env.yaml generálása külső script-ből
+        chmod +x generate-env.sh
+        ./generate-env.sh
+        
+        # CORS konfiguráció alkalmazása
         echo "🌐 CORS konfiguráció alkalmazása..."
         gsutil cors set cors-config.json gs://digittrain-media-publikus-miska1984
-        
+        gsutil cors get gs://digittrain-media-publikus-miska1984
+
   # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
