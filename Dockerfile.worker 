@@ -1,0 +1,29 @@
+# Dockerfile.worker
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# Rendszer függőségek (csak a szükségesek Celery-hez)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libmariadb-dev-compat \
+    ffmpeg \
+    libgl1 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Python függőségek
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Projekt fájlok
+COPY . .
+COPY gcp_service_account.json /app/gcp_service_account.json
+
+ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
+ENV ENVIRONMENT=production
+ENV PYTHONPATH=/app
+ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
+
+# Celery Worker indítása
+CMD ["celery", "-A", "digiTTrain", "worker", "--loglevel=info", "--concurrency=2"]

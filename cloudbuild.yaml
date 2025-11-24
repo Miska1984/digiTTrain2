@@ -11,36 +11,36 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
-      # A teljes szkript blokkot adjuk át a -c-nek.
-      - '-c'
+      - -c
       - |
-        echo "🔑 Redis IP lekérése...";
         # Redis Host IP lekérése
-        REDIS_HOST=$(gcloud redis instances describe digittrain-redis --region=europe-west1 --format="get(host)");
-        echo "✅ Redis Host: $REDIS_HOST";
+        REDIS_HOST=$(gcloud redis instances describe digittrain-redis \
+          --region=europe-west1 \
+          --format="get(host)")
         
-        # .env.yaml generálása. Külön echo paranccsal, hogy a parser ne lássa a változókat.
-        cat > .env.yaml << EOF
-DB_NAME: digittraindb
-DB_USER: root
-DB_PASS: MIshek001-1984
-DJANGO_SETTINGS_MODULE: digiTTrain.settings
-ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu
-CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-GS_BUCKET_NAME: digittrain-media-publikus-miska1984
-GS_PROJECT_ID: digittrain-projekt
-GS_LOCATION: europe-west1
-ENVIRONMENT: production
-GCP_SA_KEY_PATH: /app/gcp_service_account.json
-REDIS_HOST: ${REDIS_HOST}
-REDIS_PORT: 6379
-EOF    
-        echo "✅ .env.yaml létrehozva";
+        echo "✅ Redis Host: $REDIS_HOST"
+        
+        # .env.yaml generálása
+        echo "DB_NAME: digittraindb" > .env.yaml
+        echo "DB_USER: root" >> .env.yaml
+        echo "DB_PASS: MIshek001-1984" >> .env.yaml
+        echo "DJANGO_SETTINGS_MODULE: digiTTrain.settings" >> .env.yaml
+        echo "ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu" >> .env.yaml
+        echo "CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1" >> .env.yaml
+        echo "GS_BUCKET_NAME: digittrain-media-publikus-miska1984" >> .env.yaml
+        echo "GS_PROJECT_ID: digittrain-projekt" >> .env.yaml
+        echo "GS_LOCATION: europe-west1" >> .env.yaml
+        echo "ENVIRONMENT: production" >> .env.yaml
+        echo "GCP_SA_KEY_PATH: /app/gcp_service_account.json" >> .env.yaml
+        echo "REDIS_HOST: $REDIS_HOST" >> .env.yaml
+        echo "REDIS_PORT: 6379" >> .env.yaml
+        
+        echo "✅ .env.yaml létrehozva"
         
         # CORS konfiguráció alkalmazása
-        echo "🌐 CORS konfiguráció alkalmazása...";
+        echo "🌐 CORS konfiguráció alkalmazása..."
         gsutil cors set cors-config.json gs://digittrain-media-publikus-miska1984
-        echo "🌐 CORS konfiguráció alkalmazva."
+        gsutil cors get gs://digittrain-media-publikus-miska1984
 
   # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
