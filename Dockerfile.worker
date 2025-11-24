@@ -1,0 +1,56 @@
+# Dockerfile.worker
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+# Rendszerfüggőségek (TELJES LISTA)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    pkg-config \
+    cmake \
+    git \
+    wget \
+    ffmpeg \
+    libmariadb-dev-compat \
+    libffi-dev \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgl1 \
+    libglib2.0-0 \
+    libcairo2 \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libgobject-2.0-0 \
+    libpangocairo-1.0-0 \
+    shared-mime-info \
+    pango1.0-tools \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Python függőségek
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Projekt fájlok
+COPY . .
+
+# Környezeti változók
+ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
+ENV ENVIRONMENT=production
+ENV PYTHONPATH=/app
+ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
+
+# MediaPipe assets ellenőrzés
+RUN if [ -f assets/pose_landmarker_full.task ]; then \
+        echo "✅ MediaPipe assets found."; \
+    else \
+        echo "⚠️ WARNING: MediaPipe asset not found" && exit 1; \
+    fi
+
+# Temp könyvtár
+RUN mkdir -p /tmp/diagnostics && chmod 777 /tmp/diagnostics
+
+# Celery Worker indítása
+CMD ["celery", "-A", "digiTTrain", "worker", "--loglevel=info", "--concurrency=2", "--pool=solo"]
