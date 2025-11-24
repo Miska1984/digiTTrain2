@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 # Feltételezve, hogy a 'gcp_service_account.json' a BASE_DIR-ben van.
 GCP_SA_KEY_PATH = os.path.join(settings.BASE_DIR, 'gcp_service_account.json')
 GCS_BUCKET_NAME = settings.GS_BUCKET_NAME
-CLOUD_RUN_SA_EMAIL = 'digittrain-projekt@appspot.gserviceaccount.com'
+CLOUD_RUN_SA_EMAIL = '195803356854-compute@developer.gserviceaccount.com'
 
 
 def get_storage_client():
@@ -73,32 +73,34 @@ def generate_signed_upload_url(file_name: str, content_type: str) -> dict:
     Létrehoz egy aláírt URL-t a fájl közvetlen GCS-re való feltöltéséhez (PUT metódus).
     """
     try:
-        client = get_storage_client()
+        # A kliens inicializálása ADC-vel (get_storage_client() PRODUCTION módban)
+        client = get_storage_client() 
         if not client:
-             # Ez a kritikus pont. Ha a get_storage_client() nem tudott klienst inicializálni,
-             # visszajelzést kell adnunk!
-             logger.error("GCS kliens inicializálása sikertelen. Ellenőrizze a kulcsfájl elérhetőségét.")
-             return {"success": False, "error": "GCS kliens hiba."}
-        bucket = client.bucket(GCS_BUCKET_NAME)
-        
-        # Elérési út a videóknak a GCS-en
+            logger.error("GCS kliens inicializálása sikertelen.")
+            return {"success": False, "error": "GCS kliens hiba."}
+            
+        bucket = client.bucket(settings.GS_BUCKET_NAME) # Használja a settings-ből a vödröt
         blob_path = f"videos/uploads/{file_name}"
         blob = bucket.blob(blob_path)
 
-        # Aláírt URL generálása (15 perc érvényességgel)
+        logger.info(f"Signing URL with SA: {CLOUD_RUN_SA_EMAIL}") # 💡 Új log! Ezzel ellenőrizzük, mi megy ki.
+
+        # 🟢 KRITIKUS JAVÍTÁS: A service_account_email paraméter beállítása
         signed_url = blob.generate_signed_url(
             version="v4",
             method="PUT",
             expiration=timedelta(minutes=15),
             content_type=content_type,
-            service_account_email=CLOUD_RUN_SA_EMAIL
+            
+            # ❗ EZ OLDJA MEG A CLOUD RUN-OS HIBÁT AZ IAM-EN KERESZTÜL
+            service_account_email=CLOUD_RUN_SA_EMAIL 
         )
 
         return {
             "success": True,
             "signed_url": signed_url,
-            "file_name": blob_path, # Ezt az útvonalat mentjük az adatbázisba!
-            "public_url": f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{blob_path}"
+            "file_name": blob_path, 
+            "public_url": f"https://storage.googleapis.com/{settings.GS_BUCKET_NAME}/{blob_path}"
         }
 
     except FileNotFoundError as e:
