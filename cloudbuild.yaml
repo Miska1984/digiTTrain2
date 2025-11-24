@@ -10,18 +10,16 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
-      - -c
+      - "-c"
       - |
-        # Redis Host IP lekérése
         echo "🔍 Redis Host lekérése..."
-        REDIS_HOST=$(gcloud redis instances describe digittrain-redis \
+        export REDIS_HOST=$(gcloud redis instances describe digittrain-redis \
           --region=europe-west1 \
           --format="get(host)")
-        
-        echo "✅ Redis Host: $REDIS_HOST"
-        
-        # .env.yaml generálása
-        cat > .env.yaml << EOF
+
+        echo "✅ Redis Host: ${REDIS_HOST}"
+
+        cat > .env.yaml <<'EOF'
         DB_NAME: digittraindb
         DB_USER: root
         DB_PASS: MIshek001-1984
@@ -33,18 +31,18 @@ steps:
         GS_LOCATION: europe-west1
         ENVIRONMENT: production
         GCP_SA_KEY_PATH: /app/gcp_service_account.json
-        REDIS_HOST: $REDIS_HOST
         REDIS_PORT: 6379
         EOF
-        
-        echo "✅ .env.yaml létrehozva"
+
+        # Ez külön kerül bele (nem substitution)
+        echo "REDIS_HOST: ${REDIS_HOST}" >> .env.yaml
+
+        echo "✅ .env.yaml létrehozva:"
         cat .env.yaml
-        
-        # CORS konfiguráció alkalmazása
+
         echo "🌐 CORS konfiguráció alkalmazása..."
         gsutil cors set cors-config.json gs://digittrain-media-publikus-miska1984
-        gsutil cors get gs://digittrain-media-publikus-miska1984
-
+        
   # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
