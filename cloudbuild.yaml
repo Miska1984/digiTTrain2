@@ -7,12 +7,20 @@ options:
   substitution_option: ALLOW_LOOSE
 
 steps:
-  # 0️⃣ Létrehozzuk az .env.yaml fájlt a környezeti változókkal
+  # 0️⃣ Létrehozzuk az .env.yaml fájlt a környezeti változókkal + CORS konfiguráció
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
+        # Redis Host IP lekérése
+        REDIS_HOST=$(gcloud redis instances describe digittrain-redis \
+          --region=europe-west1 \
+          --format="get(host)")
+        
+        echo "✅ Redis Host: $REDIS_HOST"
+        
+        # .env.yaml generálása
         echo "DB_NAME: digittraindb" > .env.yaml
         echo "DB_USER: root" >> .env.yaml
         echo "DB_PASS: MIshek001-1984" >> .env.yaml
@@ -24,8 +32,17 @@ steps:
         echo "GS_LOCATION: europe-west1" >> .env.yaml
         echo "ENVIRONMENT: production" >> .env.yaml
         echo "GCP_SA_KEY_PATH: /app/gcp_service_account.json" >> .env.yaml
+        echo "REDIS_HOST: $REDIS_HOST" >> .env.yaml
+        echo "REDIS_PORT: 6379" >> .env.yaml
+        
+        echo "✅ .env.yaml létrehozva"
+        
+        # CORS konfiguráció alkalmazása
+        echo "🌐 CORS konfiguráció alkalmazása..."
+        gsutil cors set cors-config.json gs://digittrain-media-publikus-miska1984
+        gsutil cors get gs://digittrain-media-publikus-miska1984
 
-  # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből (FIXED)
+  # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -35,15 +52,23 @@ steps:
         gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json;
         ls -l ./gcp_service_account.json
 
-  # 2️⃣ Docker image build
+  # 2️⃣ Docker image build - Web Service
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
 
-  # 3️⃣ Docker image push
+  # 3️⃣ Docker image push - Web Service
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-  # 4️⃣ Migráció futtatása
+  # 4️⃣ Docker image build - Celery Worker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.worker', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest', '.']
+
+  # 5️⃣ Docker image push - Celery Worker
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest']
+
+  # 6️⃣ Migráció futtatása
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -63,9 +88,20 @@ steps:
           --args "manage.py","migrate","--verbosity","3" \
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-        gcloud run jobs execute migrate-job --region=europe-west1
+        
+        echo "🔄 Migráció futtatása..."
+        gcloud run jobs execute migrate-job --region=europe-west1 --wait
 
-  # 5️⃣ Deploy Cloud Run szolgáltatás
+  # 7️⃣ Initial data job futtatása
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "📦 Initial data job futtatása..."
+        gcloud run jobs execute initial-data-job --region=europe-west1 --wait || echo "⚠️ Initial data job már futott vagy nem létezik"
+
+  # 8️⃣ Deploy Web Service (VPC Connector-ral)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -83,35 +119,54 @@ steps:
       - .env.yaml
       - --add-cloudsql-instances
       - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector
+      - redis-connector
+      - --vpc-egress
+      - private-ranges-only
+      - --min-instances
+      - '0'
+      - --max-instances
+      - '10'
+      - --memory
+      - 2Gi
+      - --cpu
+      - '2'
+      - --timeout
+      - 300s
 
-  # 6️⃣ Futtatjuk az initial-data-job-ot
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - run
-      - jobs
-      - execute
-      - initial-data-job
-      - --region=europe-west1
-
-  # 7️⃣ Deploy Cloud Run szolgáltatás
+  # 9️⃣ Deploy Celery Worker Service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - run
       - deploy
-      - digit-train-web
+      - digittrain-celery-worker
       - --image
-      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
       - --region
       - europe-west1
       - --platform
       - managed
-      - --allow-unauthenticated
+      - --no-allow-unauthenticated
       - --env-vars-file
       - .env.yaml
       - --add-cloudsql-instances
       - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector
+      - redis-connector
+      - --vpc-egress
+      - private-ranges-only
+      - --min-instances
+      - '1'
+      - --max-instances
+      - '3'
+      - --memory
+      - 2Gi
+      - --cpu
+      - '2'
+      - --no-cpu-throttling
+
+timeout: 3600s
 
 options:
   logging: CLOUD_LOGGING_ONLY
