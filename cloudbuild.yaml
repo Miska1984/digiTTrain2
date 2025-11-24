@@ -34,8 +34,7 @@ ENVIRONMENT: production
 GCP_SA_KEY_PATH: /app/gcp_service_account.json
 REDIS_HOST: ${REDIS_HOST}
 REDIS_PORT: 6379
-EOF
-        
+EOF    
         echo "✅ .env.yaml létrehozva";
         
         # CORS konfiguráció alkalmazása
