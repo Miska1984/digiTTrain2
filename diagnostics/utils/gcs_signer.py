@@ -3,6 +3,7 @@
 import os
 import logging
 from google.cloud import storage
+from google.auth import compute_engine
 from datetime import timedelta
 from django.conf import settings
 from typing import Dict, Any
@@ -24,9 +25,12 @@ def get_storage_client():
     """
     # Ha a DEBUG=False ÉS az ENVIRONMENT='production', feltételezzük, hogy az ADC működik
     if not settings.DEBUG and settings.ENVIRONMENT == 'production':
-        # Éles környezetben (Cloud Run/GAE) az ADC-t (környezeti hitelesítést) használjuk
-        logger.info("GCS kliens inicializálása: ÉLES/PRODUCTION mód (ADC)")
-        return storage.Client()
+        # Éles környezetben (Cloud Run) explicit Compute Engine Credentials-t használunk.
+        logger.info("GCS kliens inicializálása: ÉLES/PRODUCTION mód (Compute Engine Auth)")
+        
+        # 🟢 VÉGLEGES JAVÍTÁS: Explicit hitelesítő adatok átadása
+        credentials = compute_engine.Credentials()
+        return storage.Client(credentials=credentials)
     else:
         # Fejlesztési környezetben (Codespace) a lokális fájlt használjuk
         if not GCP_SA_KEY_PATH or not os.path.exists(GCP_SA_KEY_PATH):
