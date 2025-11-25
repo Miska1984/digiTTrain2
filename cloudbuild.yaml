@@ -133,26 +133,36 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
-    - -c
-    - |
-      echo "🚀 Celery worker job létrehozása vagy frissítése..."
-      gcloud run jobs update celery-worker-job \
-        --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
-        --region europe-west1 \
-        --command "celery" \
-        --args "-A","digiTTrain","worker","--loglevel=info","--concurrency=2","--pool=solo" \
-        --env-vars-file .env.yaml \
-        --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+      - -c
+      - |
+        echo "🚀 Celery worker job létrehozása vagy frissítése..."
+        gcloud run jobs update celery-worker-job \
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
+          --region europe-west1 \
+          --command celery \
+          --args=-A \
+          --args=digiTTrain \
+          --args=worker \
+          --args=--loglevel=info \
+          --args=--concurrency=2 \
+          --args=--pool=solo \
+          --env-vars-file .env.yaml \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
         || gcloud run jobs create celery-worker-job \
-        --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
-        --region europe-west1 \
-        --command "celery" \
-        --args "-A","digiTTrain","worker","--loglevel=info","--concurrency=2","--pool=solo" \
-        --env-vars-file .env.yaml \
-        --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
+          --region europe-west1 \
+          --command celery \
+          --args=-A \
+          --args=digiTTrain \
+          --args=worker \
+          --args=--loglevel=info \
+          --args=--concurrency=2 \
+          --args=--pool=solo \
+          --env-vars-file .env.yaml \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
 
-      echo "🎯 Celery worker job futtatása..."
-      gcloud run jobs execute celery-worker-job --region=europe-west1 --wait
+        echo "🎯 Celery worker job futtatása..."
+        gcloud run jobs execute celery-worker-job --region=europe-west1 --wait
 
 timeout: 3600s
 
