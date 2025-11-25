@@ -1,9 +1,10 @@
+cat > generate-env.sh << 'EOF'
 #!/bin/bash
 set -e
 
 echo "📝 .env.yaml generálása..."
 
-cat > .env.yaml <<EOF
+cat > .env.yaml <<INNEREOF
 DB_NAME: digittraindb
 DB_USER: root
 DB_PASS: MIshek001-1984
@@ -16,8 +17,9 @@ GS_LOCATION: europe-west1
 ENVIRONMENT: production
 GCP_SA_KEY_PATH: /app/gcp_service_account.json
 REDIS_HOST: 10.32.84.131
-REDIS_PORT: 6379
-EOF
+REDIS_PORT: "6379"
+INNEREOF
 
 echo "✅ .env.yaml létrehozva:"
 cat .env.yaml
+EOF
