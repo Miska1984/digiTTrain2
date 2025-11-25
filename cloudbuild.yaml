@@ -129,37 +129,30 @@ steps:
       - --timeout
       - 300s
 
-  # 9️⃣ Deploy Celery Worker Service
+  # 9️⃣ Deploy Celery Worker Job (nem Service!)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - digittrain-celery-worker
-      - --image
-      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
-      - --region
-      - europe-west1
-      - --platform
-      - managed
-      - --no-allow-unauthenticated
-      - --env-vars-file
-      - .env.yaml
-      - --add-cloudsql-instances
-      - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-      - --vpc-connector
-      - redis-connector
-      - --vpc-egress
-      - private-ranges-only
-      - --min-instances
-      - '1'
-      - --max-instances
-      - '3'
-      - --memory
-      - 2Gi
-      - --cpu
-      - '2'
-      - --no-cpu-throttling
+    - -c
+    - |
+      echo "🚀 Celery worker job létrehozása vagy frissítése..."
+      gcloud run jobs update celery-worker-job \
+        --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
+        --region europe-west1 \
+        --command "celery" \
+        --args "-A","digiTTrain","worker","--loglevel=info" \
+        --env-vars-file .env.yaml \
+        --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+        || gcloud run jobs create celery-worker-job \
+        --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
+        --region europe-west1 \
+        --command "celery" \
+        --args "-A","digiTTrain","worker","--loglevel=info" \
+        --env-vars-file .env.yaml \
+        --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+
+      echo "🎯 Celery worker job futtatása..."
+      gcloud run jobs execute celery-worker-job --region europe-west1 --wait
 
 timeout: 3600s
 
