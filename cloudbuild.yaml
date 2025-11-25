@@ -164,7 +164,12 @@ steps:
     - --command
     - "celery"
     - --args
-    - "-A,digiTTrain,worker,--loglevel=info,--concurrency=2,--pool=solo"
+    - "-A"
+    - "digiTTrain"
+    - "worker"
+    - "--loglevel=info"
+    - "--concurrency=2"
+    - "--pool=solo"
 
 timeout: 3600s
 
