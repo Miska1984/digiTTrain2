@@ -44,6 +44,13 @@ ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
 ENV ENVIRONMENT=production
 ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
+ENV PORT 8080
+
+# 🆕 ÚJ LÉPÉS: Tedd futtathatóvá a scriptet
+RUN chmod +x /app/run_worker.sh
+
+# 🆕 KRITIKUS JAVÍTÁS: Ez lesz a konténer belépési pontja (felülírja a CMD-t)
+ENTRYPOINT ["/bin/bash", "/app/run_worker.sh"]
 
 # MediaPipe assets ellenőrzés
 RUN if [ -f assets/pose_landmarker_full.task ]; then \

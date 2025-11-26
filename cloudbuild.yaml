@@ -152,14 +152,17 @@ steps:
       - --vpc-egress
       - private-ranges-only
       - --min-instances
-      - '1'
+      - '1' # KRITIKUS: Állandó futáshoz
       - --max-instances
       - '3'
       - --memory
       - 2Gi
       - --cpu
       - '2'
-      - --no-cpu-throttling
+      - --timeout
+      - 900s
+      - --port
+      - '8080'
 
 timeout: 3600s
 
