@@ -129,40 +129,51 @@ steps:
       - --timeout
       - 300s
 
-  # 9️⃣ Celery Worker Job létrehozása és futtatása
+  # 9️⃣ Celery Worker Job létrehozása vagy frissítése
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
-      - -c
-      - |
-        echo "🚀 Celery worker job létrehozása vagy frissítése..."
+    - -c
+    - |
+      echo "🚀 Celery worker job létrehozása vagy frissítése..."
+      set -e
+      if gcloud run jobs describe celery-worker-job --region europe-west1 --project digittrain-projekt > /dev/null 2>&1; then
         gcloud run jobs update celery-worker-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
           --region europe-west1 \
-          --command "celery" \
-          --args "-A","digiTTrain","worker","--loglevel=info","--concurrency=2","--pool=solo" \
+          --platform managed \
+          --no-allow-unauthenticated \
           --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+          --add-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
           --vpc-connector redis-connector \
           --vpc-egress private-ranges-only \
           --memory 2Gi \
           --cpu 2 \
           --timeout 900s \
-        || gcloud run jobs create celery-worker-job \
+          --execution-environment gen2 \
+          --command celery \
+          --args -A digiTTrain worker --loglevel=info --concurrency=2 --pool=solo
+      else
+        gcloud run jobs create celery-worker-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
           --region europe-west1 \
-          --command "celery" \
-          --args "-A","digiTTrain","worker","--loglevel=info","--concurrency=2","--pool=solo" \
+          --platform managed \
+          --no-allow-unauthenticated \
           --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+          --add-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
           --vpc-connector redis-connector \
           --vpc-egress private-ranges-only \
           --memory 2Gi \
           --cpu 2 \
-          --timeout 900s
+          --timeout 900s \
+          --execution-environment gen2 \
+          --command celery \
+          --args -A digiTTrain worker --loglevel=info --concurrency=2 --pool=solo
+      fi
 
-        echo "🎯 Celery worker job futtatása (teszt futás)..."
-        gcloud run jobs execute celery-worker-job --region=europe-west1 --wait || echo "ℹ️ Teszt futás opcionális."
+      echo "🎯 Teszt futás (első próba)..."
+      gcloud run jobs execute celery-worker-job \
+        --region europe-west1 --project digittrain-projekt --wait
 
 timeout: 3600s
 
