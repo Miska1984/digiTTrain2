@@ -56,4 +56,4 @@ RUN if [ -f assets/pose_landmarker_full.task ]; then \
 RUN mkdir -p /tmp/diagnostics && chmod 777 /tmp/diagnostics
 
 # Celery Worker indítása
-CMD ["bash", "-c", "python -m http.server ${PORT:-8080} & celery -A digiTTrain worker --loglevel=info --concurrency=2 --pool=solo"]
+CMD ["celery", "-A", "digiTTrain", "worker", "--loglevel=info", "--concurrency=2", "--pool=solo"]
