@@ -74,7 +74,16 @@ def run_diagnostic_job(job_id):
             error_msg = "❌ Nincs elegendő elemzési egyenleg! Az elemzés már le lett vonva, de valami hiba történt."
             job.mark_as_failed(error_msg)
             logger.error(f"❌ [TASK] Egyenleg hiba job_id={job_id}, user={job.user.username}")
-            # NE térítsd vissza, mert már le van vonva!
+
+            # ➡️ ÚJ KÓD: VISSZATÉRÍTÉS KRITIKUS HIBA ESETÉN
+            try:
+                # Egyszerűsített hívás:
+                refund_analysis(job) # Csak a job objektumot adjuk át
+                logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
+            except Exception as refund_error:
+                logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")
+            
+            # ⬅️ Vége az új kódnak
             return
         
         job.mark_as_processing()
@@ -197,7 +206,8 @@ def run_diagnostic_job(job_id):
             
             # 🆕 VISSZATÉRÍTÉS: Sikertelen job esetén
             try:
-                refund_analysis(job.user, job, reason="Implementációs hiba")
+                # Egyszerűsített hívás:
+                refund_analysis(job) # Csak a job objektumot adjuk át
                 logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
             except Exception as refund_error:
                 logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")
@@ -210,7 +220,8 @@ def run_diagnostic_job(job_id):
             
             # 🆕 VISSZATÉRÍTÉS: Sikertelen job esetén
             try:
-                refund_analysis(job.user, job, reason=f"Kritikus hiba: {str(e)}")
+                # Egyszerűsített hívás:
+                refund_analysis(job) # Csak a job objektumot adjuk át
                 logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
             except Exception as refund_error:
                 logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")

@@ -71,18 +71,45 @@ def dedicate_analysis(user, job_instance):
 
 
 @transaction.atomic
-def refund_analysis(user, job_instance, reason="Sikertelen elemzés"):
+def refund_analysis(job_instance):
     """
-    1 elemzés visszatérítése (pl. ha hibás volt az elemzés).
+    Visszatéríti a levont elemzési Credit-et egy hibásan lefutott job esetén.
+    A job_instance a DiagnosticJob modell példánya.
     """
-    balance, _ = UserAnalysisBalance.objects.select_for_update().get_or_create(user=user)
-    balance.add_credits(
-        amount=1,
-        description=f'Visszatérítés: {reason}',
-        transaction_type='REFUND',
+    from .models import AnalysisTransaction # A ciklikus import elkerülése miatt a modellen belül kell importálni
+    
+    user = job_instance.user
+    
+    # 1. Megkeressük az eredeti, negatív USAGE tranzakciót
+    try:
+        usage_transaction = AnalysisTransaction.objects.get(
+            related_job=job_instance,
+            transaction_type='USAGE',
+            amount__lt=0  # Csak a negatív levonásokat keressük
+        )
+    except AnalysisTransaction.DoesNotExist:
+        logger.warning(f"⚠️ Nincs levonási tranzakció a Job ID {job_instance.id} számára. Nincs teendő.")
+        return False
+
+    # Megnézzük, hogy a tranzakciót már visszatérítették-e
+    if usage_transaction.amount > 0:
+        logger.warning(f"⚠️ A Job ID {job_instance.id} tranzakciója már pozitív. Nincs teendő.")
+        return False
+        
+    # 2. Visszatérítés összegének meghatározása (az eredeti levonás abszolút értéke)
+    refund_amount = abs(usage_transaction.amount) # Pl. ha -1 volt, akkor +1
+    
+    # 3. Hozzáadjuk a Credit-et az egyenleghez (ez frissíti a UserAnalysisBalance-t)
+    # Az add_analysis_balance már tranzakcióban fut.
+    add_analysis_balance(
+        user=user, 
+        amount=refund_amount, 
+        description=f"Visszatérítés hibás job miatt (Job ID: {job_instance.id}). Hiba: {job_instance.error_message or 'Ismeretlen hiba'}",
+        transaction_type='PURCHASE' # Ez a típus nem ideális, lehetne 'REFUND' is. Nézze meg, van-e 'REFUND' a choices-ban, ha nincs, akkor 'PURCHASE' (jóváírás) a legjobb választás.
     )
-    logger.info(f"↩️ Elemzés visszatérítve: {user.username} +1 db (Új egyenleg: {balance.analysis_count})")
-    return balance.analysis_count
+
+    logger.info(f"✅ Visszatérítés sikeres {user.username} felhasználónak {refund_amount} Credit: Job ID {job_instance.id}")
+    return True
 
 
 # ==============================================================================
