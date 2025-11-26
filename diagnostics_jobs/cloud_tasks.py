@@ -23,8 +23,8 @@ logger = logging.getLogger(__name__)
 ENV = os.getenv("ENVIRONMENT", "development").lower()
 LOCAL_DEV = ENV in ["development", "local", "dev", "codespaces"]
 
-PROJECT_ID = os.getenv("GCP_PROJECT_ID", "digittrain-projekt")
-REGION = os.getenv("GCP_REGION", "europe-west1")
+PROJECT_ID = os.getenv("GS_PROJECT_ID", "digittrain-projekt") 
+REGION = os.getenv("GS_LOCATION", "europe-west1")
 JOB_NAME = os.getenv("CLOUD_RUN_JOB_NAME", "celery-worker-job")
 
 
