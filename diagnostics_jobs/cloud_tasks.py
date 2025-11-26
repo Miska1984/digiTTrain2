@@ -1,8 +1,14 @@
 import os
 import json
+import logging
 from datetime import datetime, timedelta, timezone
 
-# Csak akkor próbáljuk importálni a Google Cloud modult, ha elérhető
+try:
+    from google.cloud import run_v2
+    from google.api_core.exceptions import NotFound
+except ImportError:
+    run_v2 = None
+
 try:
     from google.cloud import tasks_v2
     from google.protobuf import timestamp_pb2
@@ -10,57 +16,62 @@ except ImportError:
     tasks_v2 = None
     timestamp_pb2 = None
 
-# Fejlesztői környezet jelölése
+from diagnostics_jobs.tasks import run_diagnostic_job  # fallback lokális
+
+logger = logging.getLogger(__name__)
+
 ENV = os.getenv("ENVIRONMENT", "development").lower()
-LOCAL_DEV = ENV in ["development", "dev", "local", "codespaces"]
+LOCAL_DEV = ENV in ["development", "local", "dev", "codespaces"]
 
 PROJECT_ID = os.getenv("GCP_PROJECT_ID", "digittrain-projekt")
-QUEUE_ID = os.getenv("GCLOUD_TASK_QUEUE", "diagnostic-job-queue")
-LOCATION = os.getenv("GCP_REGION", "europe-west1")
-CLOUD_RUN_URL = os.getenv(
-    "CLOUD_RUN_URL",
-    "https://digit-train-web-195803356854.europe-west1.run.app"
-)
+REGION = os.getenv("GCP_REGION", "europe-west1")
+JOB_NAME = os.getenv("CLOUD_RUN_JOB_NAME", "celery-worker-job")
 
 
 def enqueue_diagnostic_job(job_id: int):
     """
-    Google Cloud Task létrehozása, vagy fejlesztői környezetben helyi fallback.
+    Cloud Run Job elindítása (felhőben),
+    vagy lokálisan Celery fallback használata.
     """
-    # --- FEJLESZTŐI / LOKÁLIS FUTÁS ---
-    if tasks_v2 is None or LOCAL_DEV:
-        print(f"⚙️ [LOCAL] Enqueuing job {job_id} to Celery (ENV={ENV})")
-        from diagnostics_jobs.tasks import run_diagnostic_job
+    if LOCAL_DEV or run_v2 is None:
+        # Lokális fallback – simán meghívja a Celery-t
+        print(f"⚙️ [LOCAL] Celery task indítása: job_id={job_id}")
         run_diagnostic_job.delay(job_id)
-        print(f"✅ [LOCAL] Celery diagnostic job {job_id} enqueued successfully.")
         return
 
-    # --- FELHŐS FUTÁS ---
-    client = tasks_v2.CloudTasksClient()
-    parent = client.queue_path(PROJECT_ID, LOCATION, QUEUE_ID)
+    try:
+        logger.info(f"🚀 Cloud Run Job indítása: {JOB_NAME} (job_id={job_id})")
 
-    task_payload = {"job_id": job_id}
-    task_data = json.dumps(task_payload).encode()
+        # Cloud Run API kliens
+        client = run_v2.JobsClient()
+        parent = f"projects/{PROJECT_ID}/locations/{REGION}"
+        job_path = f"{parent}/jobs/{JOB_NAME}"
 
-    # 0–5 óra közötti időpont
-    delay_hours = 5
-    run_time = datetime.now(timezone.utc) + timedelta(
-        seconds=int(delay_hours * 3600 * 0.5)
-    )
+        # Paraméterek átadása környezeti változóként (runtime env)
+        # vagy `args`-ban
+        execution = client.run_job(
+            name=job_path,
+            overrides=run_v2.RunJobRequest.Overrides(
+                container_overrides=[
+                    run_v2.ContainerOverride(
+                        name="celery-worker-job",
+                        args=[
+                            "-A", "digiTTrain", "worker",
+                            "--loglevel=info",
+                            "--concurrency=2",
+                            "--pool=solo"
+                        ],
+                        env=[
+                            run_v2.EnvVar(name="JOB_ID", value=str(job_id)),
+                        ],
+                    )
+                ]
+            ),
+        )
 
-    timestamp = timestamp_pb2.Timestamp()
-    timestamp.FromDatetime(run_time)
+        logger.info(f"✅ Cloud Run Job execution elindítva: {execution.name}")
 
-    task = {
-        "http_request": {
-            "http_method": tasks_v2.HttpMethod.POST,
-            "url": f"{CLOUD_RUN_URL}/diagnostics/run-job/",
-            "headers": {"Content-Type": "application/json"},
-            "body": task_data,
-        },
-        "schedule_time": timestamp,
-    }
-
-    response = client.create_task(request={"parent": parent, "task": task})
-    print(f"✅ Cloud Task created for job_id={job_id} → {response.name}")
-    return response.name
+    except NotFound:
+        logger.error(f"❌ Cloud Run Job nem található: {JOB_NAME}")
+    except Exception as e:
+        logger.exception(f"❌ Hiba a Cloud Run Job indításakor: {e}")
