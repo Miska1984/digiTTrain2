@@ -161,15 +161,11 @@ steps:
     - '2'
     - --timeout
     - 900s
+    - --execution-environment
+    - gen2
     - --command
     - "celery"
-    - --args
-    - "-A"
-    - "digiTTrain"
-    - "worker"
-    - "--loglevel=info"
-    - "--concurrency=2"
-    - "--pool=solo"
+    - --args=["-A","digiTTrain","worker","--loglevel=info","--concurrency=2","--pool=solo"]
 
 timeout: 3600s
 
