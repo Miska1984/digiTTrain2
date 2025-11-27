@@ -1,10 +1,12 @@
 # Dockerfile.worker
+# Dockerfile.worker
+# Alap image
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Rendszerfüggőségek (TELJES LISTA)
+# Rendszerfüggőségek (Videóelemzéshez, OpenCV-hez, WeasyPrint-hez szükséges)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     pkg-config \
@@ -20,7 +22,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender-dev \
     libgl1 \
     libglib2.0-0 \
-    # WeasyPrint + Cairo (ha PDF generálás is kell)
+    # WeasyPrint + Cairo (PDF generáláshoz)
     libcairo2 \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
@@ -32,25 +34,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
     
-# Python függőségek
+# Python függőségek telepítése
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Projekt fájlok
+# Projekt fájlok másolása (tartalmazza a manage.py-t, run_job_execution.py-t, beállításokat)
 COPY . .
 
-# Környezeti változók
+# Környezeti változók (a Django futtatásához szükségesek)
 ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
 ENV ENVIRONMENT=production
 ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 ENV PORT 8080
-
-# 🆕 ÚJ LÉPÉS: Tedd futtathatóvá a scriptet
-RUN chmod +x /app/run_worker.sh
-
-# 🆕 KRITIKUS JAVÍTÁS: Ez lesz a konténer belépési pontja (felülírja a CMD-t)
-ENTRYPOINT ["/bin/bash", "/app/run_worker.sh"]
 
 # MediaPipe assets ellenőrzés
 RUN if [ -f assets/pose_landmarker_full.task ]; then \
@@ -59,8 +55,9 @@ RUN if [ -f assets/pose_landmarker_full.task ]; then \
         echo "⚠️ WARNING: MediaPipe asset not found" && exit 1; \
     fi
 
-# Temp könyvtár
+# Temp könyvtár létrehozása (jobok ide töltenek le fájlokat)
 RUN mkdir -p /tmp/diagnostics && chmod 777 /tmp/diagnostics
 
-# Celery Worker indítása
-CMD ["celery", "-A", "digiTTrain", "worker", "--loglevel=info", "--concurrency=2", "--pool=solo"]
+# ❌ TÖRÖLVE: A Celery-s CMD utasítás, ami már felesleges.
+# A Cloud Run Job API hívása (a cloud_tasks.py-ból) fogja megadni a futtatandó parancsot:
+# python manage.py run_job_execution

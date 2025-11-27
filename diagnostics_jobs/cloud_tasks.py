@@ -6,10 +6,11 @@ from datetime import datetime, timedelta, timezone
 try:
     from google.cloud import run_v2
     from google.api_core.exceptions import NotFound
-    from google.cloud.run_v2.types import RunJobRequest
+    from google.cloud.run_v2.types import RunJobRequest, ContainerOverride
 except ImportError:
     run_v2 = None
     RunJobRequest = None
+    ContainerOverride = None
 
 try:
     from google.cloud import tasks_v2
@@ -55,7 +56,7 @@ def enqueue_diagnostic_job(job_id: int):
             name=job_path,
             overrides=run_v2.RunJobRequest.Overrides(
                 container_overrides=[
-                    RunJobRequest.ContainerOverride(
+                    ContainerOverride(
                         name="celery-job-container",
                         args=[
                             # 🚨 KRITIKUS: EZ A HÁROM ARGUMENTUM KELL
