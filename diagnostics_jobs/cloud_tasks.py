@@ -54,12 +54,12 @@ def enqueue_diagnostic_job(job_id: int):
             overrides=run_v2.RunJobRequest.Overrides(
                 container_overrides=[
                     run_v2.ContainerOverride(
-                        name="celery-worker-job",
+                        name="celery-job-container",
                         args=[
-                            "-A", "digiTTrain", "worker",
-                            "--loglevel=info",
-                            "--concurrency=2",
-                            "--pool=solo"
+                            # 🚨 KRITIKUS: EZ A HÁROM ARGUMENTUM KELL
+                            "python", 
+                            "manage.py", 
+                            "run_job_execution" 
                         ],
                         env=[
                             run_v2.EnvVar(name="JOB_ID", value=str(job_id)),
