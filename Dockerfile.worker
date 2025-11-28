@@ -35,7 +35,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
     
 # Python függőségek telepítése
-COPY requirements.txt ./
+COPY requirements.txt .
+
+# 🟢 FRISSÍTÉS: Pip frissítése
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Projekt fájlok másolása (tartalmazza a manage.py-t, run_job_execution.py-t, beállításokat)
