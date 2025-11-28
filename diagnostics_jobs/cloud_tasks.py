@@ -36,11 +36,29 @@ def enqueue_diagnostic_job(job_id: int):
     Cloud Run Job elindítása (felhőben),
     vagy lokálisan Celery fallback használata.
     """
-    if LOCAL_DEV or run_v2 is None:
-        # Lokális fallback – simán meghívja a Celery-t
-        print(f"⚙️ [LOCAL] Celery task indítása: job_id={job_id}")
-        run_diagnostic_job.delay(job_id)
-        return
+    # 🚨 KRITIKUS JAVÍTÁS: Csak akkor használjuk a Celery-t/lokális fallback-et, 
+    # ha a környezet EGYÉRTELMŰEN lokális.
+    if LOCAL_DEV: 
+        if run_v2 is None:
+            # Ha nincsenek telepítve a google-cloud-run library-k, akkor 
+            # feltételezzük, hogy Celery-t használsz, és meghívjuk a .delay-t.
+            # DE EZ A CLOUD RUN-BAN NINCS JÓL MŰKÖDÉSRE BÍRVA!
+            print(f"⚙️ [LOCAL] Celery task indítása: job_id={job_id}")
+            run_diagnostic_job.delay(job_id)
+            return
+        else:
+            # Lokális fejlesztésnél, ha van run_v2, mégis a Celery-t erőszakoljuk
+            # a korábbi logikád szerint.
+            print(f"⚙️ [LOCAL] Cloud Run Job fallback: job_id={job_id} (Celery-n keresztül)")
+            run_diagnostic_job.delay(job_id)
+            return
+            
+    # 🚀 ÉLES KÖRNYEZET (ENVIRONMENT: production) ÉS Cloud Run Job indítása
+    if run_v2 is None:
+        logger.error("❌ A 'google-cloud-run' függőség hiányzik. Nem tudom elindítani a Cloud Run Jobot!")
+        # Itt egy exceptiont dobunk, ami a hívó függvény (views.py) felé fog hibát jelezni (500-as hiba)
+        raise RuntimeError("Cloud Run V2 kliens nem elérhető. Ellenőrizd a függőségeket.")
+
 
     try:
         logger.info(f"🚀 Cloud Run Job indítása: {JOB_NAME} (job_id={job_id})")
@@ -50,8 +68,7 @@ def enqueue_diagnostic_job(job_id: int):
         parent = f"projects/{PROJECT_ID}/locations/{REGION}"
         job_path = f"{parent}/jobs/{JOB_NAME}"
 
-        # Paraméterek átadása környezeti változóként (runtime env)
-        # vagy `args`-ban
+        # Paraméterek átadása környezeti változóként
         execution = client.run_job(
             name=job_path,
             overrides=run_v2.RunJobRequest.Overrides(
@@ -59,7 +76,6 @@ def enqueue_diagnostic_job(job_id: int):
                     ContainerOverride(
                         name="celery-job-container",
                         args=[
-                            # 🚨 KRITIKUS: EZ A HÁROM ARGUMENTUM KELL
                             "python", 
                             "manage.py", 
                             "run_job_execution" 
@@ -75,6 +91,8 @@ def enqueue_diagnostic_job(job_id: int):
         logger.info(f"✅ Cloud Run Job execution elindítva: {execution.name}")
 
     except NotFound:
-        logger.error(f"❌ Cloud Run Job nem található: {JOB_NAME}")
+        logger.error(f"❌ Cloud Run Job nem található: {JOB_NAME}. Ellenőrizd a Cloud Run Jobs listát.")
+        raise
     except Exception as e:
-        logger.exception(f"❌ Hiba a Cloud Run Job indításakor: {e}")
+        logger.exception(f"❌ Kritikus hiba a Cloud Run Job indításakor: {e}")
+        raise
