@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpangocairo-1.0-0 \
     shared-mime-info \
     pango1.0-tools \
+    libglib2.0-0 \
     libsm6 libxext6 libxrender-dev \
     libgl1 \
     curl && \
