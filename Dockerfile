@@ -37,13 +37,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ----------------------------
 # 📦 Python + Node függőségek
 # ----------------------------
-COPY requirements.txt ./
-COPY package.json ./
-COPY tailwind.config.js ./
-COPY static/src/input.css ./static/src/
+COPY requirements.txt ./requirements.txt
+COPY package.json ./package.json
+COPY tailwind.config.js ./tailwind.config.js
+COPY static/src/input.css ./static/src/input.css
 
-RUN pip install --no-cache-dir -r requirements.txt
-RUN npm install
+# 🟢 PIP frissítés + függőségek telepítése
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ✅ Ellenőrzés, hogy a google-cloud-run tényleg települt
+RUN python -m pip show google-cloud-run || (echo "❌ google-cloud-run NOT FOUND!" && exit 1)
+RUN python -m pip show google-cloud-storage || (echo "❌ google-cloud-storage NOT FOUND!" && exit 1)
 
 # ----------------------------
 # 🎨 Tailwind CSS build
