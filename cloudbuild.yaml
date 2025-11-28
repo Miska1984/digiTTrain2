@@ -152,7 +152,7 @@ steps:
       - --max-retries
       - '3'
       - --cpu
-      - 4
+      - '4'
       - --memory
       - 8Gi
 
