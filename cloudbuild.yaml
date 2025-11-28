@@ -129,6 +129,33 @@ steps:
       - --timeout
       - 300s
 
+# 9️⃣ Deploy Cloud Run Job (az új videó elemző job)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - replace
+      - celery-worker-job
+      - --image
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
+      - --region
+      - europe-west1
+      - --env-vars-file
+      - .env.yaml
+      - --add-cloudsql-instances
+      - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector
+      - redis-connector
+      - --execution-timeout
+      - 3600s
+      - --max-retries
+      - '3'
+      - --cpu
+      - 4
+      - --memory
+      - 8Gi
+
 timeout: 3600s
 
 options:
