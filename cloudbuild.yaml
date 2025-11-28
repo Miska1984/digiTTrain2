@@ -135,7 +135,7 @@ steps:
     args:
       - run
       - jobs
-      - replace
+      - update
       - celery-worker-job
       - --image
       - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
