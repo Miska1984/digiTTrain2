@@ -34,6 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
     apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # ----------------------------
 # 📦 Python + Node függőségek
 # ----------------------------
@@ -51,9 +52,11 @@ RUN python -m pip show google-cloud-run || (echo "❌ google-cloud-run NOT FOUND
 RUN python -m pip show google-cloud-storage || (echo "❌ google-cloud-storage NOT FOUND!" && exit 1)
 
 # ----------------------------
-# 🎨 Tailwind CSS build
+# 🎨 Tailwind CSS build JAVÍTOTT
 # ----------------------------
-RUN mkdir -p ./static/dist && \
+RUN npm install && \
+    npm install -g tailwindcss && \
+    mkdir -p ./static/dist && \
     npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
 
 # ----------------------------
@@ -91,7 +94,6 @@ RUN mkdir -p /app/media_root /app/staticfiles_temp && \
 # ----------------------------
 # 👤 Felhasználó beállítása
 # ----------------------------
-# Fontos, hogy ne root-ként fusson a konténer.
 USER www-data
 
 # ----------------------------
