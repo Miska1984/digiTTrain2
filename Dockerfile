@@ -51,6 +51,14 @@ RUN pip install --upgrade pip && \
 RUN python -m pip show google-cloud-run || (echo "❌ google-cloud-run NOT FOUND!" && exit 1)
 RUN python -m pip show google-cloud-storage || (echo "❌ google-cloud-storage NOT FOUND!" && exit 1)
 
+
+# ✅ ÚJ: Python import teszt - ellenőrzi, hogy tényleg importálható-e
+RUN python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')" || \
+    (echo "❌ google-cloud-run nem importálható!" && exit 1)
+
+RUN python -c "from google.cloud import storage; print('✅ google-cloud-storage import OK')" || \
+    (echo "❌ google-cloud-storage nem importálható!" && exit 1)
+
 # ----------------------------
 # 🎨 Tailwind CSS build JAVÍTOTT
 # ----------------------------
