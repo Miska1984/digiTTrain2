@@ -1,8 +1,13 @@
 import os
 import logging
-from google.cloud import run_v2
-from google.api_core.exceptions import NotFound
-from google.cloud.run_v2.types import ContainerOverride
+try:
+    from google.cloud import run_v2
+    from google.api_core.exceptions import NotFound
+    from google.cloud.run_v2.types import RunJobRequest, ContainerOverride
+except ImportError:
+    run_v2 = None
+    RunJobRequest = None
+    ContainerOverride = None
 from diagnostics_jobs.tasks import run_diagnostic_job # fallback lokális
 
 logger = logging.getLogger(__name__)
