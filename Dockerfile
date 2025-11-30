@@ -43,14 +43,13 @@ COPY package.json ./package.json
 COPY tailwind.config.js ./tailwind.config.js
 COPY static/src/input.css ./static/src/input.css
 
-# 🟢 PIP frissítés + függőségek telepítése
+# 🟢 PIP frissítés + függőségek telepítése (megnövelt timeout a nagy fájlokhoz)
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
-# ✅ Ellenőrzés, hogy a google-cloud-run tényleg települt
+# ✅ KRITIKUS ELLENŐRZÉSEK - Ne engedd át a buildet, ha hiányzik valami!
 RUN python -m pip show google-cloud-run || (echo "❌ google-cloud-run NOT FOUND!" && exit 1)
 RUN python -m pip show google-cloud-storage || (echo "❌ google-cloud-storage NOT FOUND!" && exit 1)
-
 
 # ✅ ÚJ: Python import teszt - ellenőrzi, hogy tényleg importálható-e
 RUN python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')" || \
@@ -75,7 +74,6 @@ COPY . .
 # 🧹 Python cache tisztítása (force friss import)
 RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
-
 
 # 🔐 Szolgáltatási fiók kulcs másolása a konténerbe
 COPY gcp_service_account.json /app/gcp_service_account.json
@@ -113,3 +111,4 @@ USER www-data
 # ▶️ Indítás
 # ----------------------------
 CMD ["gunicorn", "--bind", "0.0.0.0:8080","--timeout", "120", "--workers", "2", "digiTTrain.wsgi:application"]
+
