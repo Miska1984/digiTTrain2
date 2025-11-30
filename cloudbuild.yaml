@@ -145,8 +145,7 @@ steps:
       - --command
       - python
       - --args
-      - manage.py
-      - run_job_execution
+      - "manage.py,run_job_execution"
       - --env-vars-file
       - .env.yaml
       - --add-cloudsql-instances
