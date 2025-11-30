@@ -41,6 +41,13 @@ COPY requirements.txt .
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
+# 🔧 Biztonsági telepítés: garantáljuk, hogy a GCP kliensmodulok tényleg bent legyenek
+RUN pip install --no-cache-dir google-cloud-run google-cloud-storage
+
+# ✅ Ellenőrzés, hogy a modulok tényleg elérhetők
+RUN python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')"
+RUN python -c "from google.cloud import storage; print('✅ google-cloud-storage import OK')"
+
 # Projekt fájlok másolása (tartalmazza a manage.py-t, run_job_execution.py-t, beállításokat)
 COPY . .
 

@@ -156,6 +156,8 @@ steps:
       - '4'
       - --memory
       - 8Gi
+      - --update-labels
+      - "build_id=$BUILD_ID"
 
 timeout: 3600s
 
