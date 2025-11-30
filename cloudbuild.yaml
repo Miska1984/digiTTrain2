@@ -130,7 +130,7 @@ steps:
       - --timeout
       - 300s
 
-  # 9️⃣ Deploy Cloud Run Job (videóelemző job)
+  # 9️⃣ Deploy Cloud Run Job (az új videó elemző job)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -143,9 +143,10 @@ steps:
       - --region
       - europe-west1
       - --command
-      - "python"
+      - python
       - --args
-      - "manage.py","run_job_execution"
+      - manage.py
+      - run_job_execution
       - --env-vars-file
       - .env.yaml
       - --add-cloudsql-instances
@@ -160,8 +161,7 @@ steps:
       - '4'
       - --memory
       - 8Gi
-      - --update-labels
-      - "build_id=$BUILD_ID"
+   
 
 timeout: 3600s
 
