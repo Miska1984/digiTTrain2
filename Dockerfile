@@ -51,6 +51,9 @@ RUN pip install --upgrade pip && \
 RUN python -m pip show google-cloud-run || (echo "❌ google-cloud-run NOT FOUND!" && exit 1)
 RUN python -m pip show google-cloud-storage || (echo "❌ google-cloud-storage NOT FOUND!" && exit 1)
 
+# 🔧 Extra GCP kliens könyvtárak — a webapp is használja őket (Cloud Run API, Storage stb.)
+RUN pip install --no-cache-dir google-cloud-run google-cloud-storage
+
 # ✅ ÚJ: Python import teszt - ellenőrzi, hogy tényleg importálható-e
 RUN python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')" || \
     (echo "❌ google-cloud-run nem importálható!" && exit 1)
