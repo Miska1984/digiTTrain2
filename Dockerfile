@@ -72,6 +72,11 @@ RUN npm install && \
 # ----------------------------
 COPY . .
 
+# 🧹 Python cache tisztítása (force friss import)
+RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
+
+
 # 🔐 Szolgáltatási fiók kulcs másolása a konténerbe
 COPY gcp_service_account.json /app/gcp_service_account.json
 
