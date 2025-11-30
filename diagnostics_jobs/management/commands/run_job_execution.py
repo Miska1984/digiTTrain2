@@ -6,6 +6,12 @@ from diagnostics_jobs.tasks import run_diagnostic_job # A meglévő task függv�
 
 logger = logging.getLogger(__name__)
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
+)
+
 class Command(BaseCommand):
     help = 'A DiagnosticJob végrehajtása a JOB_ID környezeti változó alapján.'
 

@@ -130,7 +130,7 @@ steps:
       - --timeout
       - 300s
 
-  # 9️⃣ Deploy Cloud Run Job (az új videó elemző job)
+  # 9️⃣ Deploy Cloud Run Job (videóelemző job)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -142,6 +142,10 @@ steps:
       - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
       - --region
       - europe-west1
+      - --command
+      - "python"
+      - --args
+      - "manage.py","run_job_execution"
       - --env-vars-file
       - .env.yaml
       - --add-cloudsql-instances
