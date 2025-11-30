@@ -105,6 +105,9 @@ RUN mkdir -p /app/media_root /app/staticfiles_temp && \
     chown -R www-data:www-data /app/media_root /app/staticfiles_temp && \
     chmod -R 775 /app/media_root /app/staticfiles_temp
 
+# 🔧 Jogosultság javítás a Python könyvtárra (különösen a google-cloud-run csomaghoz)
+RUN chmod -R a+rX /usr/local/lib/python3.12/site-packages
+
 # ----------------------------
 # 👤 Felhasználó beállítása
 # ----------------------------
