@@ -6,8 +6,6 @@ logger = logging.getLogger(__name__)
 # FONTOS JAVÍTÁS: Nem direktben importáljuk a típusokat a .types-ból!
 try:
     from google.cloud import run_v2
-    # Importáljuk a types almodult alias-szal, hogy megbízhatóan hivatkozhassunk rá
-    from google.cloud.run_v2 import types as run_v2_types 
     from google.api_core.exceptions import NotFound 
 
     # ✅ teszteljük is, hogy ténylegesen működik
@@ -58,15 +56,20 @@ def enqueue_diagnostic_job(job_id: int):
         client = run_v2.JobsClient()
         parent = f"projects/{PROJECT_ID}/locations/{REGION}"
         job_path = f"{parent}/jobs/{JOB_NAME}"
+        
+        # 🟢 KRITIKUS JAVÍTÁS: A típusok dinamikus lekérése
+        ContainerOverride = client.get_type("ContainerOverride")
+        EnvVar = client.get_type("EnvVar")
+        # RunJobRequest.Overrides típust is a fő kérés objektumról kérjük le
+        Overrides = client.get_type("RunJobRequest").Overrides 
 
-        # Paraméterek átadása környezeti változóként
+        # Paraméterek átadása környezeti változóként (runtime env)
         execution = client.run_job(
             name=job_path,
-            # 💡 JAVÍTÁS: A típusokat a run_v2_types-on keresztül érjük el
-            overrides=run_v2_types.RunJobRequest.Overrides( 
+            # 💡 JAVÍTOTT HASZNÁLAT: A dinamikusan lekérdezett típusok használata
+            overrides=Overrides( 
                 container_overrides=[
-                    # 💡 JAVÍTÁS: A típusokat a run_v2_types-on keresztül érjük el
-                    run_v2_types.ContainerOverride(
+                    ContainerOverride( # << EZ A HIBAPONTON LÉVŐ OSZTÁLY
                         name="celery-job-container",
                         args=[
                             "python", 
@@ -74,8 +77,7 @@ def enqueue_diagnostic_job(job_id: int):
                             "run_job_execution" 
                         ],
                         env=[
-                            # 💡 JAVÍTÁS: A típusokat a run_v2_types-on keresztül érjük el
-                            run_v2_types.EnvVar(name="JOB_ID", value=str(job_id)),
+                            EnvVar(name="JOB_ID", value=str(job_id)),
                         ],
                     )
                 ]
