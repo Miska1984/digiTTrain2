@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # ----------------------------
-# 🧩 Rendszerfüggőségek (WeasyPrint + OpenCV + Node.js)
+# 🧩 Rendszerfüggőségek
 # ----------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libmariadb-dev-compat \
     libffi-dev \
-    # 🧾 WeasyPrint + Cairo függőségek
     libcairo2 \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
@@ -36,100 +35,82 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------
-# 📦 Python + Node függőségek
+# 📦 Python függőségek
 # ----------------------------
 COPY requirements.txt ./requirements.txt
 COPY package.json ./package.json
 COPY tailwind.config.js ./tailwind.config.js
 COPY static/src/input.css ./static/src/input.css
 
-# 🟢 PIP frissítés + függőségek telepítése (megnövelt timeout a nagy fájlokhoz)
+# PIP frissítés + requirements telepítése
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
-# ✅ KRITIKUS: Explicit Google Cloud csomagok telepítése a legújabb verzióval
-RUN pip install --no-cache-dir --upgrade \
-    google-cloud-run \
-    google-cloud-storage \
-    google-api-core \
-    google-auth
+# ✅ Google Cloud csomagok explicit telepítése (force-reinstall)
+RUN pip install --no-cache-dir --force-reinstall \
+    google-cloud-run==0.12.0 \
+    google-cloud-storage==2.18.2
 
-# Ensure google-cloud-run is definitely installed in the web container too
-RUN pip install --no-cache-dir google-cloud-run google-cloud-storage && \
-    python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')" && \
-    python -c "from google.cloud import storage; print('✅ google-cloud-storage import OK')"
-
-# ✅ KRITIKUS ELLENŐRZÉSEK - Ne engedd át a buildet, ha hiányzik valami!
-RUN python -m pip show google-cloud-run || (echo "❌ google-cloud-run NOT FOUND!" && exit 1)
-RUN python -m pip show google-cloud-storage || (echo "❌ google-cloud-storage NOT FOUND!" && exit 1)
-
-# 🔧 Extra GCP kliens könyvtárak — a webapp is használja őket (Cloud Run API, Storage stb.)
-RUN pip install --no-cache-dir google-cloud-run google-cloud-storage
-
-# ✅ ÚJ: Python import teszt - ellenőrzi, hogy tényleg importálható-e
-RUN python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')" || \
-    (echo "❌ google-cloud-run nem importálható!" && exit 1)
-
-RUN python -c "from google.cloud import storage; print('✅ google-cloud-storage import OK')" || \
-    (echo "❌ google-cloud-storage nem importálható!" && exit 1)
+# ✅ Import tesztek
+RUN python -c "from google.cloud import run_v2; print('✅ run_v2 import OK')" || exit 1
+RUN python -c "from google.cloud import storage; print('✅ storage import OK')" || exit 1
 
 # ----------------------------
-# 🎨 Tailwind CSS build JAVÍTOTT
+# 🎨 Tailwind CSS build
 # ----------------------------
 RUN npm install && \
     npm install -g tailwindcss && \
     mkdir -p ./static/dist && \
-    npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify --config tailwind.config.js
+    npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify
 
 # ----------------------------
 # 📁 Projektfájlok
 # ----------------------------
 COPY . .
 
-# 🧹 Python cache tisztítása (force friss import)
+# Python cache tisztítása
 RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
-# 🔐 Szolgáltatási fiók kulcs másolása a konténerbe
+# GCP kulcs másolása
 COPY gcp_service_account.json /app/gcp_service_account.json
-
-# Környezeti változó, hogy a Django-kód megtalálja
 ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
 
-RUN if [ -f assets/pose_landmarker_full.task ]; then echo "MediaPipe assets found."; else echo "WARNING: MediaPipe asset not found in assets/pose_landmarker_full.task" && exit 1; fi
+# MediaPipe asset ellenőrzés
+RUN if [ -f assets/pose_landmarker_full.task ]; then \
+        echo "✅ MediaPipe assets found."; \
+    else \
+        echo "⚠️ WARNING: MediaPipe asset not found" && exit 1; \
+    fi
 
 # ----------------------------
 # ⚙️ Django környezet
 # ----------------------------
 ENV ENVIRONMENT=production
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app:/usr/local/lib/python3.12/site-packages
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 ENV PORT=8080
 
 # ----------------------------
-# 🧱 Statikus és média fájlok
+# 🧱 Statikus fájlok
 # ----------------------------
 ENV BUILD_MODE=true
-RUN python manage.py collectstatic --no-input --verbosity=2 --settings=digiTTrain.settings
+RUN python manage.py collectstatic --no-input --verbosity=2
 ENV BUILD_MODE=false
 
 RUN mkdir -p /app/media_root /app/staticfiles_temp && \
     chown -R www-data:www-data /app/media_root /app/staticfiles_temp && \
     chmod -R 775 /app/media_root /app/staticfiles_temp
 
-# 🔧 Jogosultság javítás a Python könyvtárra (különösen a google-cloud-run csomaghoz)
+# Jogosultságok
 RUN chmod -R a+rX /usr/local/lib/python3.12/site-packages
 
-# ✅ PATH javítás: a www-data és Django is látja a telepített csomagokat
-ENV PYTHONPATH="/usr/local/lib/python3.12/site-packages:/app"
-
 # ----------------------------
-# 👤 Felhasználó beállítása
+# 👤 Felhasználó
 # ----------------------------
 USER www-data
 
 # ----------------------------
 # ▶️ Indítás
 # ----------------------------
-CMD ["gunicorn", "--bind", "0.0.0.0:8080","--timeout", "120", "--workers", "2", "digiTTrain.wsgi:application"]
-
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "2", "digiTTrain.wsgi:application"]
