@@ -47,6 +47,13 @@ COPY static/src/input.css ./static/src/input.css
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
+# ✅ KRITIKUS: Explicit Google Cloud csomagok telepítése a legújabb verzióval
+RUN pip install --no-cache-dir --upgrade \
+    google-cloud-run \
+    google-cloud-storage \
+    google-api-core \
+    google-auth
+
 # Ensure google-cloud-run is definitely installed in the web container too
 RUN pip install --no-cache-dir google-cloud-run google-cloud-storage && \
     python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')" && \
