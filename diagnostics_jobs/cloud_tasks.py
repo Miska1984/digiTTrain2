@@ -1,16 +1,24 @@
 import os
 import logging
+
+logger = logging.getLogger(__name__)
+
 try:
     from google.cloud import run_v2
     from google.api_core.exceptions import NotFound
     from google.cloud.run_v2.types import RunJobRequest, ContainerOverride
-except ImportError:
-    run_v2 = None
-    RunJobRequest = None
-    ContainerOverride = None
-from diagnostics_jobs.tasks import run_diagnostic_job # fallback lokális
 
-logger = logging.getLogger(__name__)
+    # ✅ teszteljük is, hogy ténylegesen működik
+    _client_test = run_v2.JobsClient()
+    logger.info("✅ google-cloud-run import és kliens inicializálás sikeres.")
+except ImportError as e:
+    logger.error(f"❌ A 'google-cloud-run' csomag nincs telepítve: {e}")
+    raise
+except Exception as e:
+    logger.error(f"⚠️ google-cloud-run elérhető, de inicializálási hiba történt: {e}")
+    raise
+
+from diagnostics_jobs.tasks import run_diagnostic_job  # fallback lokális
 
 # --- Környezeti beállítások betöltése ---
 ENV = os.getenv("ENVIRONMENT", "development").lower()
