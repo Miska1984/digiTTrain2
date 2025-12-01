@@ -42,18 +42,21 @@ COPY package.json ./package.json
 COPY tailwind.config.js ./tailwind.config.js
 COPY static/src/input.css ./static/src/input.css
 
-# PIP frissítés + requirements telepítése
+# ⚠️ KRITIKUS: Előbb telepítjük a protobuf 4.25.3-at, MAJD a többit
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir protobuf==4.25.3 && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
-# ✅ Google Cloud csomagok explicit telepítése (force-reinstall)
-RUN pip install --no-cache-dir --force-reinstall \
-    google-cloud-run==0.12.0 \
-    google-cloud-storage==2.18.2
+# ✅ Ellenőrzés: protobuf verzió
+RUN python -c "import google.protobuf; print(f'✅ Protobuf: {google.protobuf.__version__}')"
 
-# ✅ Import tesztek
+# ✅ Google Cloud import tesztek
 RUN python -c "from google.cloud import run_v2; print('✅ run_v2 import OK')" || exit 1
 RUN python -c "from google.cloud import storage; print('✅ storage import OK')" || exit 1
+
+# ✅ AI/ML import tesztek
+RUN python -c "import tensorflow as tf; print(f'✅ TensorFlow: {tf.__version__}')" || exit 1
+RUN python -c "import mediapipe as mp; print(f'✅ MediaPipe: {mp.__version__}')" || exit 1
 
 # ----------------------------
 # 🎨 Tailwind CSS build

@@ -1,46 +1,78 @@
-asgiref==3.9.1
-cachetools==5.5.2
-certifi==2025.8.3
-charset-normalizer==3.4.3
-crispy-bootstrap5==2025.6
-Django==5.2.5
-django-crispy-forms==2.4
-django-storages==1.14.6
-idna==3.10
-mysqlclient==2.2.7
-packaging==25.0
-pillow==11.3.0
-pyasn1==0.6.1
-pyasn1_modules==0.4.2
-requests==2.32.5
-rsa==4.9.1
-sqlparse==0.5.3
-urllib3==2.5.0
-django-healthchecks
-django-formtools
-celery
-redis
-pandas
-numpy==1.26.4
-xlsxwriter
-openpyxl
-django-widget-tweaks
-weasyprint
-mediapipe==0.10.14
-opencv-python-headless==4.8.1.78
-tensorflow==2.17.1
-tensorflow-hub==0.16.1
-tensorflow-probability==0.23.0
-
-# Google Cloud függőségek
+# ============================================
+# CORE GOOGLE CLOUD DEPENDENCIES
+# ============================================
 google-cloud-run==0.12.0
 google-cloud-storage==2.18.2
 google-cloud-tasks==2.16.4
-google-api-core==2.25.1
-google-auth==2.40.3
-google-cloud-core==2.4.3
-google-crc32c==1.7.1
-google-resumable-media==2.7.2
-googleapis-common-protos==1.70.0
-proto-plus==1.26.1
+google-api-core==2.19.1
+google-auth==2.23.4
+google-cloud-core==2.3.3
+google-crc32c==1.5.0
+google-resumable-media==2.6.0
+googleapis-common-protos==1.61.0
+proto-plus==1.22.3
 protobuf==4.25.3
+grpcio==1.60.0
+grpcio-status==1.60.0
+
+# ============================================
+# DJANGO & WEB FRAMEWORK
+# ============================================
+Django==5.2.5
+django-storages==1.14.6
+django-crispy-forms==2.4
+crispy-bootstrap5==2025.6
+django-healthchecks
+django-formtools
+django-widget-tweaks
+gunicorn==22.0.0
+
+# ============================================
+# CELERY & REDIS
+# ============================================
+celery==5.3.4
+redis==5.0.1
+
+# ============================================
+# DATABASE & AUTH
+# ============================================
+mysqlclient==2.2.7
+
+# ============================================
+# AI/ML DEPENDENCIES (FIXED VERSIONS)
+# ============================================
+tensorflow==2.17.1
+tensorflow-hub==0.16.1
+tensorflow-probability==0.23.0
+mediapipe==0.10.14
+opencv-python-headless==4.8.1.78
+numpy==1.26.4
+
+# ============================================
+# DATA PROCESSING
+# ============================================
+pandas==2.1.4
+openpyxl==3.1.2
+xlsxwriter==3.1.9
+
+# ============================================
+# PDF GENERATION
+# ============================================
+weasyprint==60.1
+
+# ============================================
+# UTILITIES
+# ============================================
+pillow==11.3.0
+requests==2.32.5
+certifi==2024.8.30
+charset-normalizer==3.3.2
+idna==3.10
+urllib3==2.2.3
+cachetools==5.3.2
+pyasn1==0.5.1
+pyasn1-modules==0.3.0
+rsa==4.9
+asgiref==3.8.1
+sqlparse==0.5.1
+packaging==24.1
