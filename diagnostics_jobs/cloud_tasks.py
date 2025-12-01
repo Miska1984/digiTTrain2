@@ -3,11 +3,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# FONTOS JAVÍTÁS: Nem direktben importáljuk a típusokat a .types-ból!
 try:
-    # A fő modul, amiből a kliens jön
     from google.cloud import run_v2
-    # A típusok a .types modulból érkeznek
-    from google.cloud.run_v2.types import RunJobRequest, ContainerOverride, EnvVar 
+    # Importáljuk a types almodult alias-szal, hogy megbízhatóan hivatkozhassunk rá
+    from google.cloud.run_v2 import types as run_v2_types 
     from google.api_core.exceptions import NotFound 
 
     # ✅ teszteljük is, hogy ténylegesen működik
@@ -47,12 +47,10 @@ def enqueue_diagnostic_job(job_id: int):
     # 2. Éles környezet: Cloud Run Job indítása
     
     # Biztosítjuk, hogy a google-cloud-run modul elérhető legyen éles környezetben.
-    if run_v2 is None:
+    if 'run_v2_types' not in globals():
         logger.error("❌ A 'google-cloud-run' függőség hiányzik a production image-ben!")
-        # Exception dobása: ezzel 500-as hibát generálunk a views.py-ban, 
-        # ami a levonás visszatérítéséhez vezet.
         raise RuntimeError("Cloud Run V2 kliens nem elérhető. Ellenőrizd a függőségeket.")
-
+        
     try:
         logger.info(f"🚀 Cloud Run Job indítása: {JOB_NAME} (job_id={job_id})")
 
@@ -64,18 +62,20 @@ def enqueue_diagnostic_job(job_id: int):
         # Paraméterek átadása környezeti változóként
         execution = client.run_job(
             name=job_path,
-            overrides=run_v2.RunJobRequest.Overrides(
+            # 💡 JAVÍTÁS: A típusokat a run_v2_types-on keresztül érjük el
+            overrides=run_v2_types.RunJobRequest.Overrides( 
                 container_overrides=[
-                    ContainerOverride(
+                    # 💡 JAVÍTÁS: A típusokat a run_v2_types-on keresztül érjük el
+                    run_v2_types.ContainerOverride(
                         name="celery-job-container",
                         args=[
-                            # Ez a parancs fog elindulni a Cloud Run Job konténerben
                             "python", 
                             "manage.py", 
                             "run_job_execution" 
                         ],
                         env=[
-                            EnvVar(name="JOB_ID", value=str(job_id)), # Csak EnvVar
+                            # 💡 JAVÍTÁS: A típusokat a run_v2_types-on keresztül érjük el
+                            run_v2_types.EnvVar(name="JOB_ID", value=str(job_id)),
                         ],
                     )
                 ]
