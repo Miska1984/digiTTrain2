@@ -1,12 +1,14 @@
-# Dockerfile.worker
-
-# Alap image
+# ----------------------------
+# ⚙️ Dockerfile.worker – Celery / Cloud Run Job konténer
+# ----------------------------
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# Rendszerfüggőségek (Videóelemzéshez, OpenCV-hez, WeasyPrint-hez szükséges)
+# ----------------------------
+# 🧩 Rendszerfüggőségek (OpenCV, WeasyPrint, MediaPipe, PDF, stb.)
+# ----------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     pkg-config \
@@ -16,13 +18,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
     libmariadb-dev-compat \
     libffi-dev \
-    # OpenCV + MediaPipe függőségek
     libsm6 \
     libxext6 \
     libxrender-dev \
     libgl1 \
     libglib2.0-0 \
-    # WeasyPrint + Cairo (PDF generáláshoz)
     libcairo2 \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
@@ -31,43 +31,65 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpangocairo-1.0-0 \
     shared-mime-info \
     pango1.0-tools \
+    fonts-dejavu-core \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-    
-# Python függőségek telepítése
-COPY requirements.txt .
-
-# 🟢 FRISSÍTÉS: Pip frissítése
+# ----------------------------
+# 📦 Python függőségek
+# ----------------------------
+COPY requirements.txt ./
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 🔧 Biztonsági telepítés: garantáljuk, hogy a GCP kliensmodulok tényleg bent legyenek
+# ----------------------------
+# 🧩 GCP kliens modulok megerősítése
+# ----------------------------
 RUN pip install --no-cache-dir google-cloud-run google-cloud-storage
 
-# ✅ Ellenőrzés, hogy a modulok tényleg elérhetők
+# Ellenőrzés, hogy tényleg elérhetők
 RUN python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')"
 RUN python -c "from google.cloud import storage; print('✅ google-cloud-storage import OK')"
 
-# Projekt fájlok másolása (tartalmazza a manage.py-t, run_job_execution.py-t, beállításokat)
+# ----------------------------
+# 🧠 Matplotlib és Fontconfig fixek (cache és font hibák elkerüléséhez)
+# ----------------------------
+ENV MPLCONFIGDIR=/tmp/matplotlib_cache
+RUN mkdir -p /tmp/matplotlib_cache && chmod -R 777 /tmp/matplotlib_cache
+
+# ----------------------------
+# 📁 Projektfájlok
+# ----------------------------
 COPY . .
 
-# Környezeti változók (a Django futtatásához szükségesek)
+# ----------------------------
+# 🔐 Szolgáltatási fiók kulcs
+# ----------------------------
+COPY gcp_service_account.json /app/gcp_service_account.json
 ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
+
+# ----------------------------
+# ⚙️ Django környezeti beállítások
+# ----------------------------
 ENV ENVIRONMENT=production
 ENV PYTHONPATH=/app
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
-ENV PORT 8080
+ENV PORT=8080
 
-# MediaPipe assets ellenőrzés
+# ----------------------------
+# 📁 Temp könyvtár a job futáshoz
+# ----------------------------
+RUN mkdir -p /tmp/diagnostics && chmod 777 /tmp/diagnostics
+
+# ----------------------------
+# 🎯 MediaPipe asset ellenőrzés
+# ----------------------------
 RUN if [ -f assets/pose_landmarker_full.task ]; then \
-        echo "✅ MediaPipe assets found."; \
+        echo "✅ MediaPipe asset found."; \
     else \
         echo "⚠️ WARNING: MediaPipe asset not found" && exit 1; \
     fi
 
-# Temp könyvtár létrehozása (jobok ide töltenek le fájlokat)
-RUN mkdir -p /tmp/diagnostics && chmod 777 /tmp/diagnostics
-
-# ❌ TÖRÖLVE: A Celery-s CMD utasítás, ami már felesleges.
-# A Cloud Run Job API hívása (a cloud_tasks.py-ból) fogja megadni a futtatandó parancsot:
-# python manage.py run_job_execution
+# ----------------------------
+# ▶️ Parancs (nem Celery daemon!)
+# ----------------------------
+CMD ["python", "manage.py", "run_job_execution"]
