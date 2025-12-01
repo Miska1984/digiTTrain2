@@ -108,6 +108,9 @@ RUN mkdir -p /app/media_root /app/staticfiles_temp && \
 # 🔧 Jogosultság javítás a Python könyvtárra (különösen a google-cloud-run csomaghoz)
 RUN chmod -R a+rX /usr/local/lib/python3.12/site-packages
 
+# ✅ PATH javítás: a www-data és Django is látja a telepített csomagokat
+ENV PYTHONPATH="/usr/local/lib/python3.12/site-packages:/app"
+
 # ----------------------------
 # 👤 Felhasználó beállítása
 # ----------------------------
