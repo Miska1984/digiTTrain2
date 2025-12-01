@@ -44,7 +44,6 @@ COPY static/src/input.css ./static/src/input.css
 
 # ⚠️ KRITIKUS: Előbb telepítjük a protobuf 4.25.3-at, MAJD a többit
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir protobuf==4.25.3 && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
 # ✅ Ellenőrzés: protobuf verzió

@@ -4,9 +4,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 try:
+    # A fő modul, amiből a kliens jön
     from google.cloud import run_v2
-    from google.api_core.exceptions import NotFound
-    from google.cloud.run_v2.types import RunJobRequest, ContainerOverride
+    # A típusok a .types modulból érkeznek
+    from google.cloud.run_v2.types import RunJobRequest, ContainerOverride, EnvVar 
+    from google.api_core.exceptions import NotFound 
 
     # ✅ teszteljük is, hogy ténylegesen működik
     _client_test = run_v2.JobsClient()
@@ -18,7 +20,7 @@ except Exception as e:
     logger.error(f"⚠️ google-cloud-run elérhető, de inicializálási hiba történt: {e}")
     raise
 
-from diagnostics_jobs.tasks import run_diagnostic_job  # fallback lokális
+from diagnostics_jobs.tasks import run_diagnostic_job # fallback lokális
 
 # --- Környezeti beállítások betöltése ---
 ENV = os.getenv("ENVIRONMENT", "development").lower()
@@ -73,8 +75,7 @@ def enqueue_diagnostic_job(job_id: int):
                             "run_job_execution" 
                         ],
                         env=[
-                            # Ez adja át a JOB_ID-t a manage.py parancsnak
-                            run_v2.EnvVar(name="JOB_ID", value=str(job_id)),
+                            EnvVar(name="JOB_ID", value=str(job_id)), # Csak EnvVar
                         ],
                     )
                 ]
