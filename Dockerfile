@@ -46,6 +46,8 @@ COPY static/src/input.css ./static/src/input.css
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
+RUN python -m pip show google-cloud-run
+
 # ✅ Ellenőrzés: protobuf verzió
 RUN python -c "import google.protobuf; print(f'✅ Protobuf: {google.protobuf.__version__}')"
 
@@ -111,6 +113,9 @@ RUN chmod -R a+rX /usr/local/lib/python3.12/site-packages
 # 👤 Felhasználó
 # ----------------------------
 USER www-data
+
+# ✅ PYTHONPATH fix a www-data számára
+ENV PYTHONPATH=/usr/local/lib/python3.12/site-packages:/app
 
 # ----------------------------
 # ▶️ Indítás
