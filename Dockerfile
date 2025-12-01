@@ -47,6 +47,11 @@ COPY static/src/input.css ./static/src/input.css
 RUN pip install --upgrade pip && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
+# Ensure google-cloud-run is definitely installed in the web container too
+RUN pip install --no-cache-dir google-cloud-run google-cloud-storage && \
+    python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')" && \
+    python -c "from google.cloud import storage; print('✅ google-cloud-storage import OK')"
+
 # ✅ KRITIKUS ELLENŐRZÉSEK - Ne engedd át a buildet, ha hiányzik valami!
 RUN python -m pip show google-cloud-run || (echo "❌ google-cloud-run NOT FOUND!" && exit 1)
 RUN python -m pip show google-cloud-storage || (echo "❌ google-cloud-storage NOT FOUND!" && exit 1)
