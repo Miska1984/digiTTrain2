@@ -47,7 +47,7 @@ def enqueue_diagnostic_job(job_id: int):
         client = run_v2.JobsClient()
         job_path = f"projects/{PROJECT_ID}/locations/{REGION}/jobs/{JOB_NAME}"
         
-        # ✅ KRITIKUS: RunJobRequest objektumot kell használni!
+        # ✅ RunJobRequest objektum használata
         request = run_v2.RunJobRequest(
             name=job_path,
             overrides=run_v2.RunJobRequest.Overrides(
@@ -63,10 +63,17 @@ def enqueue_diagnostic_job(job_id: int):
             ),
         )
         
-        # ✅ A request objektumot adjuk át
-        execution = client.run_job(request=request)
+        # ✅ KRITIKUS: run_job() egy Operation objektumot ad vissza
+        operation = client.run_job(request=request)
         
-        logger.info(f"✅ Job elindítva: {execution.name}")
+        # ✅ Az execution neve az operation metadata-ból kérhető le
+        # De NEM VÁRJUK MEG az operation befejezését (mert aszinkron futtatás)
+        logger.info(f"✅ Cloud Run Job execution indítva (operation: {operation.operation.name})")
+        
+        # Opcionálisan: execution név lekérése (ha a metadata tartalmazza)
+        if hasattr(operation, 'metadata') and operation.metadata:
+            execution_name = getattr(operation.metadata, 'name', 'N/A')
+            logger.info(f"   Execution név: {execution_name}")
         
     except NotFound:
         logger.error(f"❌ Job nem található: {JOB_NAME}")
