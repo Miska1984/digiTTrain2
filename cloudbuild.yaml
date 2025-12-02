@@ -130,7 +130,7 @@ steps:
       - --timeout
       - 300s
 
-  # 9️⃣ Deploy Cloud Run Job (az új videó elemző job)
+  # 9️⃣ Deploy Cloud Run Job (celery-worker-job)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -146,6 +146,7 @@ steps:
       - python
       - --args
       - manage.py
+      - --args
       - run_job_execution
       - --env-vars-file
       - .env.yaml
@@ -161,6 +162,7 @@ steps:
       - '4'
       - --memory
       - 8Gi
+    id: 'deploy-celery-job'
    
 
 timeout: 3600s
