@@ -145,9 +145,7 @@ steps:
       - --command
       - python
       - --args
-      - manage.py
-      - --args
-      - manage.py,run_job_execution
+      - manage.py,run_job_execution  # ✅ KRITIKUS: Vesszővel elválasztva, NEM külön --args!
       - --env-vars-file
       - .env.yaml
       - --add-cloudsql-instances
