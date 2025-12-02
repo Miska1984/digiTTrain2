@@ -142,24 +142,15 @@ steps:
       - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
       - --region
       - europe-west1
-      - --command
-      - python
-      - --args
-      - manage.py,run_job_execution  # ✅ KRITIKUS: Vesszővel elválasztva, NEM külön --args!
-      - --env-vars-file
-      - .env.yaml
-      - --add-cloudsql-instances
-      - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-      - --vpc-connector
-      - redis-connector
-      - --task-timeout
-      - 3600s
-      - --max-retries
-      - '3'
-      - --cpu
-      - '4'
-      - --memory
-      - 8Gi
+      - --command=python
+      - --args=manage.py,run_job_execution
+      - --env-vars-file=.env.yaml
+      - --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector=redis-connector
+      - --task-timeout=3600s
+      - --max-retries=3
+      - --cpu=4
+      - --memory=8Gi
     id: 'deploy-celery-job'
    
 
