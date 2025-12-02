@@ -15,7 +15,7 @@ try:
 except Exception as e:
     logger.error(f"❌ google-cloud-run hiba: {e}")
     run_v2 = None
-    NotFound = Exception  # fallback
+    NotFound = Exception
 
 from diagnostics_jobs.tasks import run_diagnostic_job
 
@@ -47,19 +47,24 @@ def enqueue_diagnostic_job(job_id: int):
         client = run_v2.JobsClient()
         job_path = f"projects/{PROJECT_ID}/locations/{REGION}/jobs/{JOB_NAME}"
         
-        # ✅ EGYSZERŰ HÍVÁS - dict-tel
-        execution = client.run_job(
+        # ✅ KRITIKUS: RunJobRequest objektumot kell használni!
+        request = run_v2.RunJobRequest(
             name=job_path,
-            overrides={
-                "container_overrides": [
-                    {
-                        "name": "celery-job-container",
-                        "args": ["python", "manage.py", "run_job_execution"],
-                        "env": [{"name": "JOB_ID", "value": str(job_id)}],
-                    }
+            overrides=run_v2.RunJobRequest.Overrides(
+                container_overrides=[
+                    run_v2.RunJobRequest.Overrides.ContainerOverride(
+                        name="celery-job-container",
+                        args=["python", "manage.py", "run_job_execution"],
+                        env=[
+                            run_v2.EnvVar(name="JOB_ID", value=str(job_id))
+                        ],
+                    )
                 ]
-            },
+            ),
         )
+        
+        # ✅ A request objektumot adjuk át
+        execution = client.run_job(request=request)
         
         logger.info(f"✅ Job elindítva: {execution.name}")
         
