@@ -2,7 +2,9 @@ import os
 import logging
 from google.cloud import run_v2
 from google.api_core.exceptions import NotFound
-from google.cloud.run_v2 import RunJobRequest, ContainerOverride, EnvVar
+from google.cloud.run_v2 import RunJobRequest
+from google.cloud.run_v2.types import RunJobRequest as RunJobRequestType
+from google.cloud.run_v2.types import Overrides, ContainerOverride, EnvVar
 from diagnostics_jobs.tasks import run_diagnostic_job
 
 logger = logging.getLogger(__name__)
