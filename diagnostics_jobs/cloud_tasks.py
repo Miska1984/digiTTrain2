@@ -30,7 +30,7 @@ def enqueue_diagnostic_job(job_id: int):
         # ✅ Helyesen definiált ContainerOverride
         request = run_v2.RunJobRequest(
             name=job_path,
-            overrides=run_v2.RunJobRequest.Overrides(
+            overrides=run_v2.Overrides(
                 container_overrides=[
                     run_v2.ContainerOverride(
                         env=[run_v2.EnvVar(name="JOB_ID", value=str(job_id))]
