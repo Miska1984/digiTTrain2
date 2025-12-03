@@ -2,9 +2,6 @@ import os
 import logging
 from google.cloud import run_v2
 from google.api_core.exceptions import NotFound
-from google.cloud.run_v2 import RunJobRequest
-from google.cloud.run_v2.types import RunJobRequest as RunJobRequestType
-from google.cloud.run_v2.types import Overrides, ContainerOverride, EnvVar
 from diagnostics_jobs.tasks import run_diagnostic_job
 
 logger = logging.getLogger(__name__)
@@ -31,12 +28,12 @@ def enqueue_diagnostic_job(job_id: int):
         job_path = f"projects/{PROJECT_ID}/locations/{REGION}/jobs/{JOB_NAME}"
 
         # ✅ Helyesen definiált ContainerOverride
-        request = RunJobRequest(
+        request = run_v2.RunJobRequest(
             name=job_path,
-            overrides=RunJobRequest.Overrides(
+            overrides=run_v2.RunJobRequest.Overrides(
                 container_overrides=[
-                    ContainerOverride(
-                        env=[EnvVar(name="JOB_ID", value=str(job_id))]
+                    run_v2.ContainerOverride(
+                        env=[run_v2.EnvVar(name="JOB_ID", value=str(job_id))]
                     )
                 ]
             ),
