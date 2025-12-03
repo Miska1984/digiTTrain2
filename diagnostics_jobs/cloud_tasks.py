@@ -6,6 +6,7 @@ from diagnostics_jobs.tasks import run_diagnostic_job
 
 logger = logging.getLogger(__name__)
 
+# ======= Alapbeállítások =======
 ENV = os.getenv("ENVIRONMENT", "development").lower()
 LOCAL_DEV = ENV in ["development", "local", "dev", "codespaces"]
 
@@ -22,32 +23,40 @@ def enqueue_diagnostic_job(job_id: int):
         return
 
     try:
-        logger.info(f"🚀 Cloud Run Job: {JOB_NAME} (job_id={job_id})")
+        logger.info(f"🚀 Cloud Run Job indítása: {JOB_NAME} (job_id={job_id})")
 
         client = run_v2.JobsClient()
         job_path = f"projects/{PROJECT_ID}/locations/{REGION}/jobs/{JOB_NAME}"
 
-        # ✅ Helyesen definiált ContainerOverride
+        # ✅ A RunJobRequest-ben az overrides helyes szerkezete:
         request = run_v2.RunJobRequest(
             name=job_path,
             overrides=run_v2.Overrides(
                 container_overrides=[
                     run_v2.ContainerOverride(
-                        env=[run_v2.EnvVar(name="JOB_ID", value=str(job_id))]
+                        env=[
+                            run_v2.EnvVar(
+                                name="JOB_ID",
+                                value=str(job_id)
+                            )
+                        ]
                     )
                 ]
-            ),
+            )
         )
 
+        # ✅ Job futtatása
         operation = client.run_job(request=request)
         logger.info(f"✅ Cloud Run Job execution indítva (operation: {operation.operation.name})")
 
+        # ✅ Részletes metaadat loggolása
         if hasattr(operation, "metadata") and operation.metadata:
-            execution_name = getattr(operation.metadata, "name", "N/A")
-            logger.info(f"   Execution név: {execution_name}")
+            execution_name = getattr(operation.metadata, "name", None)
+            if execution_name:
+                logger.info(f"🧩 Execution név: {execution_name}")
 
     except NotFound:
-        logger.error(f"❌ Job nem található: {JOB_NAME}")
+        logger.error(f"❌ A Cloud Run Job nem található: {JOB_NAME}")
         raise
     except Exception as e:
         logger.exception(f"❌ Job indítási hiba: {e}")
