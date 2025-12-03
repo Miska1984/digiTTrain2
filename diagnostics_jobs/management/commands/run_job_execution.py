@@ -41,3 +41,5 @@ class Command(BaseCommand):
         except Exception as e:
             logger.critical(f"❌ [JOB EXECUTION] Kritikus hiba a job futtatása közben #{job_id}: {e}", exc_info=True)
             sys.exit(1) # Kilépés hibával
+
+            
