@@ -130,38 +130,28 @@ steps:
       - --timeout
       - 300s
 
-  # 9️⃣ Deploy Cloud Run Job (celery-worker-job) - JAVÍTOTT
+  # 9️⃣ Deploy Cloud Run Job (celery-worker-job)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
+    entrypoint: gcloud
     args:
-      - -c
-      - |
-        gcloud run jobs update celery-worker-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
-          --region europe-west1 \
-          --command python \
-          --args "manage.py,run_job_execution" \
-          --set-env-vars "$(cat .env.yaml | tr '\n' ',' | sed 's/,$//')" \
-          --add-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-          --vpc-connector redis-connector \
-          --task-timeout 3600s \
-          --max-retries 3 \
-          --cpu 4 \
-          --memory 8Gi \
-        || gcloud run jobs create celery-worker-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest \
-          --region europe-west1 \
-          --command python \
-          --args "manage.py,run_job_execution" \
-          --set-env-vars "$(cat .env.yaml | tr '\n' ',' | sed 's/,$//')" \
-          --add-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-          --vpc-connector redis-connector \
-          --task-timeout 3600s \
-          --max-retries 3 \
-          --cpu 4 \
-          --memory 8Gi
+      - run
+      - jobs
+      - update
+      - celery-worker-job
+      - --image
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
+      - --region
+      - europe-west1
+      - --command=python
+      - --args=manage.py,run_job_execution
+      - --env-vars-file=.env.yaml
+      - --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector=redis-connector
+      - --task-timeout=3600s
+      - --max-retries=3
+      - --cpu=4
+      - --memory=8Gi
     id: 'deploy-celery-job'
-   
 
 timeout: 3600s
 
