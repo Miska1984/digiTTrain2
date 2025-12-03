@@ -1,5 +1,5 @@
 # ----------------------------
-# ⚙️ Dockerfile.worker – Celery / Cloud Run Job konténer
+# ⚙️ Celery / Cloud Run Job Container
 # ----------------------------
 FROM python:3.12-slim
 
@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # ----------------------------
-# 🧩 Rendszerfüggőségek (OpenCV, WeasyPrint, MediaPipe, PDF, stb.)
+# 🧩 System dependencies
 # ----------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -35,61 +35,68 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------
-# 📦 Python függőségek
+# 🧘 TensorFlow / MediaPipe CPU-only environment
 # ----------------------------
-COPY requirements.txt ./
-RUN pip install --upgrade pip
-RUN pip install --no-cache-dir -r requirements.txt
+ENV TF_CPP_MIN_LOG_LEVEL=2
+ENV TF_ENABLE_ONEDNN_OPTS=0
+ENV CUDA_VISIBLE_DEVICES=-1
 
 # ----------------------------
-# 🧩 GCP kliens modulok megerősítése
+# 📦 Python dependencies
+# ----------------------------
+COPY requirements.txt ./
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --upgrade protobuf==4.25.3 && \
+    pip install --no-cache-dir -r requirements.txt
+
+# ----------------------------
+# 🧩 GCP client libraries
 # ----------------------------
 RUN pip install --no-cache-dir google-cloud-run google-cloud-storage
 
-# Ellenőrzés, hogy tényleg elérhetők
-RUN python -c "from google.cloud import run_v2; print('✅ google-cloud-run import OK')"
-RUN python -c "from google.cloud import storage; print('✅ google-cloud-storage import OK')"
+# Verify imports
+RUN python -c "from google.cloud import run_v2, storage; import tensorflow, mediapipe; print('✅ Worker imports OK')"
 
 # ----------------------------
-# 🧠 Matplotlib és Fontconfig fixek (cache és font hibák elkerüléséhez)
+# 🧠 Matplotlib cache fix
 # ----------------------------
 ENV MPLCONFIGDIR=/tmp/matplotlib_cache
 RUN mkdir -p /tmp/matplotlib_cache && chmod -R 777 /tmp/matplotlib_cache
 
 # ----------------------------
-# 📁 Projektfájlok
+# 📁 Project files
 # ----------------------------
 COPY . .
 
 # ----------------------------
-# 🔐 Szolgáltatási fiók kulcs
+# 🔐 GCP credentials
 # ----------------------------
 COPY gcp_service_account.json /app/gcp_service_account.json
 ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
 
 # ----------------------------
-# ⚙️ Django környezeti beállítások
+# ⚙️ Django environment
 # ----------------------------
 ENV ENVIRONMENT=production
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/usr/local/lib/python3.12/site-packages:/app
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 ENV PORT=8080
 
 # ----------------------------
-# 📁 Temp könyvtár a job futáshoz
+# 📁 Temp directory for job runs
 # ----------------------------
 RUN mkdir -p /tmp/diagnostics && chmod 777 /tmp/diagnostics
 
 # ----------------------------
-# 🎯 MediaPipe asset ellenőrzés
+# 🎯 MediaPipe asset check
 # ----------------------------
 RUN if [ -f assets/pose_landmarker_full.task ]; then \
         echo "✅ MediaPipe asset found."; \
     else \
-        echo "⚠️ WARNING: MediaPipe asset not found" && exit 1; \
+        echo "⚠️ MediaPipe asset not found, will be downloaded at runtime."; \
     fi
 
 # ----------------------------
-# ▶️ Parancs (nem Celery daemon!)
+# ▶️ Run command (Cloud Run Job)
 # ----------------------------
-CMD ["python", "manage.py", "run_job_execution"]
+ENTRYPOINT ["python", "manage.py", "run_job_execution"]

@@ -1,5 +1,5 @@
 # ----------------------------
-# 📦 Alap image
+# 📦 Base image
 # ----------------------------
 FROM python:3.12-slim
 
@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # ----------------------------
-# 🧩 Rendszerfüggőségek
+# 🧩 System dependencies
 # ----------------------------
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -35,29 +35,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------
-# 📦 Python függőségek
+# 🧘 TensorFlow / MediaPipe CPU-only environment
+# ----------------------------
+ENV TF_CPP_MIN_LOG_LEVEL=2
+ENV TF_ENABLE_ONEDNN_OPTS=0
+ENV CUDA_VISIBLE_DEVICES=-1
+
+# ----------------------------
+# 📦 Python dependencies
 # ----------------------------
 COPY requirements.txt ./requirements.txt
 COPY package.json ./package.json
 COPY tailwind.config.js ./tailwind.config.js
 COPY static/src/input.css ./static/src/input.css
 
-# ⚠️ KRITIKUS: Előbb telepítjük a protobuf 4.25.3-at, MAJD a többit
+# Install protobuf first to ensure Google libs are compatible
 RUN pip install --upgrade pip && \
+    pip install --no-cache-dir --upgrade protobuf==4.25.3 && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
-RUN python -m pip show google-cloud-run
-
-# ✅ Ellenőrzés: protobuf verzió
-RUN python -c "import google.protobuf; print(f'✅ Protobuf: {google.protobuf.__version__}')"
-
-# ✅ Google Cloud import tesztek
-RUN python -c "from google.cloud import run_v2; print('✅ run_v2 import OK')" || exit 1
-RUN python -c "from google.cloud import storage; print('✅ storage import OK')" || exit 1
-
-# ✅ AI/ML import tesztek
-RUN python -c "import tensorflow as tf; print(f'✅ TensorFlow: {tf.__version__}')" || exit 1
-RUN python -c "import mediapipe as mp; print(f'✅ MediaPipe: {mp.__version__}')" || exit 1
+# ✅ Sanity checks
+RUN python -c "import google.cloud.run_v2, google.cloud.storage, tensorflow, mediapipe; print('✅ All imports OK')"
 
 # ----------------------------
 # 🎨 Tailwind CSS build
@@ -68,56 +66,54 @@ RUN npm install && \
     npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify
 
 # ----------------------------
-# 📁 Projektfájlok
+# 📁 Project files
 # ----------------------------
 COPY . .
 
-# Python cache tisztítása
+# Cleanup caches
 RUN find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 RUN find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
-# GCP kulcs másolása
+# ----------------------------
+# 🔐 GCP credentials
+# ----------------------------
 COPY gcp_service_account.json /app/gcp_service_account.json
 ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
 
-# MediaPipe asset ellenőrzés
+# ----------------------------
+# 🧠 MediaPipe asset check
+# ----------------------------
 RUN if [ -f assets/pose_landmarker_full.task ]; then \
-        echo "✅ MediaPipe assets found."; \
+        echo "✅ MediaPipe asset found."; \
     else \
-        echo "⚠️ WARNING: MediaPipe asset not found" && exit 1; \
+        echo "⚠️ MediaPipe asset not found, will be downloaded at runtime."; \
     fi
 
 # ----------------------------
-# ⚙️ Django környezet
+# ⚙️ Django environment
 # ----------------------------
 ENV ENVIRONMENT=production
-ENV PYTHONPATH=/app:/usr/local/lib/python3.12/site-packages
+ENV PYTHONPATH=/usr/local/lib/python3.12/site-packages:/app
 ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 ENV PORT=8080
 
 # ----------------------------
-# 🧱 Statikus fájlok
+# 🧱 Static files
 # ----------------------------
 ENV BUILD_MODE=true
 RUN python manage.py collectstatic --no-input --verbosity=2
 ENV BUILD_MODE=false
 
+# ----------------------------
+# 👤 User and permissions
+# ----------------------------
 RUN mkdir -p /app/media_root /app/staticfiles_temp && \
     chown -R www-data:www-data /app/media_root /app/staticfiles_temp && \
     chmod -R 775 /app/media_root /app/staticfiles_temp
 
-# Jogosultságok
-RUN chmod -R a+rX /usr/local/lib/python3.12/site-packages
-
-# ----------------------------
-# 👤 Felhasználó
-# ----------------------------
 USER www-data
 
-# ✅ PYTHONPATH fix a www-data számára
-ENV PYTHONPATH=/usr/local/lib/python3.12/site-packages:/app
-
 # ----------------------------
-# ▶️ Indítás
+# ▶️ Start Gunicorn
 # ----------------------------
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--timeout", "120", "--workers", "2", "digiTTrain.wsgi:application"]
