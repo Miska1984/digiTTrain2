@@ -6,7 +6,6 @@ from diagnostics_jobs.tasks import run_diagnostic_job
 
 logger = logging.getLogger(__name__)
 
-# ======= Alapbeállítások =======
 ENV = os.getenv("ENVIRONMENT", "development").lower()
 LOCAL_DEV = ENV in ["development", "local", "dev", "codespaces"]
 
@@ -17,6 +16,7 @@ JOB_NAME = os.getenv("CLOUD_RUN_JOB_NAME", "celery-worker-job")
 
 def enqueue_diagnostic_job(job_id: int):
     """Cloud Run Job indítása vagy Celery fallback."""
+
     if LOCAL_DEV:
         logger.info(f"⚙️ [LOCAL] Celery: job_id={job_id}")
         run_diagnostic_job.delay(job_id)
@@ -28,35 +28,34 @@ def enqueue_diagnostic_job(job_id: int):
         client = run_v2.JobsClient()
         job_path = f"projects/{PROJECT_ID}/locations/{REGION}/jobs/{JOB_NAME}"
 
-        # ✅ A RunJobRequest-ben az overrides helyes szerkezete:
-        request = run_v2.RunJobRequest(
-            name=job_path,
-            overrides=run_v2.Overrides(
-                container_overrides=[
-                    run_v2.ContainerOverride(
-                        env=[
-                            run_v2.EnvVar(
-                                name="JOB_ID",
-                                value=str(job_id)
-                            )
-                        ]
-                    )
-                ]
-            )
+        # ⚙️ A container_override-hoz mindig meg kell adni egy nevet
+        # Ha a job YAML-ban nincs explicit név, akkor "None" lesz → 
+        # a Python API-nál ezt így kell kezelni:
+        container_override = run_v2.ContainerOverride(
+            name="",  # üres string = default container
+            env=[
+                run_v2.EnvVar(name="JOB_ID", value=str(job_id))
+            ]
         )
 
-        # ✅ Job futtatása
-        operation = client.run_job(request=request)
-        logger.info(f"✅ Cloud Run Job execution indítva (operation: {operation.operation.name})")
+        overrides = run_v2.Overrides(container_overrides=[container_override])
 
-        # ✅ Részletes metaadat loggolása
+        request = run_v2.RunJobRequest(
+            name=job_path,
+            overrides=overrides,
+        )
+
+        logger.info(f"[DEBUG] RunJobRequest: {request}")
+
+        operation = client.run_job(request=request)
+        logger.info("✅ Cloud Run Job execution elindítva.")
+
         if hasattr(operation, "metadata") and operation.metadata:
-            execution_name = getattr(operation.metadata, "name", None)
-            if execution_name:
-                logger.info(f"🧩 Execution név: {execution_name}")
+            execution_name = getattr(operation.metadata, "name", "N/A")
+            logger.info(f"   Execution név: {execution_name}")
 
     except NotFound:
-        logger.error(f"❌ A Cloud Run Job nem található: {JOB_NAME}")
+        logger.error(f"❌ Job nem található: {JOB_NAME}")
         raise
     except Exception as e:
         logger.exception(f"❌ Job indítási hiba: {e}")
