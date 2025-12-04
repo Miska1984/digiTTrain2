@@ -27,26 +27,28 @@ def enqueue_diagnostic_job(job_id: int):
         client = run_v2.JobsClient()
         job_path = f"projects/{PROJECT_ID}/locations/{REGION}/jobs/{JOB_NAME}"
 
-        # ✅ Kompatibilis konstrukció minden verzióhoz
-        overrides_class = getattr(run_v2, "ExecutionOverrides", getattr(run_v2, "Overrides", None))
-        if not overrides_class:
-            raise RuntimeError("❌ Nincs elérhető Overrides / ExecutionOverrides az aktuális google-cloud-run verzióban.")
-
-        overrides = overrides_class(
-            container_overrides=[
-                run_v2.ContainerOverride(
-                    env=[run_v2.EnvVar(name="JOB_ID", value=str(job_id))]
-                )
+        # ✅ Az új API-ban az 'overrides' közvetlenül dict lehet
+        overrides_payload = {
+            "container_overrides": [
+                {
+                    "env": [
+                        {"name": "JOB_ID", "value": str(job_id)}
+                    ]
+                }
             ]
-        )
+        }
 
         request = run_v2.RunJobRequest(
             name=job_path,
-            overrides=overrides,
+            overrides=overrides_payload
         )
 
         operation = client.run_job(request=request)
-        logger.info(f"✅ Cloud Run Job execution elindítva (operation: {operation.operation.name})")
+        logger.info(f"✅ Cloud Run Job execution elindítva: {operation.operation.name}")
+
+        if hasattr(operation, "metadata") and operation.metadata:
+            execution_name = getattr(operation.metadata, "name", "N/A")
+            logger.info(f"   Execution név: {execution_name}")
 
     except NotFound:
         logger.error(f"❌ Cloud Run Job nem található: {JOB_NAME}")
@@ -54,4 +56,5 @@ def enqueue_diagnostic_job(job_id: int):
     except Exception as e:
         logger.exception(f"❌ Job indítási hiba: {e}")
         raise
+
 
