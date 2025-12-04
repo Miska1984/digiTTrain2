@@ -54,6 +54,9 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir --upgrade protobuf==4.25.3 && \
     pip install --no-cache-dir --default-timeout=300 -r requirements.txt
 
+# ✅ Fix: Frissítjük a google-cloud-run csomagot az ExecutionOverrides támogatáshoz
+RUN pip install --no-cache-dir --upgrade "google-cloud-run>=0.10.0"
+
 # ✅ Sanity checks
 RUN python -c "import google.cloud.run_v2, google.cloud.storage, tensorflow, mediapipe; print('✅ All imports OK')"
 

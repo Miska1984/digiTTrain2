@@ -49,6 +49,9 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir --upgrade protobuf==4.25.3 && \
     pip install --no-cache-dir -r requirements.txt
 
+# ✅ Fix: Frissítjük a google-cloud-run csomagot az ExecutionOverrides támogatáshoz
+RUN pip install --no-cache-dir --upgrade "google-cloud-run>=0.10.0"    
+
 # ----------------------------
 # 🧩 GCP client libraries
 # ----------------------------
