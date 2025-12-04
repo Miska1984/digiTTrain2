@@ -3,6 +3,8 @@ import os
 import sys
 from .base import *
 
+USE_GCS_STATIC = os.getenv("USE_GCS_STATIC", "false").lower() == "true"
+
 print(">>> [DEBUG] Production settings loaded <<<", file=sys.stderr)
 
 # Production-specifikus beállítások
@@ -46,13 +48,41 @@ GS_QUERYSTRING_AUTH = False
 GS_FILE_OVERWRITE = False
 GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
 
-# URL-ek
-MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
-STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
 
-# Ideiglenes mappák (collectstatic-hez)
-STATIC_ROOT = "/app/staticfiles_temp"
-MEDIA_ROOT = "/app/mediafiles_temp"
+
+if USE_GCS_STATIC:
+    # ---- EREDETI GCS BEÁLLÍTÁSOK ----
+    STATIC_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/static/"
+    MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
+    STATIC_ROOT = "/app/staticfiles_temp"
+    MEDIA_ROOT = "/app/mediafiles_temp"
+    
+    STORAGES = {
+        "default": {
+            "BACKEND": "digiTTrain.production.MediaStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "digiTTrain.production.StaticStorage",
+        },
+    }
+    print(">>> [DEBUG] Using GCS for static and media <<<", file=sys.stderr)
+
+else:
+    # ---- WHITENOISE HELYI STATIKUS KISZOLGÁLÁS ----
+    STATIC_URL = "/static/"
+    MEDIA_URL = "/media/"
+    STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+    MEDIA_ROOT = os.path.join(BASE_DIR, "mediafiles")
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+    print(">>> [DEBUG] Using local static files (Whitenoise) <<<", file=sys.stderr)
+
 
 # Logging a hibakereséshez
 import logging
