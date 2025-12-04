@@ -15,7 +15,7 @@ JOB_NAME = os.getenv("CLOUD_RUN_JOB_NAME", "celery-worker-job")
 
 
 def enqueue_diagnostic_job(job_id: int):
-    """Cloud Run Job indítása vagy Celery fallback."""
+    """Cloud Run Job indítása vagy Celery fallback (ExecutionOverrides-szal)."""
     if LOCAL_DEV:
         logger.info(f"⚙️ [LOCAL] Celery fallback: job_id={job_id}")
         run_diagnostic_job.delay(job_id)
@@ -27,21 +27,24 @@ def enqueue_diagnostic_job(job_id: int):
         client = run_v2.JobsClient()
         job_path = f"projects/{PROJECT_ID}/locations/{REGION}/jobs/{JOB_NAME}"
 
-        # ✅ RunJobRequest (helyes API struktúra)
+        # ✅ Új API szerkezet – ExecutionOverrides ahelyett, hogy Overrides
+        overrides = run_v2.ExecutionOverrides(
+            container_overrides=[
+                run_v2.ContainerOverride(
+                    env=[run_v2.EnvVar(name="JOB_ID", value=str(job_id))]
+                )
+            ]
+        )
+
         request = run_v2.RunJobRequest(
             name=job_path,
-            overrides=run_v2.Overrides(
-                container_overrides=[
-                    run_v2.ContainerOverride(
-                        env=[run_v2.EnvVar(name="JOB_ID", value=str(job_id))]
-                    )
-                ]
-            ),
+            overrides=overrides
         )
 
         operation = client.run_job(request=request)
         logger.info(f"✅ Cloud Run Job execution elindítva (operation: {operation.operation.name})")
 
+        # Metaadatok (ha vannak)
         if hasattr(operation, "metadata") and operation.metadata:
             execution_name = getattr(operation.metadata, "name", "N/A")
             logger.info(f"   Execution név: {execution_name}")
@@ -52,3 +55,4 @@ def enqueue_diagnostic_job(job_id: int):
     except Exception as e:
         logger.exception(f"❌ Job indítási hiba: {e}")
         raise
+
