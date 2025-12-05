@@ -28,7 +28,7 @@ steps:
         CLOUD_RUN_JOB_NAME: celery-worker-job
         REDIS_HOST: 10.32.84.131
         REDIS_PORT: "6379"
-        USE_GCS_STATIC: "false"
+        USE_GCS_STATIC: "true"
         BUILD_MODE: "false"
         ENVEOF
         
