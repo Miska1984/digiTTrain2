@@ -24,54 +24,51 @@ def get_local_video_path(job_url: str) -> str:
     """
     Kinyeri a videó letöltéséhez szükséges lokális elérési utat.
     """
-    
-    gcs_object_path = None
-    full_download_url = job_url # Alapértelmezésben a Job URL-t használjuk
 
-    # 1. Próba: Hagyományos MEDIA_URL alapú konverzió (lokális fejlesztéshez)
-    if job_url.startswith(settings.MEDIA_URL) and not 'storage.googleapis.com' in settings.MEDIA_URL:
-        # Lokális útvonal kiszámítása (ha a DevelopmentMediaStorage-ot FileSystemStorage-ként használjuk)
+    gcs_object_path = None
+    full_download_url = job_url  # Alapértelmezésben a Job URL-t használjuk
+
+    # 1️⃣ Lokális fejlesztés: MEDIA_URL → MEDIA_ROOT
+    if job_url.startswith(settings.MEDIA_URL) and "storage.googleapis.com" not in settings.MEDIA_URL:
         relative_path = job_url[len(settings.MEDIA_URL):]
         local_path = os.path.join(settings.MEDIA_ROOT, relative_path)
         logger.info(f"💾 Fájl betöltése MEDIA_ROOT-ból: {local_path}")
         return local_path
 
-    # 2. Próba: GCS URL-ből való kinyerés
-    if 'storage.googleapis.com' in job_url:
+    # 2️⃣ GCS URL feldolgozása
+    if "storage.googleapis.com" in job_url:
         match = re.search(GCS_URL_PATTERN, job_url)
         if match:
-            # gcs_object_path: Pl. 'media/dev/videos/uploads/...'
-            gcs_object_path = match.group(1) 
-            # A full_download_url már be van állítva fent: full_download_url = job_url
+            gcs_object_path = match.group(1)
         else:
             logger.error(f"❌ Nem sikerült kinyerni a GCS objektum útvonalát: {job_url}")
             raise RuntimeError(f"Hibás GCS URL formátum: {job_url}")
 
-    # 3. GCS-ből való letöltés (requests-szel a prefix hiba elkerülése érdekében)
-    if 'storage.googleapis.com' in full_download_url:
-        # Ideiglenes fájl a /tmp könyvtárban
-        local_temp_path = os.path.join("/tmp", os.path.basename(gcs_object_path or "temp_video.mp4"))
+        # ✅ Biztonságos fájlnév (nem tartalmazza az aláírási paramétereket)
+        parsed_url = urlparse(full_download_url)
+        clean_name = os.path.basename(parsed_url.path)
+        if not clean_name:
+            clean_name = "temp_video.mp4"
+
+        local_temp_path = os.path.join("/tmp", clean_name)
 
         try:
-            logger.info(f"⬇️ Fájl letöltése GCS-ről (Requests-szel): {full_download_url}")
-
-            # Használjuk a requests-et, hogy megkerüljük a DevelopmentMediaStorage prefixelési hibáját
+            logger.info(f"⬇️ Videó letöltése GCS-ről: {full_download_url}")
             response = requests.get(full_download_url, stream=True)
-            response.raise_for_status() # Hiba esetén exception
+            response.raise_for_status()
 
-            with open(local_temp_path, 'wb') as local_file:
-                # Letöltés és mentés a /tmp-be chunk-onként
+            with open(local_temp_path, "wb") as local_file:
                 for chunk in response.iter_content(chunk_size=8192):
                     local_file.write(chunk)
-            
-            logger.info(f"✅ Fájl letöltve a /tmp-be: {local_temp_path}")
+
+            logger.info(f"✅ Videó letöltve: {local_temp_path}")
             return local_temp_path
 
         except Exception as e:
-            logger.critical(f"❌ Kritikus hiba a GCS letöltéskor (Requests-szel, {full_download_url}): {e}")
+            logger.critical(f"❌ Hiba a GCS videó letöltésekor: {e}")
             raise RuntimeError(f"Nem sikerült letölteni a videót a feldolgozáshoz: {e}")
 
-    # 4. Ha sem a MEDIA_URL, sem a GCS URL nem illik rá
+    # 3️⃣ Ha sem MEDIA_URL, sem GCS nem illik
     raise RuntimeError(f"Érvénytelen videó URL formátum: {job_url}")
 
 def get_local_image_path(image_url: str) -> str:
