@@ -115,6 +115,23 @@ if BUILD_MODE:
     STATIC_URL = "/static/"
     MEDIA_URL = "/media/"
 
+# ===============================
+# 🧩 Kényszerített GCS használat médiára (PDF, képek, videók)
+# ===============================
+if not BUILD_MODE:
+    from storages.backends import gcloud
+
+    class MediaStorage(gcloud.GoogleCloudStorage):
+        bucket_name = GS_BUCKET_NAME
+        default_acl = "publicRead"
+        querystring_auth = False
+        location = ""
+
+    STORAGES["default"] = {"BACKEND": "digiTTrain.production.MediaStorage"}
+    MEDIA_URL = f"https://storage.googleapis.com/{GS_BUCKET_NAME}/"
+    MEDIA_ROOT = "/app/mediafiles_temp"
+
+    print(">>> [FORCE] Using GCS for MEDIA files <<<", file=sys.stderr)
 
 # ===== CELERY BEÁLLÍTÁSOK =====
 REDIS_HOST = os.getenv('REDIS_HOST', '10.32.84.131')
