@@ -45,7 +45,8 @@ USE_GCS_STATIC = os.getenv("USE_GCS_STATIC", "false").lower() == "true"
 BUILD_MODE = os.getenv("BUILD_MODE", "false").lower() == "true"
 
 GS_AUTO_CREATE_BUCKET = False
-GS_DEFAULT_ACL = "publicRead"
+# ✅ KRITIKUS JAVÍTÁS: UBLA kompatibilitás
+GS_DEFAULT_ACL = None  # ❌ NE használj "publicRead"-et UBLA-val!
 GS_QUERYSTRING_AUTH = False
 GS_FILE_OVERWRITE = False
 GS_MAX_MEMORY_SIZE = 1024 * 1024 * 5  # 5MB
@@ -62,7 +63,7 @@ if USE_GCS_STATIC:
 
     class MediaStorage(gcloud.GoogleCloudStorage):
         bucket_name = GS_BUCKET_NAME
-        default_acl = None
+        default_acl = None  # ✅ UBLA kompatibilitás
         querystring_auth = False
         location = ''
 
@@ -79,7 +80,7 @@ if USE_GCS_STATIC:
 
     class StaticStorage(gcloud.GoogleCloudStorage):
         bucket_name = GS_BUCKET_NAME
-        default_acl = None
+        default_acl = None  # ✅ UBLA kompatibilitás
         querystring_auth = False
         location = 'static'
 
@@ -123,7 +124,7 @@ if not BUILD_MODE:
 
     class MediaStorage(gcloud.GoogleCloudStorage):
         bucket_name = GS_BUCKET_NAME
-        default_acl = "publicRead"
+        default_acl = None  # ✅ KRITIKUS: UBLA kompatibilitás
         querystring_auth = False
         location = ""
 
