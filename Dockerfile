@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libsm6 libxext6 libxrender-dev \
     libgl1 \
     curl && \
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
     apt-get install -y nodejs && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -63,7 +63,9 @@ RUN python -c "import google.cloud.run_v2, google.cloud.storage, tensorflow, med
 # ----------------------------
 # 🎨 Tailwind CSS build
 # ----------------------------
-RUN npm install && \
+RUN node -v && npm -v && \
+    npm install -g npm@latest && \
+    npm install && \
     npm install -g tailwindcss && \
     mkdir -p ./static/dist && \
     npx tailwindcss -i ./static/src/input.css -o ./static/dist/output.css --minify
