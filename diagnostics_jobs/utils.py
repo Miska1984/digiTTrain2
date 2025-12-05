@@ -74,11 +74,13 @@ def get_local_video_path(job_url: str) -> str:
 def get_local_image_path(image_url: str) -> str:
     """
     Letölti vagy előkészíti a képet (JPG/PNG) a feldolgozáshoz.
-    A működés megegyezik a get_local_video_path()-éval, csak képekhez optimalizálva.
+    Kezeli a GCS aláírt URL-eket is — levágja a paramétereket, így nem lesz túl hosszú a fájlnév.
     """
     import re
     import requests
     import os
+    import uuid
+    from urllib.parse import urlparse
 
     if not image_url:
         raise ValueError("❌ Nincs megadva kép URL.")
@@ -95,20 +97,21 @@ def get_local_image_path(image_url: str) -> str:
 
     # 2️⃣ GCS formátumú URL kezelése
     if "storage.googleapis.com" in image_url:
-        # Biztonságos regex minta
-        GCS_URL_PATTERN = r"https://storage\.googleapis\.com/[^/]+/(.+)"
-        match = re.search(GCS_URL_PATTERN, image_url)
-        if match:
-            gcs_object_path = match.group(1)
-        else:
-            logger.error(f"❌ Nem sikerült kinyerni a GCS objektum elérési útját: {image_url}")
-            raise RuntimeError(f"Hibás GCS URL formátum: {image_url}")
+        parsed = urlparse(image_url)
+        clean_path = parsed.path  # csak a path, query nélkül
+        clean_name = os.path.basename(clean_path)
 
-        # Lokális ideiglenes fájl a /tmp alá
-        local_temp_path = os.path.join("/tmp", os.path.basename(gcs_object_path or "temp_image.jpg"))
+        # ha valamiért üres lenne
+        if not clean_name:
+            clean_name = f"temp_{uuid.uuid4().hex}.jpg"
+
+        # egyedi azonosító, hogy ne ütközzön több párhuzamos feldolgozás
+        unique_suffix = uuid.uuid4().hex[:6]
+        safe_filename = f"{os.path.splitext(clean_name)[0]}_{unique_suffix}{os.path.splitext(clean_name)[1]}"
+
+        local_temp_path = os.path.join("/tmp", safe_filename)
 
         try:
-            # Ha a kép URL-je nem publikus vagy 404-et ad, próbáljuk meg a storage klienssel is
             logger.info(f"⬇️ Kép letöltése GCS-ről: {full_download_url}")
             response = requests.get(full_download_url, stream=True)
             response.raise_for_status()
@@ -121,17 +124,15 @@ def get_local_image_path(image_url: str) -> str:
             return local_temp_path
 
         except requests.exceptions.HTTPError as e:
-            # 404 vagy 403 esetén fallback a GCS API kliensre
+            # fallback GCS API kliens
             logger.warning(f"⚠️ HTTP hiba a letöltéskor ({e}). Fallback GCS API kliensre.")
             try:
                 from google.cloud import storage
                 client = storage.Client()
                 bucket_name = settings.GS_BUCKET_NAME
                 bucket = client.bucket(bucket_name)
-
-                # A GCS prefixeket (pl. "media/dev/") levágjuk
-                object_name = gcs_object_path.replace("media/dev/", "").replace("media/", "")
-                blob = bucket.blob(object_name)
+                blob_name = clean_path.lstrip('/')
+                blob = bucket.blob(blob_name)
                 blob.download_to_filename(local_temp_path)
 
                 logger.info(f"✅ GCS API-val letöltve: {local_temp_path}")
@@ -147,6 +148,7 @@ def get_local_image_path(image_url: str) -> str:
 
     # 3️⃣ Ha sem a MEDIA_URL, sem a GCS URL nem illik rá
     raise RuntimeError(f"Érvénytelen kép URL formátum: {image_url}")
+
 
 # ----------------------------------------------------------------------------------
 # A analyze_video_with_mediapipe függvény változatlanul jó, a kódfejlesztéshez
