@@ -2,71 +2,82 @@
 
 from django.shortcuts import render
 from django.utils.deprecation import MiddlewareMixin
-from django.conf import settings
-from .context_processors import ad_free_status # <-- A helyes függvénynevet importáljuk
+from django.utils import timezone
+from .context_processors import ad_free_status
+
 
 class InterstitialAdMiddleware(MiddlewareMixin):
-    """
-    Ez a middleware egy átmeneti (interstitial) hirdetési oldalt jelenít meg
-    minden N. kérés után, HA a felhasználó NEM hirdetésmentes.
-    A számlálót a felhasználó session-jében tárolja.
-    """
-    
+
     REQUEST_COUNTER_KEY = 'ad_interstitial_count'
-    REQUEST_LIMIT = 3 # Példa: minden 3. oldalbetöltésnél jelenik meg a hirdetés
-    
-    # Azon útvonalak, amiket figyelmen kívül hagyunk (pl. API hívások, statikus fájlok)
-    EXCLUDE_PATHS = [
-        '/admin/', 
-        '/static/', 
-        '/media/', 
-        '/billing/run-algorithm/', 
+    REQUEST_LIMIT = 3
+    AD_COOLDOWN_SECONDS = 180   # 3 perc hírdetés védelmi idő
+
+    EXCLUDE_PREFIXES = [
+        '/admin/',
+        '/static/',
+        '/media/',
         '/billing/ad-for-credit/',
         '/billing/toggle-ad-free/',
-        # 💥 FONTOS KIZÁRÁSOK a bejelentkezési, regisztrációs és kilépési oldalakhoz
-        '/users/login/',    # Kizárja a login oldalt (és az arra irányuló POST kérést)
-        '/users/logout/',   # Kizárja a logout útvonalat
-        '/users/register/', # Kizárja a regisztrációs oldalt
-        '/logout/',         # Esetleges más logout útvonal
-        '/login/',          # Esetleges más login útvonal (biztos, ami biztos)
-        '/register/',       # Esetleges más regisztrációs útvonal
-        '/main_page/',
-        '/index/'
-        '/users/roles/parent/get_sports_by_club/',
-        '/users/roles/parent/get_coaches_by_club_and_sport/',
-        '/users/roles/parent/',
-
+        '/billing/run-algorithm/',
+        '/login/',
+        '/logout/',
+        '/register/',
+        '/users/login/',
+        '/users/logout/',
+        '/users/register/',
     ]
-    
+
+    def should_skip(self, request):
+        path = request.path.lower()
+
+        # 1) Globális kizárások
+        for prefix in self.EXCLUDE_PREFIXES:
+            if path.startswith(prefix):
+                return True
+
+        # 2) AJAX automatikus kizárás
+        if '/ajax/' in path:
+            return True
+
+        # 3) API-szerű végpontok kizárása
+        if path.endswith('/json') or path.endswith('.json'):
+            return True
+
+        # 4) Nem bejelentkezett felhasználó
+        if not request.user.is_authenticated:
+            return True
+
+        # 5) Ha a felhasználó hirdetésmentes
+        is_ad_free = ad_free_status(request)['is_ad_free']
+        if is_ad_free:
+            return True
+
+        return False
+
     def process_request(self, request):
-        
-        # 1. Kizárások ellenőrzése (ne jelenjen meg admin oldalon, stb.)
-        for path in self.EXCLUDE_PATHS:
-            if request.path.startswith(path):
-                return None 
-        
-        # 2. Hirdetésmentes státusz ellenőrzése
-        # A ad_free_status(request) függvényt hívjuk meg (context_processors.py)
-        is_ad_free = ad_free_status(request)['is_ad_free'] 
-        
-        # Csak akkor foglalkozunk a számlálással és a hirdetéssel, ha be van jelentkezve ÉS NEM hirdetésmentes
-        if request.user.is_authenticated and not is_ad_free:
-            
-            # 3. Kérésszámláló kezelése a session-ben
-            # Lekérjük a számlálót, alapértelmezett értéke 0, ha nincs még session-ben
-            current_count = request.session.get(self.REQUEST_COUNTER_KEY, 0)
-            current_count += 1
-            # Visszaírjuk a növelt értéket a session-be
-            request.session[self.REQUEST_COUNTER_KEY] = current_count
-            
-            # 4. Megjelenítési limit ellenőrzése
-            if current_count >= self.REQUEST_LIMIT:
-                
-                # Visszaállítjuk a számlálót a hirdetés megjelenítése után
-                request.session[self.REQUEST_COUNTER_KEY] = 0 
-                
-                # Átmeneti oldal megjelenítése (ez megszakítja az eredeti kérés feldolgozását!)
-                return render(request, 'billing/interstitial_ad.html', {})
-                
-        # Ha a felhasználó hirdetésmentes, vagy nincs bejelentkezve, vagy a számláló alatt van, továbbengedjük.
+
+        if self.should_skip(request):
+            return None
+
+        # ⏳ 6) Hírdetés cooldown (180 mp)
+        last_ad_time = request.session.get('last_ad_time')
+
+        if last_ad_time:
+            last_ad_time = timezone.datetime.fromisoformat(last_ad_time)
+            elapsed = (timezone.now() - last_ad_time).total_seconds()
+
+            if elapsed < self.AD_COOLDOWN_SECONDS:
+                # Még tart a védelmi idő → soha nem mutatunk hirdetést
+                return None
+
+        # 🔢 7) Kérés számláló
+        current_count = request.session.get(self.REQUEST_COUNTER_KEY, 0) + 1
+        request.session[self.REQUEST_COUNTER_KEY] = current_count
+
+        # 🎯 Cél elérve: mutatjuk a hirdetést
+        if current_count >= self.REQUEST_LIMIT:
+            request.session[self.REQUEST_COUNTER_KEY] = 0
+            request.session['last_ad_time'] = timezone.now().isoformat()  # hírdetés ideje
+            return render(request, 'billing/interstitial_ad.html')
+
         return None

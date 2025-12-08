@@ -48,6 +48,12 @@
 {% block extra_js %}
 
 <script>
+
+function isHtmlResponse(data, jqXHR) {
+    const ct = jqXHR.getResponseHeader("Content-Type") || "";
+    return (typeof data === "string" && ct.includes("text/html"));
+}
+
 $(document).ready(function () {
     console.log("🧠 Új Athlete JS betöltve.");
 
@@ -76,67 +82,87 @@ $(document).ready(function () {
     // ---------------------------------------------------------
     // 🔵 SPORTOK BETÖLTÉSE
     // ---------------------------------------------------------
-    function loadSports(clubId, preselectSport = null, preselectCoach = null, preselectParent = null) {
+    function loadSports(clubId, initialSport = null, initialCoach = null, initialParent = null) {
         $("#id_sport").empty().append('<option value="">Válassz sportágat</option>');
         $("#id_coach").empty().append('<option value="">Válassz edzőt</option>');
         $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
-
+        
         if (!clubId) return;
 
         $.get("{% url 'users:get_sports_by_club' %}", { club_id: clubId })
-            .done(function (data) {
-                handleListResponse(data, function (list) {
-                    const select = $("#id_sport");
-                    list.forEach(i => select.append(`<option value="${i.id}">${i.name}</option>`));
+        .done(function(data, status, jqXHR) {
 
-                    if (preselectSport) select.val(preselectSport);
+            // 🚨 HTML válasz ellenőrzése
+            if (isHtmlResponse(data, jqXHR)) {
+                console.error("🚨 HTML érkezett JSON helyett (loadSports) → interstitial valószínű!\n", data.slice(0,150));
+                return;
+            }
 
-                    if (select.val()) {
-                        loadCoaches(clubId, select.val(), preselectCoach, preselectParent);
-                    }
-                });
-            })
-            .fail(function (xhr) {
-                console.error("❌ Hiba sportok betöltésekor:", xhr.responseText);
-            });
+            // 🚨 JSON tömb ellenőrzése
+            if (!Array.isArray(data)) {
+                console.error("❌ Hibás JSON (nem lista):", data);
+                return;
+            }
+
+            // --- ÉRVÉNYES VÁLASZ ---
+            let sportSelect = $("#id_sport");
+            data.forEach(item => sportSelect.append(`<option value="${item.id}">${item.name}</option>`));
+
+            if (initialSport) sportSelect.val(initialSport);
+
+            if (sportSelect.val()) {
+                loadCoaches(clubId, sportSelect.val(), initialCoach, initialParent);
+            }
+        })
+        .fail(function(xhr, status, error) {
+            console.error("AJAX HIBA (loadSports):", xhr.status, xhr.responseText);
+        });
     }
+
+
 
     // ---------------------------------------------------------
     // 🔵 EDZŐK BETÖLTÉSE
     // ---------------------------------------------------------
-    function loadCoaches(clubId, sportId, preselectCoach = null, preselectParent = null) {
+    function loadCoaches(clubId, sportId, initialCoach = null, initialParent = null) {
         $("#id_coach").empty().append('<option value="">Válassz edzőt</option>');
         $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
 
         if (!clubId || !sportId) return;
 
-        $.get("{% url 'users:get_coaches_by_club_and_sport' %}", {
-            club_id: clubId,
-            sport_id: sportId
+        $.get("{% url 'users:get_coaches_by_club_and_sport' %}", { club_id: clubId, sport_id: sportId })
+        .done(function(data, status, jqXHR) {
+
+            if (isHtmlResponse(data, jqXHR)) {
+                console.error("🚨 HTML érkezett JSON helyett (loadCoaches)!\n", data.slice(0,150));
+                return;
+            }
+
+            if (!Array.isArray(data)) {
+                console.error("❌ Hibás JSON (nem lista):", data);
+                return;
+            }
+
+            let coachSelect = $("#id_coach");
+            data.forEach(item => coachSelect.append(`<option value="${item.id}">${item.name}</option>`));
+
+            if (initialCoach) coachSelect.val(initialCoach);
+
+            if (coachSelect.val()) {
+                loadParents(clubId, sportId, coachSelect.val(), initialParent);
+            }
         })
-            .done(function (data) {
-                handleListResponse(data, function (list) {
-                    const select = $("#id_coach");
-                    list.forEach(i =>
-                        select.append(`<option value="${i.id}">${i.name}</option>`)
-                    );
-
-                    if (preselectCoach) select.val(preselectCoach);
-
-                    if (select.val()) {
-                        loadParents(clubId, sportId, select.val(), preselectParent);
-                    }
-                });
-            })
-            .fail(function (xhr) {
-                console.error("❌ Hiba edzők betöltésekor:", xhr.responseText);
-            });
+        .fail(function(xhr) {
+            console.error("AJAX HIBA (loadCoaches):", xhr.status, xhr.responseText);
+        });
     }
+
+
 
     // ---------------------------------------------------------
     // 🔵 SZÜLŐK BETÖLTÉSE (csak kiskorúnál)
     // ---------------------------------------------------------
-    function loadParents(clubId, sportId, coachId, preselectParent = null) {
+    function loadParents(clubId, sportId, coachId, initialParent = null) {
         $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
 
         if (!isUnderage) {
@@ -149,24 +175,30 @@ $(document).ready(function () {
         if (!clubId || !sportId || !coachId) return;
 
         $.get("{% url 'users:get_parents_by_club_sport_and_coach' %}", {
-            club_id: clubId,
-            sport_id: sportId,
-            coach_id: coachId
+            club_id: clubId, sport_id: sportId, coach_id: coachId
         })
-            .done(function (data) {
-                handleListResponse(data, function (list) {
-                    const select = $("#id_parent");
-                    list.forEach(i =>
-                        select.append(`<option value="${i.id}">${i.name}</option>`)
-                    );
+        .done(function(data, status, jqXHR) {
 
-                    if (preselectParent) select.val(preselectParent);
-                });
-            })
-            .fail(function (xhr) {
-                console.error("❌ Hiba szülők betöltésekor:", xhr.responseText);
-            });
+            if (isHtmlResponse(data, jqXHR)) {
+                console.error("🚨 HTML érkezett JSON helyett (loadParents)!\n", data.slice(0,150));
+                return;
+            }
+
+            if (!Array.isArray(data)) {
+                console.error("❌ Hibás JSON (nem lista):", data);
+                return;
+            }
+
+            let parentSelect = $("#id_parent");
+            data.forEach(item => parentSelect.append(`<option value="${item.id}">${item.name}</option>`));
+
+            if (initialParent) parentSelect.val(initialParent);
+        })
+        .fail(function(xhr) {
+            console.error("AJAX HIBA (loadParents):", xhr.status, xhr.responseText);
+        });
     }
+
 
     // ---------------------------------------------------------
     // 🔄 EVENT LISTENEREK
