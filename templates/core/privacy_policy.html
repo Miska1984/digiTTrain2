@@ -1,0 +1,59 @@
+{% extends "base_out.html" %}
+{% load static %}
+
+{% block title %}Adatvédelmi Tájékoztató - digiT-Train{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h1 class="mb-4 text-primary fw-bold">Adatvédelmi Tájékoztató</h1>
+        <p class="lead text-muted">Utolsó frissítés: 2025. december 9.</p>
+
+        <p>Jelen Tájékoztató célja, hogy tájékoztatást nyújtson a digiT-Train sportteljesítmény-elemző platform által végzett adatkezelésről, az Európai Unió Általános Adatvédelmi Rendeletének (GDPR) megfelelően.</p>
+
+        <h2 class="mt-5 text-secondary"><i class="bi bi-patch-check-fill me-2"></i> Hirdetések, Sütik és Külső Szolgáltatók</h2>
+        <hr>
+        <p>Weboldalunk Google AdSense hirdetéseket jelenít meg, amely harmadik fél szolgáltatóként sütiket használ a hirdetések személyre szabott megjelenítéséhez. Ezt az Ön korábbi webhelylátogatásai alapján teszi.</p>
+        <p>A Google DART-cookie használata lehetővé teszi, hogy a Google és partnerei hirdetéseket jelenítsenek meg az Ön számára az Ön által meglátogatott webhelyek alapján. Ön kikapcsolhatja a DART-cookie használatát a Google hirdetési és tartalmi hálózat adatvédelmi irányelveit tartalmazó oldalán.</p>
+        
+        <h2 class="mt-5 text-secondary"><i class="bi bi-person-lock me-2"></i> Kezelt Személyes Adatok Kategóriái</h2>
+        <hr>
+        
+        <h3 class="mt-4">1. Bejelentkezés Előtti Adatok</h3>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item"><strong>Sütik (Cookies):</strong> Munkamenet-azonosítók, bejelentkezési adatok megjegyzése, hirdetések célzása (Google AdSense).</li>
+            <li class="list-group-item"><strong>Naplófájlok:</strong> IP cím, böngésző típusa, időpont (Biztonsági okokból és hibaelhárításhoz).</li>
+        </ul>
+
+        <h3 class="mt-4">2. Bejelentkezés Utáni Adatok (Érzékeny Adatok Kategóriája)</h3>
+        <p class="text-danger fw-bold">Figyelem: A digiT-Train a felhasználók által bevitt sportteljesítmény adatok miatt különleges adatkategóriákat is kezel.</p>
+        <ul class="list-group list-group-flush">
+            <li class="list-group-item"><strong>Alapvető adatok:</strong> Név, e-mail cím, felhasználónév, születési dátum.</li>
+            <li class="list-group-item"><strong>Sporttevékenységi adatok:</strong> Edzésnaplók, terhelési adatok, pulzusszám, regenerációs mutatók, sportolói sérülések, biometrikus adatok.</li>
+            <li class="list-group-item"><strong>Szerepköri adatok:</strong> Egyesületi tagság, edzői és szülői kapcsolatok.</li>
+        </ul>
+        
+        <h2 class="mt-5 text-secondary"><i class="bi bi-gear-fill me-2"></i> Adatkezelés Célja és Jogalapja</h2>
+        <hr>
+        <ul>
+            <li><strong>Szerződés teljesítése:</strong> A sportteljesítmény elemző szolgáltatás biztosítása.</li>
+            <li><strong>Jogi kötelezettség:</strong> Számlázás, jogviták rendezése.</li>
+            <li><strong>Jogos érdek:</strong> Hálózatbiztonság, rendszerfejlesztés.</li>
+            <li><strong>Hozzájárulás:</strong> Marketing (ha engedélyezte), **érzékeny sportadatok kezelése**.</li>
+        </ul>
+        
+        <h2 class="mt-5 text-secondary"><i class="bi bi-shield-fill me-2"></i> Adatok Továbbítása és Adatbiztonság</h2>
+        <hr>
+        <p>Adattovábbítás csak jogi kötelezettség esetén, vagy az Ön kifejezett hozzájárulásával történik (pl. edzőnek, klubvezetőnek). Az adatokat titkosított csatornákon keresztül tároljuk és kezeljük.</p>
+
+        {% include "billing/includes/ad_bottom_contact.html" %}
+
+        <h2 class="mt-5 text-secondary"><i class="bi bi-info-circle-fill me-2"></i> Az Ön Jogai és Jogorvoslat</h2>
+        <hr>
+        <p>Ön jogosult adataihoz hozzáférni, azokat helyesbíteni, törölni, korlátozni a kezelésüket, tiltakozni az adatkezelés ellen, valamint az adathordozhatósághoz. Kérdéseivel forduljon hozzánk a <a href="{% url 'core:contact' %}">Kapcsolat oldalon</a> megadott elérhetőségeken.</p>
+
+        <p class="mt-4 text-center small text-muted">A teljes és hatályos jogi szöveg az Adatkezelőnél érhető el.</p>
+        
+    </div>
+</div>
+{% endblock content %}

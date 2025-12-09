@@ -1,0 +1,75 @@
+{% extends "base_out.html" %}
+{% load static %}
+
+{% block title %}Kapcsolat - digiT-Train Támogatás{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h1 class="mb-5 text-center text-primary fw-bold">Vegye fel velünk a kapcsolatot</h1>
+        
+        <p class="lead text-center mb-5">
+            Örömmel állunk rendelkezésére minden sportteljesítmény-elemzéssel, technikai támogatással vagy partnerségi kérdéssel kapcsolatban.
+        </p>
+
+        <div class="row g-4">
+            
+            <div class="col-md-6">
+                <div class="card shadow-lg h-100 border-0">
+                    <div class="card-body p-5 text-center">
+                        <i class="bi bi-envelope-fill display-4 text-success mb-3"></i>
+                        <h5 class="card-title fw-bold text-success">E-mail Elérhetőség</h5>
+                        <p class="card-text text-muted">A leggyorsabb és leghatékonyabb módja a kapcsolatfelvételnek.</p>
+                        <a href="mailto:support@digit-train.hu" class="btn btn-outline-success mt-3 fw-bold">
+                            support@digit-train.hu
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-lg h-100 border-0">
+                    <div class="card-body p-5 text-center">
+                        <i class="bi bi-chat-dots-fill display-4 text-primary mb-3"></i>
+                        <h5 class="card-title fw-bold text-primary">Közvetlen Üzenet</h5>
+                        <p class="card-text text-muted">A közvetlen üzenetküldő felület jelenleg fejlesztés alatt áll.</p>
+                        <button type="button" class="btn btn-outline-primary mt-3" disabled>
+                            Jelenleg fejlesztés alatt
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body p-4 text-center">
+                        <i class="bi bi-geo-alt-fill display-5 text-muted mb-3"></i>
+                        <h6 class="card-title fw-bold">Székhely</h6>
+                        <address class="mb-0 text-muted">
+                            [A Céged/Vállalkozásod Címe]<br>
+                            [Település, Irányítószám], Magyarország
+                        </address>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card shadow-sm h-100 border-0">
+                    <div class="card-body p-4 text-center">
+                        <i class="bi bi-headset display-5 text-muted mb-3"></i>
+                        <h6 class="card-title fw-bold">Technikai Támogatás</h6>
+                        <p class="mb-1 text-muted">Amennyiben bejelentkezés utáni hibaüzenetet tapasztal.</p>
+                        <a href="mailto:support@digit-train.hu" class="text-info small fw-bold text-decoration-none">
+                            support@digit-train.hu
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        {% include "billing/includes/ad_bottom_contact.html" %}
+
+    </div>
+</div>
+{% endblock content %}

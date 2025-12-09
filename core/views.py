@@ -10,6 +10,19 @@ logger = logging.getLogger(__name__)
 def hello_world(request):
     return render(request, 'core/index.html')
 
+def contact_view(request):
+    """
+    Kapcsolat oldal megjelenítése (bejelentkezés nélkül), 
+    ami a base_out.html-t terjeszti ki.
+    """
+    return render(request, 'core/contact.html')
+
+def privacy_policy_view(request):
+    """
+    Adatvédelmi Tájékoztató oldal megjelenítése (base_out.html-t használja).
+    """
+    return render(request, 'core/privacy_policy.html')
+
 @login_required
 def main_page(request):
     """
