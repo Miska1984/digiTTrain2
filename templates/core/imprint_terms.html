@@ -1,0 +1,66 @@
+{% extends "base_out.html" %}
+{% load static %}
+
+{% block title %}ÁSZF és Impresszum - digiT-Train{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        
+        <h1 class="mb-4 text-secondary fw-bold">Impresszum</h1>
+        <p class="lead text-muted">A szolgáltatást üzemeltető adatai:</p>
+        <hr>
+
+        <dl class="row mb-5">
+            <dt class="col-sm-3 text-muted">Szolgáltató neve:</dt>
+            <dd class="col-sm-9 fw-bold">[[ Török Mihály ]]</dd>
+
+            <dt class="col-sm-3 text-muted">Szolgáltató székhelye:</dt>
+            <dd class="col-sm-9">[[ Magyarország ]]</dd>
+
+            <dt class="col-sm-3 text-muted">Cégjegyzékszám:</dt>
+            <dd class="col-sm-9">Később közli</dd>
+
+            <dt class="col-sm-3 text-muted">Adószám:</dt>
+            <dd class="col-sm-9">Később közli</dd>
+
+            <dt class="col-sm-3 text-muted">Képviselő:</dt>
+            <dd class="col-sm-9">Török Mihály]</dd>
+
+            <dt class="col-sm-3 text-muted">Elérhetőség:</dt>
+            <dd class="col-sm-9">
+                <a href="mailto:[[ VALÓS EMAIL CÍM ]]">digittrain.2025@gmail.com</a> | 
+                <a href="{% url 'core:contact' %}">Kapcsolat oldal</a>
+            </dd>
+
+            <dt class="col-sm-3 text-muted">Tárhelyszolgáltató:</dt>
+            <dd class="col-sm-9">Google</dd>
+        </dl>
+
+        <h1 class="mb-4 text-secondary fw-bold mt-5">Általános Szerződési Feltételek (ÁSZF)</h1>
+        <p class="lead text-muted">A digiT-Train szolgáltatás használatának feltételei.</p>
+        <hr>
+
+        <h3 class="mt-4 text-primary">1. A Szolgáltatás Tárgya és Célja</h3>
+        <p>Jelen ÁSZF a **digiT-Train sportteljesítmény-elemző platform** igénybevételének feltételeit rögzíti, melynek fókuszában az edzésadatok rögzítése, elemzése, valamint a **gépi látás alapú biomechanikai diagnosztika** áll (pl. Guggolás, Egy lábon állás tesztek elemzése).</p>
+
+        <h3 class="mt-4 text-primary">2. Regisztráció, Egészségügyi Felelősség és Adatkezelés</h3>
+        <p>A szolgáltatás használata regisztrációhoz kötött. A felhasználó felelős a megadott adatok pontosságáért.</p>
+        <p class="text-danger fw-bold">FONTOS ORVOSI NYILATKOZAT: A rendszer által végzett mozgáselemzések és a kapott javaslatok **kizárólag sportdiagnosztikai célokat szolgálnak**, és **nem helyettesítik az orvosi vagy fizioterápiás tanácsadást**.</p>
+        <p>A feltöltött videók és a biometrikus adatok kezeléséről a <a href="{% url 'core:privacy_policy' %}">Adatvédelmi Tájékoztató</a> rendelkezik.</p>
+
+        <h3 class="mt-4 text-primary">3. Technológia és Szolgáltatásnyújtás</h3>
+        <p>A biomechanikai elemzéseket **MediaPipe és custom algoritmusok** (például a Feltöltött dokumentumokban részletezett pontszámítási logikák) segítségével végezzük. A szolgáltató mindent megtesz a folyamatos rendelkezésre állás érdekében, de nem garantálja a 100%-os rendelkezésre állást.</p>
+
+        <h3 class="mt-4 text-primary">4. Díjak és Fizetési Feltételek</h3>
+        <p>A digiT-Train platform alapfunkciói **jelenleg díjmentesen** vehetők igénybe. A Szolgáltató fenntartja a jogot, hogy a jövőben prémium funkciókat vezessen be. A fizetős szolgáltatásokra való átállásról a felhasználókat előzetesen tájékoztatja.</p>
+        
+        <div class="my-4">
+            {% include "billing/includes/ad_bottom_contact.html" %}
+        </div>
+
+        <p class="mt-5 text-center small text-muted">Jelen ÁSZF hatályba lépésének dátuma: 2025. december 9.</p>
+        
+    </div>
+</div>
+{% endblock content %}

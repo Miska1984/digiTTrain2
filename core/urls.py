@@ -12,4 +12,5 @@ urlpatterns = [
 
 
     path('main_page/', views.main_page, name='main_page'),
+    path('imprint-terms/', views.imprint_terms_view, name='imprint_terms'),
 ]

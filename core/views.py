@@ -23,6 +23,12 @@ def privacy_policy_view(request):
     """
     return render(request, 'core/privacy_policy.html')
 
+def imprint_terms_view(request):
+    """
+    Impresszum és ÁSZF oldal megjelenítése (base_out.html-t használja).
+    """
+    return render(request, 'core/imprint_terms.html')
+
 @login_required
 def main_page(request):
     """
