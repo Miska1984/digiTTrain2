@@ -16,7 +16,7 @@ steps:
         
         echo "DB_NAME: digittraindb" > .env.yaml
         echo "DB_USER: root" >> .env.yaml
-        echo "DB_PASS: $DB_PASS" >> .env.yaml 
+        echo "DB_PASS: $$DB_PASS" >> .env.yaml 
         echo "DJANGO_SETTINGS_MODULE: digiTTrain.settings" >> .env.yaml
         echo "ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu" >> .env.yaml
         echo "CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1" >> .env.yaml
