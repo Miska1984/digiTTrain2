@@ -108,49 +108,75 @@ steps:
       - --timeout
       - 300s
 
-# 8️⃣ Deploy Celery Worker Job
+# 8️⃣ Deploy Celery Worker Job (Create VAGY Update)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - jobs
-      - replace
-      - celery-worker-job
-      - --image
-      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
-      - --region
-      - europe-west1
-      - --command=celery
-      - --args=-A,digiTTrain,worker,-l,info
-      - --env-vars-file=.env.yaml
-      - --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-      - --vpc-connector=redis-connector
-      - --task-timeout=3600s
-      - --max-retries=3
-      - --cpu=4
-      - --memory=8Gi
+      - '-c'
+      - |
+        # Először megpróbáljuk frissíteni, ha létezik (a --quiet elnyomja az interaktív kérdéseket)
+        gcloud run jobs update celery-worker-job \
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
+          --region europe-west1 \
+          --command celery \
+          --args -A,digiTTrain,worker,-l,info \
+          --env-vars-file .env.yaml \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+          --vpc-connector redis-connector \
+          --task-timeout 3600s \
+          --max-retries 3 \
+          --cpu 4 \
+          --memory 8Gi \
+          --quiet || \
+        # Ha az update hibával kilépett (mert nem találta), akkor létrehozzuk
+        gcloud run jobs create celery-worker-job \
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
+          --region europe-west1 \
+          --command celery \
+          --args -A,digiTTrain,worker,-l,info \
+          --env-vars-file .env.yaml \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+          --vpc-connector redis-connector \
+          --task-timeout 3600s \
+          --max-retries 3 \
+          --cpu 4 \
+          --memory 8Gi \
+          --quiet
       
-# 9️⃣ Deploy Celery ML Worker Job
+# 9️⃣ Deploy Celery ML Worker Job (Create VAGY Update)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - jobs
-      - replace
-      - celery-ml-worker-job
-      - --image
-      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
-      - --region
-      - europe-west1
-      - --command=celery
-      - --args=-A,digiTTrain,worker,-l,info,-Q,ml_engine
-      - --env-vars-file=.env.yaml
-      - --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-      - --vpc-connector=redis-connector
-      - --task-timeout=3600s
-      - --max-retries=3
-      - --cpu=4
-      - --memory=8Gi
+      - '-c'
+      - |
+        # Először megpróbáljuk frissíteni, ha létezik
+        gcloud run jobs update celery-ml-worker-job \
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
+          --region europe-west1 \
+          --command celery \
+          --args -A,digiTTrain,worker,-l,info,-Q,ml_engine \
+          --env-vars-file .env.yaml \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+          --vpc-connector redis-connector \
+          --task-timeout 3600s \
+          --max-retries 3 \
+          --cpu 4 \
+          --memory 8Gi \
+          --quiet || \
+        # Ha az update hibával kilépett, akkor létrehozzuk
+        gcloud run jobs create celery-ml-worker-job \
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
+          --region europe-west1 \
+          --command celery \
+          --args -A,digiTTrain,worker,-l,info,-Q,ml_engine \
+          --env-vars-file .env.yaml \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
+          --vpc-connector redis-connector \
+          --task-timeout 3600s \
+          --max-retries 3 \
+          --cpu 4 \
+          --memory 8Gi \
+          --quiet
 
 timeout: 3600s
 
