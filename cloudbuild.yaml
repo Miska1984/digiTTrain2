@@ -8,14 +8,12 @@ steps:
 # 0️⃣ Secret betöltése és .env.yaml generálás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
-    # 🔑 ITT JELEZZÜK A BUILDNEK, HOGY A 'DB_PASS' TITKOT KELL HASZNÁLNIA
     secretEnv: ['DB_PASS']
     args:
       - -c
       - |
         echo "🔐 Generating .env.yaml with secrets..."
         
-        # A $DB_PASS most környezeti változóként elérhető a Bash-ben
         echo "DB_NAME: digittraindb" > .env.yaml
         echo "DB_USER: root" >> .env.yaml
         echo "DB_PASS: $DB_PASS" >> .env.yaml
@@ -158,7 +156,7 @@ steps:
 
 timeout: 3600s
 
-# 🔑 GLOBÁLIS SECRETS KONFIGURÁCIÓ (HELYES MÓDSZER)
+# 🔑 GLOBÁLIS SECRETS KONFIGURÁCIÓ
 secrets:
 - key: projects/digittrain-projekt/secrets/db_password
   secretEnv:
