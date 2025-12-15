@@ -16,7 +16,7 @@ steps:
         
         echo "DB_NAME: digittraindb" > .env.yaml
         echo "DB_USER: root" >> .env.yaml
-        echo "DB_PASS: $DB_PASS" >> .env.yaml
+        echo "DB_PASS: $$DB_PASS" >> .env.yaml
         echo "DJANGO_SETTINGS_MODULE: digiTTrain.settings" >> .env.yaml
         echo "ENVIRONMENT: production" >> .env.yaml
         echo "BUILD_MODE: \"false\"" >> .env.yaml
