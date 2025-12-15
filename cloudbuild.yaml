@@ -8,7 +8,6 @@ steps:
 # 0️⃣ Secret betöltése és .env.yaml generálás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
-    secretEnv: ['DB_PASS']
     args:
       - -c
       - |
