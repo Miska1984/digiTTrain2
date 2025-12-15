@@ -108,76 +108,50 @@ steps:
       - --timeout
       - 300s
 
-# 8️⃣ Deploy Celery Worker Job (Create VAGY Update)
+# 8️⃣ Deploy Celery Worker Job (LÉTREHOZÁS az első futáshoz)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
+    entrypoint: gcloud
     args:
-      - '-c'
-      - |
-        # Először megpróbáljuk frissíteni, ha létezik (a --quiet elnyomja az interaktív kérdéseket)
-        gcloud run jobs update celery-worker-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
-          --region europe-west1 \
-          --command celery \
-          --args -A,digiTTrain,worker,-l,info \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-          --vpc-connector redis-connector \
-          --task-timeout 3600s \
-          --max-retries 3 \
-          --cpu 4 \
-          --memory 8Gi \
-          --quiet || \
-        # Ha az update hibával kilépett (mert nem találta), akkor létrehozzuk
-        gcloud run jobs create celery-worker-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
-          --region europe-west1 \
-          --command celery \
-          --args -A,digiTTrain,worker,-l,info \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-          --vpc-connector redis-connector \
-          --task-timeout 3600s \
-          --max-retries 3 \
-          --cpu 4 \
-          --memory 8Gi \
-          --quiet
+      - run
+      - jobs
+      - create # Visszaállítjuk create-re
+      - celery-worker-job
+      - --image
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
+      - --region
+      - europe-west1
+      - --command=celery
+      - --args=-A,digiTTrain,worker,-l,info
+      - --env-vars-file=.env.yaml
+      - --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector=redis-connector
+      - --task-timeout=3600s
+      - --max-retries=3
+      - --cpu=4
+      - --memory=8Gi
       
-# 9️⃣ Deploy Celery ML Worker Job (Create VAGY Update)
+# 9️⃣ Deploy Celery ML Worker Job (LÉTREHOZÁS az első futáshoz)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
+    entrypoint: gcloud
     args:
-      - '-c'
-      - |
-        # Először megpróbáljuk frissíteni, ha létezik
-        gcloud run jobs update celery-ml-worker-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
-          --region europe-west1 \
-          --command celery \
-          --args -A,digiTTrain,worker,-l,info,-Q,ml_engine \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-          --vpc-connector redis-connector \
-          --task-timeout 3600s \
-          --max-retries 3 \
-          --cpu 4 \
-          --memory 8Gi \
-          --quiet || \
-        # Ha az update hibával kilépett, akkor létrehozzuk
-        gcloud run jobs create celery-ml-worker-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest \
-          --region europe-west1 \
-          --command celery \
-          --args -A,digiTTrain,worker,-l,info,-Q,ml_engine \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-          --vpc-connector redis-connector \
-          --task-timeout 3600s \
-          --max-retries 3 \
-          --cpu 4 \
-          --memory 8Gi \
-          --quiet
-
+      - run
+      - jobs
+      - create # Visszaállítjuk create-re
+      - celery-ml-worker-job
+      - --image
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
+      - --region
+      - europe-west1
+      - --command=celery
+      - --args=-A,digiTTrain,worker,-l,info,-Q,ml_engine
+      - --env-vars-file=.env.yaml
+      - --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector=redis-connector
+      - --task-timeout=3600s
+      - --max-retries=3
+      - --cpu=4
+      - --memory=8Gi
+      
 timeout: 3600s
 
 # 🔑 GLOBÁLIS SECRETS KONFIGURÁCIÓ
