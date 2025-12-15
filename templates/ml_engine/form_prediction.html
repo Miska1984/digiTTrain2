@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Forma Előrejelzés | digiTTrain{% endblock %}
+
+{% block content %}
+    <h1 class="mb-4 text-primary"><i class="fas fa-chart-line me-2"></i> Sportoló Forma Előrejelzés</h1>
+    <p class="text-muted">Adatok dátuma: {{ today_date }}</p>
+
+    <div class="alert {% if '❌' in prediction_status or '⚠️' in prediction_status %}alert-warning{% else %}alert-success{% endif %} shadow-sm" role="alert">
+        <strong>Állapot:</strong> {{ prediction_status }}
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-lg border-primary h-100">
+                <div class="card-body text-center">
+                    <h2 class="card-title h5 text-muted">Aktuális Forma Index</h2>
+                    <p class="text-primary display-4 fw-bold my-3">{{ current_form_index }}</p>
+                    <p class="card-text text-sm">Ez az index a HRV, alvás, marokerő és súlyingadozás alapján mutatja a **pillanatnyi készenlétet**.</p>
+                    <small class="text-secondary">(Tegnap nap végén/Ma reggel számolva)</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-lg border-danger h-100">
+                <div class="card-body text-center">
+                    <h2 class="card-title h5 text-muted">Várható Forma Index</h2>
+                    <p class="text-danger display-4 fw-bold my-3">{{ predicted_form_index }}</p>
+                    <p class="card-text text-sm">Ezt az értéket az öntanuló algoritmus jósolta meg a terhelési és regenerációs adatok alapján, a **holnapi napra**.</p>
+                    <small class="text-secondary">(Előrejelzés Lineáris Regresszióval)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <hr class="my-4">
+    <div class="alert alert-info mt-4">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Megjegyzés:</strong> A pontos előrejelzéshez elengedhetetlen a `generate_user_features` (naponta) és a `train_form_prediction_model` (rendszeresen) Celery taskok futtatása.
+    </div>
+{% endblock %}

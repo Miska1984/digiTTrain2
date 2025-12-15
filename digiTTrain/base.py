@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     'django.contrib.sites', 
     'django.contrib.humanize',
+    'django_celery_results',
+    'django_celery_beat',
     'widget_tweaks',
     'crispy_forms',
     'crispy_bootstrap5',
@@ -64,6 +66,7 @@ INSTALLED_APPS = [
     'diagnostics_jobs',
     'billing',
     'general_results',
+    'ml_engine',
 
 ]
 
@@ -268,3 +271,37 @@ CSRF_TRUSTED_ORIGINS = [
 
 # 🔹 ÚJ: Request body max size
 DATA_UPLOAD_MAX_NUMBER_FIELDS = 10000
+
+# ========== CELERY ALAPBEÁLLÍTÁSOK (ALAP MINDEN KÖRNYEZETRE) ==========
+from celery.schedules import crontab
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Europe/Budapest'
+CELERY_ENABLE_UTC = True
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 perc
+
+# 🕒 Ütemezett batch jobok — minden környezetben látszik
+CELERY_BEAT_SCHEDULE = {
+    "generate-daily-features": {
+        "task": "generate_user_features",
+        "schedule": crontab(hour=2, minute=0),  # minden nap hajnal 02:00
+        "args": (30, True),
+    },
+}
+
+from kombu import Queue
+
+CELERY_TASK_DEFAULT_QUEUE = 'default'
+CELERY_TASK_QUEUES = (
+    Queue('default', routing_key='default'),
+    Queue('ml_engine', routing_key='ml_engine'),
+)
+
+CELERY_TASK_ROUTES = {
+    'ml_engine.tasks.*': {'queue': 'ml_engine'},
+    'diagnostics.tasks.*': {'queue': 'default'},
+}
+

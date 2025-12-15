@@ -1,14 +1,14 @@
-# ----------------------------
-# ⚙️ Celery / Cloud Run Job Container
-# ----------------------------
+# =====================================================
+# ⚙️ Celery / ML Worker Container
+# =====================================================
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
-# ----------------------------
-# 🧩 System dependencies
-# ----------------------------
+# =====================================================
+# 📦 System dependencies
+# =====================================================
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     pkg-config \
@@ -29,77 +29,50 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf-2.0-0 \
     libgobject-2.0-0 \
     libpangocairo-1.0-0 \
-    shared-mime-info \
-    pango1.0-tools \
-    fonts-dejavu-core \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# ----------------------------
-# 🧘 TensorFlow / MediaPipe CPU-only environment
-# ----------------------------
+# =====================================================
+# 🧘 TensorFlow / MediaPipe environment
+# =====================================================
 ENV TF_CPP_MIN_LOG_LEVEL=2
 ENV TF_ENABLE_ONEDNN_OPTS=0
 ENV CUDA_VISIBLE_DEVICES=-1
 
-# ----------------------------
+# =====================================================
 # 📦 Python dependencies
-# ----------------------------
-COPY requirements.txt ./
-RUN pip install --upgrade pip && \
-    pip install --no-cache-dir --upgrade protobuf==4.25.3 && \
-    pip install --no-cache-dir -r requirements.txt
+# =====================================================
+COPY requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install --no-cache-dir --upgrade \
+    numpy==1.26.4 \
+    protobuf==4.25.3 \
+    tensorflow==2.16.2 \
+    tensorflow-hub==0.16.1 \
+    tensorflow-probability==0.23.0 \
+    mediapipe==0.10.14 \
+    opencv-python-headless==4.8.1.78 \
+    && pip install --no-cache-dir -r requirements.txt
 
-# ✅ Fix: Frissítjük a google-cloud-run csomagot az ExecutionOverrides támogatáshoz
-RUN pip install --no-cache-dir --upgrade "google-cloud-run>=0.10.0"    
-
-# ----------------------------
-# 🧩 GCP client libraries
-# ----------------------------
-RUN pip install --no-cache-dir google-cloud-run google-cloud-storage
-
-# Verify imports
-RUN python -c "from google.cloud import run_v2, storage; import tensorflow, mediapipe; print('✅ Worker imports OK')"
-
-# ----------------------------
-# 🧠 Matplotlib cache fix
-# ----------------------------
-ENV MPLCONFIGDIR=/tmp/matplotlib_cache
-RUN mkdir -p /tmp/matplotlib_cache && chmod -R 777 /tmp/matplotlib_cache
-
-# ----------------------------
+# =====================================================
 # 📁 Project files
-# ----------------------------
+# =====================================================
 COPY . .
 
-# ----------------------------
+# =====================================================
 # 🔐 GCP credentials
-# ----------------------------
+# =====================================================
 COPY gcp_service_account.json /app/gcp_service_account.json
 ENV GCP_SA_KEY_PATH=/app/gcp_service_account.json
 
-# ----------------------------
+# =====================================================
 # ⚙️ Django environment
-# ----------------------------
+# =====================================================
+ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 ENV ENVIRONMENT=production
 ENV PYTHONPATH=/usr/local/lib/python3.12/site-packages:/app
-ENV DJANGO_SETTINGS_MODULE=digiTTrain.settings
 ENV PORT=8080
 
-# ----------------------------
-# 📁 Temp directory for job runs
-# ----------------------------
-RUN mkdir -p /tmp/diagnostics && chmod 777 /tmp/diagnostics
-
-# ----------------------------
-# 🎯 MediaPipe asset check
-# ----------------------------
-RUN if [ -f assets/pose_landmarker_full.task ]; then \
-        echo "✅ MediaPipe asset found."; \
-    else \
-        echo "⚠️ MediaPipe asset not found, will be downloaded at runtime."; \
-    fi
-
-# ----------------------------
-# ▶️ Run command (Cloud Run Job)
-# ----------------------------
-ENTRYPOINT ["python", "manage.py", "run_job_execution"]
+# =====================================================
+# ▶️ Celery Worker start
+# =====================================================
+CMD ["celery", "-A", "digiTTrain", "worker", "-l", "info"]

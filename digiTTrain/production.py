@@ -146,6 +146,15 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 perc
 
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 3600,  # 1 óra - ha a worker meghal, újrapróbálható
+}
+
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+CELERY_ACKS_LATE = True  # Csak akkor jelölje késznek, ha a task tényleg befejeződött
+CELERYD_PREFETCH_MULTIPLIER = 1  # egyszerre 1 taskot vegyen fel
+CELERY_WORKER_CONCURRENCY = int(os.getenv('CELERY_WORKER_CONCURRENCY', 2))
+
 print(f">>> [DEBUG] CELERY_BROKER_URL: {CELERY_BROKER_URL}", file=sys.stderr)
 print(f">>> [DEBUG] USE_GCS_STATIC={USE_GCS_STATIC}, BUILD_MODE={BUILD_MODE}", file=sys.stderr)
 print(f">>> [DEBUG] Active static backend: {STORAGES['staticfiles']['BACKEND']}", file=sys.stderr)

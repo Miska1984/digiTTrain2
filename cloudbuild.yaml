@@ -1,4 +1,3 @@
-# Cloud Build beállítások
 options:
   logging: CLOUD_LOGGING_ONLY
   machineType: E2_HIGHCPU_8
@@ -6,17 +5,19 @@ options:
   substitution_option: ALLOW_LOOSE
 
 steps:
-  # 0️⃣ Létrehozzuk az .env.yaml fájlt a környezeti változókkal + CORS konfiguráció
+  # 0️⃣ Secret betöltése és .env.yaml generálás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
-        # Hardcoded .env.yaml generálás
+        echo "🔐 Fetching secrets..."
+        DB_PASS=$(gcloud secrets versions access latest --secret=db_password)
+
         cat > .env.yaml <<'ENVEOF'
         DB_NAME: digittraindb
         DB_USER: root
-        DB_PASS: MIshek001-1984
+        DB_PASS: ${DB_PASS}
         DJANGO_SETTINGS_MODULE: digiTTrain.settings
         ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu
         CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1
@@ -25,81 +26,51 @@ steps:
         GS_LOCATION: europe-west1
         ENVIRONMENT: production
         GCP_SA_KEY_PATH: /app/gcp_service_account.json
-        CLOUD_RUN_JOB_NAME: celery-worker-job
         REDIS_HOST: 10.32.84.131
         REDIS_PORT: "6379"
         USE_GCS_STATIC: "false"
-        BUILD_MODE: "false"
         ENVEOF
-        
-        echo "✅ .env.yaml létrehozva:"
-        cat .env.yaml
-        
-        # CORS konfiguráció
-        echo "🌐 CORS konfiguráció alkalmazása..."
-        gsutil cors set cors-config.json gs://digittrain-media-publikus-miska1984
-        gsutil cors get gs://digittrain-media-publikus-miska1984
 
-  # 1️⃣ Letöltjük a GCP kulcsot a Cloud Storage-ből
+  # 1️⃣ GCP kulcs letöltés
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - '-c'
       - >
-        echo "🔐 GCP service account kulcs letöltése...";
-        gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json;
-        ls -l ./gcp_service_account.json
+        gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json
 
-  # 2️⃣ Docker image build - Web Service
+  # 2️⃣ Build Web image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
 
-  # 3️⃣ Docker image push - Web Service
+  # 3️⃣ Push Web image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-  # 4️⃣ Docker image build - Celery Worker
+  # 4️⃣ Build Worker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile.worker', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest', '.']
+    args: ['build', '-f', 'Dockerfile.worker', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest', '.']
 
-  # 5️⃣ Docker image push - Celery Worker
+  # 5️⃣ Push Worker image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest']
+    args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest']
 
-  # 6️⃣ Migráció futtatása
+  # 6️⃣ Django migráció
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
-        gcloud run jobs update migrate-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
-          --region europe-west1 \
-          --command "python" \
-          --args "manage.py","migrate","--verbosity","3" \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-        || gcloud run jobs create migrate-job \
+        gcloud run jobs execute migrate-job --region=europe-west1 --wait || \
+        gcloud run jobs create migrate-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
           --region europe-west1 \
           --command "python" \
           --args "manage.py","migrate","--verbosity","3" \
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-        
-        echo "🔄 Migráció futtatása..."
-        gcloud run jobs execute migrate-job --region=europe-west1 --wait
 
-  # 7️⃣ Initial data job futtatása
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        echo "📦 Initial data job futtatása..."
-        gcloud run jobs execute initial-data-job --region=europe-west1 --wait || echo "⚠️ Initial data job már futott vagy nem létezik"
-
-  # 8️⃣ Deploy Web Service (VPC Connector-ral)
+  # 7️⃣ Deploy Web service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -132,7 +103,7 @@ steps:
       - --timeout
       - 300s
 
-  # 9️⃣ Deploy Cloud Run Job (celery-worker-job)
+  # 8️⃣ Deploy Celery Worker Job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -141,11 +112,11 @@ steps:
       - update
       - celery-worker-job
       - --image
-      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/celery-worker:latest
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
       - --region
       - europe-west1
-      - --command=python
-      - --args=manage.py,run_job_execution
+      - --command=celery
+      - --args=-A,digiTTrain,worker,-l,info
       - --env-vars-file=.env.yaml
       - --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
       - --vpc-connector=redis-connector
@@ -153,9 +124,27 @@ steps:
       - --max-retries=3
       - --cpu=4
       - --memory=8Gi
-    id: 'deploy-celery-job'
+      
+    # 9️⃣ Deploy Celery ML Worker Job
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - update
+      - celery-ml-worker-job
+      - --image
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
+      - --region
+      - europe-west1
+      - --command=celery
+      - --args=-A,digiTTrain,worker,-l,info,-Q,ml_engine
+      - --env-vars-file=.env.yaml
+      - --add-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector=redis-connector
+      - --task-timeout=3600s
+      - --max-retries=3
+      - --cpu=4
+      - --memory=8Gi
 
 timeout: 3600s
-
-options:
-  logging: CLOUD_LOGGING_ONLY

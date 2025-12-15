@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Teljesítmény Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="mb-4 text-primary"><i class="fas fa-chart-line me-2"></i> Teljesítmény Dashboard</h1>
+
+<div class="alert alert-info">{{ prediction_status }}</div>
+
+<div class="row">
+  <div class="col-md-6 mb-3">
+    <div class="card shadow border-success">
+      <div class="card-body text-center">
+        <h5>Aktuális Formaindex</h5>
+        <h2 class="text-success fw-bold">{{ current_form_index }}</h2>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 mb-3">
+    <div class="card shadow border-danger">
+      <div class="card-body text-center">
+        <h5>Várható Formaindex</h5>
+        <h2 class="text-danger fw-bold">{{ predicted_form_index }}</h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+<h4 class="text-secondary mt-4">Biometrikus adatok trendje (14 nap)</h4>
+<canvas id="biometricChart" height="120"></canvas>
+
+<h4 class="text-secondary mt-4">Edzésintenzitás trend</h4>
+<canvas id="intensityChart" height="100"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const chartData = {{ chart_data|safe }};
+
+const ctx1 = document.getElementById('biometricChart').getContext('2d');
+new Chart(ctx1, {
+  type: 'line',
+  data: {
+    labels: chartData.dates,
+    datasets: [
+      { label: 'Súly (kg)', data: chartData.weights, borderColor: 'blue', fill: false },
+      { label: 'HRV (ms)', data: chartData.hrv, borderColor: 'green', fill: false },
+      { label: 'Alvás minőség', data: chartData.sleep_quality, borderColor: 'orange', fill: false },
+    ]
+  },
+  options: { responsive: true }
+});
+
+const ctx2 = document.getElementById('intensityChart').getContext('2d');
+new Chart(ctx2, {
+  type: 'bar',
+  data: {
+    labels: chartData.dates,
+    datasets: [
+      { label: 'Edzésintenzitás', data: chartData.intensity, backgroundColor: 'red' }
+    ]
+  },
+  options: { responsive: true }
+});
+</script>
+{% endblock %}

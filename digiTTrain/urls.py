@@ -31,6 +31,7 @@ urlpatterns = [
     path('diagnostics/', include('diagnostics_jobs.urls', namespace='diagnostics_jobs')),
     path("diagnostics/", include("diagnostics.urls")),
     path('billing/', include('billing.urls')), 
+    path('ml_engine/', include('ml_engine.urls')), 
 
 ]
 

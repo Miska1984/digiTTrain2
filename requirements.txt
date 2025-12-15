@@ -26,6 +26,8 @@ django-healthchecks
 django-formtools
 django-widget-tweaks
 gunicorn==22.0.0
+django-celery-beat
+django-celery-results
 
 # ============================================
 # CELERY & REDIS
@@ -47,6 +49,8 @@ tensorflow-probability==0.23.0
 mediapipe
 opencv-python-headless==4.8.1.78
 numpy==1.26.4
+scikit-learn
+joblib
 
 # ============================================
 # DATA PROCESSING
@@ -80,4 +84,3 @@ packaging==24.1
 
 whitenoise==6.7.0
 
-# trigger full rebuild for google-cloud-run fix

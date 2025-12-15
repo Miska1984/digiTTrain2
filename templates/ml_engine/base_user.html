@@ -1,0 +1,8 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <a class="navbar-brand ms-3" href="{% url 'dashboard' %}">digiTTrain</a>
+  <ul class="navbar-nav ms-auto me-3">
+    <li class="nav-item"><a class="nav-link" href="{% url 'form_prediction' %}">Forma előrejelzés</a></li>
+    <li class="nav-item"><a class="nav-link" href="{% url 'upload_data' %}">Adat feltöltés</a></li>
+    <li class="nav-item"><a class="nav-link text-danger" href="{% url 'logout' %}">Kijelentkezés</a></li>
+  </ul>
+</nav>
