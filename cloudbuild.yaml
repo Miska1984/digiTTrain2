@@ -17,7 +17,7 @@ steps:
         cat > .env.yaml <<ENVEOF
 DB_NAME: digittraindb
 DB_USER: root
-DB_PASS: $DB_PASS            
+DB_PASS: $DB_PASS 
 DJANGO_SETTINGS_MODULE: digiTTrain.settings
 ENVIRONMENT: production
 BUILD_MODE: "false"
