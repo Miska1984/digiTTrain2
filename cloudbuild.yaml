@@ -16,27 +16,25 @@ steps:
         
         echo "DB_NAME: digittraindb" > .env.yaml
         echo "DB_USER: root" >> .env.yaml
-        echo "DB_PASS: $$DB_PASS" >> .env.yaml
+        echo "DB_PASS: $DB_PASS" >> .env.yaml 
         echo "DJANGO_SETTINGS_MODULE: digiTTrain.settings" >> .env.yaml
-        echo "ENVIRONMENT: production" >> .env.yaml
-        echo "BUILD_MODE: \"false\"" >> .env.yaml
-        echo "" >> .env.yaml
+        echo "ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu" >> .env.yaml
         echo "CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1" >> .env.yaml
         echo "GS_BUCKET_NAME: digittrain-media-publikus-miska1984" >> .env.yaml
         echo "GS_PROJECT_ID: digittrain-projekt" >> .env.yaml
         echo "GS_LOCATION: europe-west1" >> .env.yaml
+        echo "ENVIRONMENT: production" >> .env.yaml
         echo "GCP_SA_KEY_PATH: /app/gcp_service_account.json" >> .env.yaml
-        echo "" >> .env.yaml
-        echo "ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu" >> .env.yaml
-        echo "USE_GCS_STATIC: \"false\"" >> .env.yaml
-        echo "" >> .env.yaml
         echo "REDIS_HOST: 10.32.84.131" >> .env.yaml
         echo "REDIS_PORT: \"6379\"" >> .env.yaml
-        echo "" >> .env.yaml
         echo "CLOUD_RUN_JOB_NAME: celery-worker-job" >> .env.yaml
-        echo "" >> .env.yaml
         echo "TF_CPP_MIN_LOG_LEVEL: \"2\"" >> .env.yaml
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
+        echo "USE_GCS_STATIC: \"false\"" >> .env.yaml
+        echo "BUILD_MODE: \"false\"" >> .env.yaml
+        
+        echo "✅ .env.yaml tartalom:"
+        cat .env.yaml
 
 # 1️⃣ GCP kulcs letöltés
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'

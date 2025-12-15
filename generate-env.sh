@@ -1,13 +1,7 @@
-cat > generate-env.sh << 'EOF'
-#!/bin/bash
-set -e
-
-echo "📝 .env.yaml generálása..."
-
 cat > .env.yaml <<INNEREOF
 DB_NAME: digittraindb
 DB_USER: root
-DB_PASS: MIshek001-1984
+DB_PASS: $DB_PASS  # ⬅️ VISSZA KELL TÉRNED IDE!
 DJANGO_SETTINGS_MODULE: digiTTrain.settings
 ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu
 CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1
