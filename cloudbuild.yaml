@@ -6,14 +6,14 @@ options:
 
 steps:
 # 0️⃣ Secret betöltése és .env.yaml generálás
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
-    args:
-      - -c
-      - > # ⬅️ FIGYELEM: Kicserélve a | jelre!
-        echo "🔐 Generating .env.yaml with secrets..."
-        
-        cat > .env.yaml <<ENVEOF
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - > # ⬅️ FIGYELEM: Kicserélve a | jelre!
+        echo "🔐 Generating .env.yaml with secrets..."
+
+        cat > .env.yaml <<ENVEOF
 DB_NAME: digittraindb
 DB_USER: root
 DB_PASS: $DB_PASS
