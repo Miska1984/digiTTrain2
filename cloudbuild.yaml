@@ -8,11 +8,14 @@ steps:
 # 0️⃣ Secret betöltése és .env.yaml generálás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
+    # 🔑 ITT JELEZZÜK A BUILDNEK, HOGY A 'DB_PASS' TITKOT KELL HASZNÁLNIA
+    secretEnv: ['DB_PASS']
     args:
       - -c
       - |
         echo "🔐 Generating .env.yaml with secrets..."
         
+        # A $DB_PASS most környezeti változóként elérhető a Bash-ben
         echo "DB_NAME: digittraindb" > .env.yaml
         echo "DB_USER: root" >> .env.yaml
         echo "DB_PASS: $DB_PASS" >> .env.yaml
@@ -36,15 +39,8 @@ steps:
         echo "" >> .env.yaml
         echo "TF_CPP_MIN_LOG_LEVEL: \"2\"" >> .env.yaml
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
-    # 🔑 TITOK BEÁLLÍTÁSA KIZÁRÓLAG EZEN A LÉPÉSEN
-    secretEnv: ['DB_PASS'] # A DB_PASS a titok neve lesz a lépésben
-    availableSecrets:
-      secretManager:
-      - versionName: projects/digittrain-projekt/secrets/db_password/versions/latest
-        env: 'DB_PASS'
 
-
-  # 1️⃣ GCP kulcs letöltés (Változatlan)
+# 1️⃣ GCP kulcs letöltés
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -52,23 +48,23 @@ steps:
       - >
         gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json
 
-  # 2️⃣ Build Web image (Változatlan)
+# 2️⃣ Build Web image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
 
-  # 3️⃣ Push Web image (Változatlan)
+# 3️⃣ Push Web image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-  # 4️⃣ Build Worker image (Változatlan)
+# 4️⃣ Build Worker image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-f', 'Dockerfile.worker', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest', '.']
 
-  # 5️⃣ Push Worker image (Változatlan)
+# 5️⃣ Push Worker image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest']
 
-  # 6️⃣ Django migráció (Változatlan)
+# 6️⃣ Django migráció
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -83,7 +79,7 @@ steps:
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
 
-  # 7️⃣ Deploy Web service (Változatlan)
+# 7️⃣ Deploy Web service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -116,7 +112,7 @@ steps:
       - --timeout
       - 300s
 
-  # 8️⃣ Deploy Celery Worker Job (Változatlan)
+# 8️⃣ Deploy Celery Worker Job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -138,7 +134,7 @@ steps:
       - --cpu=4
       - --memory=8Gi
       
-    # 9️⃣ Deploy Celery ML Worker Job (Változatlan)
+# 9️⃣ Deploy Celery ML Worker Job
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -161,3 +157,9 @@ steps:
       - --memory=8Gi
 
 timeout: 3600s
+
+# 🔑 GLOBÁLIS SECRETS KONFIGURÁCIÓ (HELYES MÓDSZER)
+secrets:
+- key: projects/digittrain-projekt/secrets/db_password
+  secretEnv:
+    DB_PASS: db_password
