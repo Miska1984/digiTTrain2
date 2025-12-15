@@ -5,19 +5,18 @@ options:
   substitution_option: ALLOW_LOOSE
 
 steps:
-  # 0️⃣ Secret betöltése és .env.yaml generálás (AZ ÚJ LÉPÉS)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        echo "🔐 Generating .env.yaml with secrets..."
-        
-        # FIGYELEM: A "cat <<ENVEOF" NEM TARTALMAZ IDÉZŐJELET, hogy a Bash helyesen tudja behelyettesíteni a $DB_PASS környezeti változót.
-        cat > .env.yaml <<ENVEOF
+# 0️⃣ Secret betöltése és .env.yaml generálás
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - > # ⬅️ FIGYELEM: Kicserélve a | jelre!
+        echo "🔐 Generating .env.yaml with secrets..."
+        
+        cat > .env.yaml <<ENVEOF
 DB_NAME: digittraindb
 DB_USER: root
-DB_PASS: $DB_PASS 
+DB_PASS: $DB_PASS
 DJANGO_SETTINGS_MODULE: digiTTrain.settings
 ENVIRONMENT: production
 BUILD_MODE: "false"
@@ -39,7 +38,6 @@ CLOUD_RUN_JOB_NAME: celery-worker-job
 TF_CPP_MIN_LOG_LEVEL: "2"
 CUDA_VISIBLE_DEVICES: "-1"
 ENVEOF
-
 
   # 1️⃣ GCP kulcs letöltés (Változatlan)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
