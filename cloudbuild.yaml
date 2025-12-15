@@ -157,7 +157,7 @@ steps:
 timeout: 3600s
 
 # 🔑 GLOBÁLIS SECRETS KONFIGURÁCIÓ
-secrets:
-- key: projects/digittrain-projekt/secrets/db_password
-  secretEnv:
-    DB_PASS: db_password
+availableSecrets:
+  secretManager:
+    - versionName: projects/digittrain-projekt/secrets/db_password/versions/latest
+      env: 'DB_PASS'
