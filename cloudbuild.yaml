@@ -10,34 +10,34 @@ steps:
     entrypoint: bash
     args:
       - -c
-      - > # ⬅️ FIGYELEM: Kicserélve a | jelre!
+      - >
         echo "🔐 Generating .env.yaml with secrets..."
 
         cat > .env.yaml <<ENVEOF
-DB_NAME: digittraindb
-DB_USER: root
-DB_PASS: $DB_PASS
-DJANGO_SETTINGS_MODULE: digiTTrain.settings
-ENVIRONMENT: production
-BUILD_MODE: "false"
+        DB_NAME: digittraindb
+        DB_USER: root
+        DB_PASS: $DB_PASS
+        DJANGO_SETTINGS_MODULE: digiTTrain.settings
+        ENVIRONMENT: production
+        BUILD_MODE: "false"
 
-CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-GS_BUCKET_NAME: digittrain-media-publikus-miska1984
-GS_PROJECT_ID: digittrain-projekt
-GS_LOCATION: europe-west1
-GCP_SA_KEY_PATH: /app/gcp_service_account.json
+        CLOUDSQL_CONNECTION_NAME: digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+        GS_BUCKET_NAME: digittrain-media-publikus-miska1984
+        GS_PROJECT_ID: digittrain-projekt
+        GS_LOCATION: europe-west1
+        GCP_SA_KEY_PATH: /app/gcp_service_account.json
 
-ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu
-USE_GCS_STATIC: "false"
+        ALLOWED_HOSTS: digit-train-web-195803356854.europe-west1.run.app,digit-train.hu,www.digit-train.hu
+        USE_GCS_STATIC: "false"
 
-REDIS_HOST: 10.32.84.131
-REDIS_PORT: "6379"
+        REDIS_HOST: 10.32.84.131
+        REDIS_PORT: "6379"
 
-CLOUD_RUN_JOB_NAME: celery-worker-job
+        CLOUD_RUN_JOB_NAME: celery-worker-job
 
-TF_CPP_MIN_LOG_LEVEL: "2"
-CUDA_VISIBLE_DEVICES: "-1"
-ENVEOF
+        TF_CPP_MIN_LOG_LEVEL: "2"
+        CUDA_VISIBLE_DEVICES: "-1"
+        ENVEOF
 
   # 1️⃣ GCP kulcs letöltés (Változatlan)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
