@@ -36,6 +36,13 @@ steps:
         echo "" >> .env.yaml
         echo "TF_CPP_MIN_LOG_LEVEL: \"2\"" >> .env.yaml
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
+    # 🔑 TITOK BEÁLLÍTÁSA KIZÁRÓLAG EZEN A LÉPÉSEN
+    secretEnv: ['DB_PASS'] # A DB_PASS a titok neve lesz a lépésben
+    availableSecrets:
+      secretManager:
+      - versionName: projects/digittrain-projekt/secrets/db_password/versions/latest
+        env: 'DB_PASS'
+
 
   # 1️⃣ GCP kulcs letöltés (Változatlan)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -154,9 +161,3 @@ steps:
       - --memory=8Gi
 
 timeout: 3600s
-
-# 🔑 Secrets konfiguráció (EZ A RÉSZ KELL A FÁJL VÉGÉRE!)
-availableSecrets:
-  secretManager:
-  - versionName: projects/digittrain-projekt/secrets/db_password/versions/latest
-    env: 'DB_PASS'
