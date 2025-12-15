@@ -8,16 +8,16 @@ steps:
 # 0️⃣ Secret betöltése és .env.yaml generálás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
-    secretEnv: ['DB_PASS'] 
+    secretEnv: ['DB_PASS']
     args:
       - -c
       - >
         echo "🔐 Generating .env.yaml with secrets..."
 
-        cat > .env.yaml <<ENVEOF
+        cat > .env.yaml <<'ENVEOF'
         DB_NAME: digittraindb
         DB_USER: root
-        DB_PASS: $DB_PASS
+        DB_PASS: ${DB_PASS}
         DJANGO_SETTINGS_MODULE: digiTTrain.settings
         ENVIRONMENT: production
         BUILD_MODE: "false"
@@ -39,6 +39,8 @@ steps:
         TF_CPP_MIN_LOG_LEVEL: "2"
         CUDA_VISIBLE_DEVICES: "-1"
         ENVEOF
+        
+        sed -i "s/\${DB_PASS}/$DB_PASS/g" .env.yaml
 
   # 1️⃣ GCP kulcs letöltés (Változatlan)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
