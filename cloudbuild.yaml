@@ -137,7 +137,7 @@ steps:
     args:
       - run
       - jobs
-      - create # Visszaállítjuk create-re
+      - update # Visszaállítjuk create-re
       - celery-ml-worker-job
       - --image
       - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest

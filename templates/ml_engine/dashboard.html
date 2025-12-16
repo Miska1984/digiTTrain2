@@ -4,8 +4,9 @@
 {% block content %}
 <h1 class="mb-4 text-primary"><i class="fas fa-chart-line me-2"></i> Teljesítmény Dashboard</h1>
 
-<div class="alert alert-info">{{ prediction_status }}</div>
+<div class="alert alert-info">{{ prediction_status|safe }}</div>
 
+<!-- Formaindex kártyák -->
 <div class="row">
   <div class="col-md-6 mb-3">
     <div class="card shadow border-success">
@@ -25,6 +26,77 @@
   </div>
 </div>
 
+<!-- Új szakasz: Formaértékelés -->
+<div class="card shadow mt-4">
+  <div class="card-header bg-light">
+    <h5 class="mb-0"><i class="fas fa-dumbbell me-2"></i>Formaértékelés</h5>
+  </div>
+  <div class="card-body">
+    <p><strong>Aktuális értékelés:</strong>
+      <span style="color: {{ evaluation_color }};">{{ evaluation_text }}</span>
+    </p>
+    <p><strong>Várható trend:</strong> {{ trend_message|safe }}</p>
+
+    <hr>
+    <h6 class="text-secondary mb-2">Formaindex kategóriák</h6>
+    <div class="table-responsive">
+      <table class="table table-bordered text-center align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>Szint</th>
+            <th>Formaindex tartomány</th>
+            <th>Leírás</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="text-danger fw-semibold">
+            <td>Gyenge</td>
+            <td>0 – 20</td>
+            <td>Regeneráció javasolt</td>
+          </tr>
+          <tr class="text-warning fw-semibold">
+            <td>Közepes</td>
+            <td>20 – 30</td>
+            <td>Fejlődő állapot</td>
+          </tr>
+          <tr class="text-success fw-semibold">
+            <td>Jó</td>
+            <td>30 – 40</td>
+            <td>Fenntartó szint</td>
+          </tr>
+          <tr class="text-primary fw-semibold">
+            <td>Kiemelkedő</td>
+            <td>40+</td>
+            <td>Teljesítmény csúcson</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- 🟩 Új: Statisztikai összegzés -->
+<div class="row mt-4">
+  <div class="col-md-4 mb-3">
+    <div class="card shadow-sm border-success text-center p-3">
+      <h6 class="text-muted">Átlagos formaindex</h6>
+      <h3 class="text-success fw-bold">{{ avg_form }}</h3>
+    </div>
+  </div>
+  <div class="col-md-4 mb-3">
+    <div class="card shadow-sm border-primary text-center p-3">
+      <h6 class="text-muted">Legjobb formaindex</h6>
+      <h3 class="text-primary fw-bold">{{ best_form }}</h3>
+    </div>
+  </div>
+  <div class="col-md-4 mb-3">
+    <div class="card shadow-sm border-danger text-center p-3">
+      <h6 class="text-muted">Legrosszabb formaindex</h6>
+      <h3 class="text-danger fw-bold">{{ worst_form }}</h3>
+    </div>
+  </div>
+</div>
+
 <hr>
 <h4 class="text-secondary mt-4">Biometrikus adatok trendje (14 nap)</h4>
 <canvas id="biometricChart" height="120"></canvas>
@@ -32,10 +104,14 @@
 <h4 class="text-secondary mt-4">Edzésintenzitás trend</h4>
 <canvas id="intensityChart" height="100"></canvas>
 
+<h4 class="text-secondary mt-5">Formaindex trend (aktuális és várható)</h4>
+<canvas id="formTrendChart" height="120"></canvas>
+
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 const chartData = {{ chart_data|safe }};
 
+// Biometrikus grafikon
 const ctx1 = document.getElementById('biometricChart').getContext('2d');
 new Chart(ctx1, {
   type: 'line',
@@ -50,6 +126,7 @@ new Chart(ctx1, {
   options: { responsive: true }
 });
 
+// Intenzitás grafikon
 const ctx2 = document.getElementById('intensityChart').getContext('2d');
 new Chart(ctx2, {
   type: 'bar',
@@ -60,6 +137,35 @@ new Chart(ctx2, {
     ]
   },
   options: { responsive: true }
+});
+
+// Formaindex trend
+const ctx3 = document.getElementById('formTrendChart').getContext('2d');
+new Chart(ctx3, {
+  type: 'line',
+  data: {
+    labels: chartData.trend_dates,
+    datasets: [
+      {
+        label: 'Formaindex',
+        data: chartData.trend_values,
+        borderColor: 'purple',
+        fill: false,
+        tension: 0.3,
+        pointRadius: 4,
+        pointBackgroundColor: 'purple'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    scales: {
+      y: {
+        beginAtZero: true,
+        suggestedMax: 100
+      }
+    }
+  }
 });
 </script>
 {% endblock %}

@@ -3,12 +3,14 @@
 import os
 import joblib
 import pandas as pd
+import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from django.conf import settings
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class TrainingService:
     """
@@ -18,8 +20,11 @@ class TrainingService:
 
     def __init__(self):
         os.makedirs(os.path.dirname(self.MODEL_PATH), exist_ok=True)
-        self.model = self.load_model()  # <<< EZ A LÉNYEG!
+        self.model = self.load_model()
 
+    # ------------------------------------------------------
+    # Modell betöltése
+    # ------------------------------------------------------
     def load_model(self):
         """Megpróbálja betölteni a már betanított modellt."""
         if os.path.exists(self.MODEL_PATH):
@@ -34,6 +39,9 @@ class TrainingService:
             logger.warning("⚠️ Nincs mentett modell, új tanítás szükséges.")
             return None
 
+    # ------------------------------------------------------
+    # Modell tanítása
+    # ------------------------------------------------------
     def train_model(self, df: pd.DataFrame):
         logger.info(f"🎯 Tanítás indul {len(df)} sorral...")
 
@@ -41,15 +49,18 @@ class TrainingService:
             logger.warning("⚠️ A DataFrame nem tartalmaz 'form_score' oszlopot, tréning kihagyva.")
             return
 
+        # Nem numerikus mezők konvertálása
         for col in df.columns:
             if df[col].dtype == "object":
                 df[col] = df[col].astype("category").cat.codes
 
+        # Hiányzó célértékek eltávolítása
         df = df.dropna(subset=["form_score"])
         if df.empty:
             logger.warning("⚠️ Minden form_score érték hiányzik, tréning kihagyva.")
             return
 
+        # Train-test split
         if len(df) < 3:
             X_train, y_train = df.drop(columns=["form_score"]), df["form_score"]
         else:
@@ -60,20 +71,28 @@ class TrainingService:
                 random_state=42
             )
 
-        model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+        # Modell tanítása
+        model = RandomForestRegressor(
+            n_estimators=100,
+            random_state=42,
+            n_jobs=-1
+        )
         model.fit(X_train, y_train)
 
+        # Mentés és elérhetővé tétel
         joblib.dump(model, self.MODEL_PATH)
-        self.model = model  # <<< FONTOS: mostantól az objektumban is elérhető
+        self.model = model
         logger.info(f"✅ Modell elmentve ide: {self.MODEL_PATH}")
 
+    # ------------------------------------------------------
+    # Predikció egy adott userre
+    # ------------------------------------------------------
     def predict_form(self, user):
         """
-        A megadott felhasználó legfrissebb feature-snapshotját használja a forma index előrejelzésére.
-        Visszatér: (dátum, predikció) vagy (None, None), ha nem sikerül.
+        A megadott felhasználó legfrissebb feature-snapshotját használja
+        a forma index előrejelzésére.
         """
-        from ml_engine.models import UserFeatureSnapshot  # késleltetett import a körkörös hivatkozások miatt
-        import numpy as np
+        from ml_engine.models import UserFeatureSnapshot
         from datetime import datetime
 
         if not self.model:
@@ -81,7 +100,6 @@ class TrainingService:
             return None, None
 
         try:
-            # Legutóbbi snapshot kiválasztása
             latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).latest("generated_at")
             features = latest_snapshot.features
 
@@ -95,6 +113,11 @@ class TrainingService:
             # Csak numerikus oszlopok megtartása
             X_pred = X_pred.select_dtypes(include=[np.number]).fillna(0)
 
+            # ⚙️ A célváltozót (form_score) eltávolítjuk
+            if "form_score" in X_pred.columns:
+                X_pred = X_pred.drop(columns=["form_score"])
+
+            # Predikció
             predicted_value = self.model.predict(X_pred)[0]
             logger.info(f"✅ Predikció sikeres: {predicted_value:.2f}")
 
