@@ -74,7 +74,7 @@ steps:
           --args "manage.py","migrate","--verbosity","3" \
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-          --quiet
+        
 
 # 7️⃣ Deploy Web service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
