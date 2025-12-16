@@ -114,7 +114,7 @@ steps:
     args:
       - run
       - jobs
-      - create # Visszaállítjuk create-re
+      - update 
       - celery-worker-job
       - --image
       - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
@@ -129,6 +129,7 @@ steps:
       - --max-retries=3
       - --cpu=4
       - --memory=8Gi
+      - --quiet
       
 # 9️⃣ Deploy Celery ML Worker Job (LÉTREHOZÁS az első futáshoz)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -151,6 +152,7 @@ steps:
       - --max-retries=3
       - --cpu=4
       - --memory=8Gi
+      - --quiet
       
 timeout: 3600s
 
