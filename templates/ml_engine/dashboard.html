@@ -75,6 +75,34 @@
   </div>
 </div>
 
+<!-- Sérüléskockázat blokk -->
+<div class="card shadow mt-4 border-warning">
+  <div class="card-header bg-light">
+    <h5 class="mb-0">
+      <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Sérüléskockázat
+    </h5>
+  </div>
+  <div class="card-body text-center">
+    {% if injury_risk %}
+      <h2 class="{% if injury_risk|floatformat:1 > 70 %}text-danger{% elif injury_risk|floatformat:1 > 40 %}text-warning{% else %}text-success{% endif %}">
+        {{ injury_risk }}%
+      </h2>
+      <p class="mt-2">
+        {% if injury_risk|floatformat:1 > 70 %}
+          ⚠️ Magas kockázat – regeneráció szükséges
+        {% elif injury_risk|floatformat:1 > 40 %}
+          ⚠️ Közepes kockázat – figyelj a pihenésre
+        {% else %}
+          ✅ Alacsony kockázat – megfelelő regeneráció
+        {% endif %}
+      </p>
+    {% else %}
+      <p class="text-muted">Nincs elég adat a becsléshez.</p>
+    {% endif %}
+  </div>
+</div>
+
+
 <!-- 🟩 Új: Statisztikai összegzés -->
 <div class="row mt-4">
   <div class="col-md-4 mb-3">
@@ -106,6 +134,10 @@
 
 <h4 class="text-secondary mt-5">Formaindex trend (aktuális és várható)</h4>
 <canvas id="formTrendChart" height="120"></canvas>
+
+<h4 class="text-secondary mt-5">Sérüléskockázat trend</h4>
+<canvas id="injuryChart" height="100"></canvas>
+
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
@@ -166,6 +198,25 @@ new Chart(ctx3, {
       }
     }
   }
+});
+
+// sérülés kockázat trend
+const ctx4 = document.getElementById('injuryChart').getContext('2d');
+new Chart(ctx4, {
+  type: 'line',
+  data: {
+    labels: chartData.dates,
+    datasets: [{
+      label: 'Sérüléskockázat (%)',
+      data: chartData.injury_risk,
+      borderColor: 'red',
+      fill: false,
+      tension: 0.3,
+      pointRadius: 3,
+      pointBackgroundColor: 'red'
+    }]
+  },
+  options: { responsive: true }
 });
 </script>
 {% endblock %}

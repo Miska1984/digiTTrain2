@@ -9,6 +9,8 @@ from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
 from django.db.models import Max
 from datetime import date, timedelta
 import logging
+import numpy as np
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -74,17 +76,11 @@ def form_prediction_view(request):
 # ------------------------------------------------------------
 @login_required
 def dashboard_view(request):
-    """
-    Fő dashboard nézet, amely:
-      - megjeleníti az aktuális és várható formaindexet,
-      - értékeli az edzettségi szintet,
-      - megjeleníti a biometrikus trendeket és formaindex-grafikont.
-    """
     user = request.user
     today = date.today()
     week_ago = today - timedelta(days=14)
 
-    # Alap adatok lekérése (2 hét)
+    # --- Adatok lekérése ---
     weight_data = WeightData.objects.filter(user=user, workout_date__gte=week_ago).order_by('workout_date')
     hrv_data = HRVandSleepData.objects.filter(user=user, recorded_at__gte=week_ago).order_by('recorded_at')
     feedback_data = WorkoutFeedback.objects.filter(user=user, workout_date__gte=week_ago).order_by('workout_date')
@@ -95,8 +91,9 @@ def dashboard_view(request):
     trend_message = None
     evaluation_text = None
     evaluation_color = "gray"
+    injury_risk = None
 
-    # --- 1️⃣ Aktuális formaindex ---
+    # --- Aktuális formaindex ---
     try:
         latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).latest('generated_at')
         current_form_index = (
@@ -106,7 +103,7 @@ def dashboard_view(request):
     except UserFeatureSnapshot.DoesNotExist:
         prediction_status = "⚠️ Nincs elérhető formaindex adat."
 
-    # --- 2️⃣ Predikció ---
+    # --- Predikció ---
     ml_service = TrainingService()
     if ml_service.model:
         try:
@@ -114,11 +111,10 @@ def dashboard_view(request):
             predicted_form_index = predicted_index
         except Exception as e:
             prediction_status = f"❌ Predikciós hiba: {e}"
-            logger.error(f"❌ Predikciós hiba: {e}", exc_info=True)
     else:
         prediction_status = "⚠️ Modell még nincs betanítva."
 
-    # --- 3️⃣ Formaértékelés (aktuális forma) ---
+    # --- Formaértékelés ---
     if current_form_index is not None:
         ci = float(current_form_index)
 
@@ -135,34 +131,62 @@ def dashboard_view(request):
             evaluation_text = "Kiemelkedő forma – teljesítmény csúcson"
             evaluation_color = "blue"
 
-    # --- 4️⃣ Trend előrejelzés (aktuális vs. várható forma) ---
+    # --- Trend előrejelzés ---
     if predicted_form_index is not None and current_form_index is not None:
         diff = predicted_form_index - current_form_index
         if diff > 0.5:
-            trend_message = f"<span class='text-success'>📈 A várható formaindex {diff:.2f}-tel javul.</span>"
+            trend_message = f"📈 A várható formaindex {diff:.2f}-tel javul."
         elif diff < -0.5:
-            trend_message = f"<span class='text-danger'>📉 A várható formaindex {abs(diff):.2f}-tel csökken.</span>"
+            trend_message = f"📉 A várható formaindex {abs(diff):.2f}-tel csökken."
         else:
-            trend_message = "<span class='text-secondary'>➖ A várható formaindex stabil, nem változik jelentősen.</span>"
+            trend_message = "➖ A várható formaindex stabil, nem változik jelentősen."
     else:
-        trend_message = "<span class='text-muted'>❔ Még nem áll rendelkezésre elég adat a trend becsléséhez.</span>"
+        trend_message = "❔ Még nem áll rendelkezésre elég adat a trend becsléséhez."
 
-    # --- 5️⃣ Chart adatok előkészítése ---
+    # --- Intelligens sérüléskockázat ---
+    try:
+        if len(feedback_data) > 3 and len(hrv_data) > 3:
+            df = pd.DataFrame({
+                "intensity": [f.workout_intensity or 0 for f in feedback_data],
+                "hrv": [float(h.hrv or 0) for h in hrv_data[:len(feedback_data)]],
+                "sleep": [float(h.sleep_quality or 0) for h in hrv_data[:len(feedback_data)]],
+            })
+
+            # Normalizálás (Z-score)
+            df = (df - df.mean()) / df.std(ddof=0)
+
+            # Stressz index
+            df["stress_index"] = df["intensity"] - df["hrv"] - df["sleep"]
+
+            # Mozgóátlag és exponenciális súlyozás
+            df["smoothed"] = df["stress_index"].ewm(span=5, adjust=False).mean()
+
+            # Skálázás 0–100 közé
+            injury_risk = np.interp(df["smoothed"].iloc[-1], [-2, 2], [0, 100])
+            injury_risk = float(np.clip(injury_risk, 0, 100))
+
+        else:
+            injury_risk = None
+    except Exception as e:
+        logger.error(f"⚠️ Sérüléskockázat számítási hiba: {e}")
+        injury_risk = None
+
+    # --- Chart adatok ---
     chart_data = {
         "dates": [str(w.workout_date) for w in weight_data],
-        "weights": [float(w.morning_weight) for w in weight_data],
+        "weights": [float(w.morning_weight or 0) for w in weight_data],
         "hrv": [float(h.hrv or 0) for h in hrv_data],
         "sleep_quality": [h.sleep_quality or 0 for h in hrv_data],
         "intensity": [f.workout_intensity or 0 for f in feedback_data],
+        "injury_risk": [min(100, max(0, (i or 0))) for i in np.linspace(10, injury_risk or 0, len(weight_data))],
     }
 
-    # --- 6️⃣ Formaindex trend grafikon adatok ---
+    # --- Formaindex trend ---
     snapshots = UserFeatureSnapshot.objects.filter(user=user).order_by("generated_at")
     trend_dates = [s.generated_at.strftime("%Y-%m-%d") for s in snapshots]
     trend_values = [s.features.get("form_score", 0) for s in snapshots]
 
-    # Ha van predikció → hozzáadjuk a holnapot
-    if predicted_form_index is not None:
+    if predicted_form_index:
         tomorrow = today + timedelta(days=1)
         trend_dates.append(tomorrow.strftime("%Y-%m-%d"))
         trend_values.append(predicted_form_index)
@@ -170,15 +194,6 @@ def dashboard_view(request):
     chart_data["trend_dates"] = trend_dates
     chart_data["trend_values"] = trend_values
 
-    # --- 7️⃣ Összesített statisztika a formaindexekről ---
-    if trend_values:
-        avg_form = sum(trend_values) / len(trend_values)
-        best_form = max(trend_values)
-        worst_form = min(trend_values)
-    else:
-        avg_form = best_form = worst_form = 0
-
-    # --- 8️⃣ Kontextus rendereléshez ---
     context = {
         "today": today,
         "current_form_index": f"{current_form_index:.2f}" if current_form_index else "N/A",
@@ -187,10 +202,8 @@ def dashboard_view(request):
         "trend_message": trend_message,
         "evaluation_text": evaluation_text,
         "evaluation_color": evaluation_color,
+        "injury_risk": f"{injury_risk:.1f}" if injury_risk is not None else None,
         "chart_data": chart_data,
-        "avg_form": f"{avg_form:.2f}",
-        "best_form": f"{best_form:.2f}",
-        "worst_form": f"{worst_form:.2f}",
     }
 
     return render(request, "ml_engine/dashboard.html", context)
