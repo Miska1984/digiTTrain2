@@ -1,0 +1,23 @@
+{% extends "admin/base.html" %}
+{% load static %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">Django Admin</a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}
+<div style="margin-top: 5px; text-align: right;">
+  <a href="/admin/" class="button" style="
+      background-color: #5cb85c;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 500;
+  ">
+      💰 Billing Admin
+  </a>
+</div>
+{% endblock %}

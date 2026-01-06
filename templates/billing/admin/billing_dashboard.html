@@ -1,0 +1,32 @@
+{% extends "admin/index.html" %}
+{% load humanize %}
+
+{% block content %}
+  <h1 style="margin-bottom: 1rem;">💼 Pénzügyi Áttekintés</h1>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
+      <div style="background:#f8f9fa; padding:1rem; border-radius:12px; text-align:center;">
+          <h3>💰 Összes Bevétel</h3>
+          <p style="font-size:1.6rem; font-weight:bold;">{{ total_revenue|intcomma }} Ft</p>
+      </div>
+
+      <div style="background:#f8f9fa; padding:1rem; border-radius:12px; text-align:center;">
+          <h3>📅 Heti Bevétel</h3>
+          <p style="font-size:1.6rem; font-weight:bold;">{{ revenue_last_week|intcomma }} Ft</p>
+      </div>
+
+      <div style="background:#f8f9fa; padding:1rem; border-radius:12px; text-align:center;">
+          <h3>👤 Aktív Előfizetők</h3>
+          <p style="font-size:1.6rem; font-weight:bold;">{{ active_subs }}</p>
+      </div>
+
+      <div style="background:#f8f9fa; padding:1rem; border-radius:12px; text-align:center;">
+          <h3>🧾 Függő Számlák</h3>
+          <p style="font-size:1.6rem; font-weight:bold;">{{ pending_invoices }}</p>
+      </div>
+  </div>
+
+  <hr style="margin:2rem 0;">
+
+  {{ block.super }}
+{% endblock %}

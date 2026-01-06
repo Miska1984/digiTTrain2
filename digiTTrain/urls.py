@@ -16,25 +16,29 @@ Including another URLconf
 """
 
 # digiTTrain/urls.py
-from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
 
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+
+
+    # ⚙️ Klasszikus Django admin — opcionálisan másik útvonalon
+    path("django-admin/", admin.site.urls),
+
+    # 🌐 Többi alkalmazás
     path('', include('core.urls', namespace='core')),
     path('users/', include('users.urls')),
     path('biometric/', include('biometric_data.urls')),
     path('data-sharing/', include('data_sharing.urls')),
     path('diagnostics/', include('diagnostics_jobs.urls', namespace='diagnostics_jobs')),
     path("diagnostics/", include("diagnostics.urls")),
-    path('billing/', include('billing.urls')), 
-    path('ml_engine/', include('ml_engine.urls')), 
-
+    path('billing/', include('billing.urls')),
+    path('ml_engine/', include('ml_engine.urls')),
 ]
 
+# 🖼️ Fejlesztői médiafájl kiszolgálás
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

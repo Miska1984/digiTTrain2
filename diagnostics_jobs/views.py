@@ -8,6 +8,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.conf import settings
+from django.db import transaction
 from google.cloud import storage
 import json
 import uuid
@@ -23,7 +24,7 @@ from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
 from diagnostics.utils.gcs_signer import get_storage_client
 
 # 🆕 ÚJ IMPORT: Billing utils
-from billing.utils import dedicate_analysis, get_analysis_balance
+from billing.utils import dedicate_analysis, get_analysis_balance, refund_analysis
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -41,7 +42,6 @@ def create_diagnostic_job(request):
     
     try:
         data = json.loads(request.body)
-        user_id = data.get("user_id")
         sport_type = data.get("sport_type", "general")
         job_type_code = data.get("job_type")
         
@@ -49,67 +49,63 @@ def create_diagnostic_job(request):
         if not job_type_code or job_type_code not in DiagnosticJob.JobType.values:
             return JsonResponse({'success': False, 'error': 'Érvénytelen job_type kód.'}, status=400)
         
-        # 🆕 2. ELEMZÉSI EGYENLEG ELLENŐRZÉSE
-        current_balance = get_analysis_balance(user)
-        
-        if current_balance < 1:
+        # 2. Tranzakció indítása (Együtt kezeljük a levonást és a Job létrehozást)
+        with transaction.atomic():
+            # Elemzés levonása (dedicate_analysis a billing/utils.py-ból)
+            # Megjegyzés: a te kódodban korábban (user, job) volt, de az utils.py-ban csak (user) szerepel
+            success, new_balance = dedicate_analysis(user)
+
+            if not success:
+                return JsonResponse({
+                    'success': False, 
+                    'error': 'INSUFFICIENT_BALANCE',
+                    'message': 'Nincs elegendő elemzési egyenleged!'
+                }, status=402)
+            
+            # DiagnosticJob létrehozása PENDING státuszban
+            job = DiagnosticJob.objects.create(
+                user=user,
+                sport_type=sport_type,
+                job_type=job_type_code,
+                status=DiagnosticJob.JobStatus.PENDING,
+            )
+
+        # 3. Indítás megkísérlése (már a tranzakción kívül)
+        try:
+            # Celery / Cloud Task ütemezése
+            enqueue_diagnostic_job(job.id)
+            
+            # Ha az ütemezés sikerült, átállítjuk QUEUED-re
+            job.status = DiagnosticJob.JobStatus.QUEUED
+            job.save(update_fields=['status'])
+            
             return JsonResponse({
-                'success': False, 
-                'error': 'INSUFFICIENT_BALANCE',
-                'message': 'Nincs elegendő elemzési egyenleged! Vásárolj elemzési csomagot vagy nézz hirdetéseket.',
-                'current_balance': current_balance
-            }, status=402)  # 402 Payment Required
-        
-        # 3. DiagnosticJob létrehozása (még PENDING státuszban)
-        job = DiagnosticJob.objects.create(
-            user=user,
-            sport_type=sport_type,
-            job_type=job_type_code,
-            status=DiagnosticJob.JobStatus.PENDING,
-        )
+                'success': True,
+                'job_id': job.id,
+                'message': f"Elemzés elindítva!",
+                'remaining_balance': new_balance
+            })
 
-        # 🆕 4. ELEMZÉS LEVONÁSA AZ EGYENLEGBŐL
-        success, new_balance = dedicate_analysis(user, job)
-
-        if not success:
-            job.status = DiagnosticJob.JobStatus.FAILED 
-            job.error_message = f"Nem sikerült levonni az elemzést. Egyenleg: {new_balance} db."
+        except Exception as e:
+            # HA NEM SIKERÜLT ÜTEMEZNI (pl. nem érhető el a Redis/Task queue)
+            # VISSZATÉRÍTJÜK az elemzést!
+            refund_analysis(user, reason=f"Ütemezési hiba (Job: {job.id})")
+            
+            job.status = DiagnosticJob.JobStatus.FAILED
+            job.error_message = f"Indítási hiba: {str(e)}"
             job.save(update_fields=['status', 'error_message'])
             
             return JsonResponse({
-                'success': False, 
-                'error': 'DEDUCTION_FAILED',
-                'message': job.error_message
+                'success': False,
+                'error': 'TASK_QUEUE_ERROR',
+                'message': 'A technikai hiba miatt az elemzési egységet visszaadtuk.'
             }, status=500)
-        
-        # 5. Sikeres levonás: Átállítjuk QUEUED-re és elindítjuk
-        job.status = DiagnosticJob.JobStatus.QUEUED
-        job.save(update_fields=['status'])
-        
-        # Celery Task ütemezése
-        enqueue_diagnostic_job(job.id)
-        
-        return JsonResponse({
-            'success': True,
-            'job_id': job.id,
-            'message': f"Elemzés elindítva! -1 db elemzés levonva.",
-            'remaining_balance': new_balance
-        })
             
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'error': 'Érvénytelen JSON formátum.'}, status=400)
     except Exception as e:
-        logger.exception("Hiba a job indításakor")
-        
-        if 'job' in locals():
-            job.status = DiagnosticJob.JobStatus.FAILED
-            job.error_message = f'Ismeretlen hiba: {str(e)}'
-            job.save(update_fields=['status', 'error_message'])
-            
-        return JsonResponse({
-            'success': False,
-            'error': f'Ismeretlen hiba: {type(e).__name__}: {str(e)}'
-        }, status=500)
+        logger.exception("Kritikus hiba")
+        return JsonResponse({'success': False, 'error': 'Rendszerhiba történt.'}, status=500)
 
 
 @csrf_exempt
@@ -140,27 +136,25 @@ def run_job_view(request):
 def upload_anthropometry_video(request):
     """
     Antropometriai elemző videó feltöltése és elemzés indítása.
-    🆕 EGYENLEG ELLENŐRZÉSSEL!
     """
     job_type = DiagnosticJob.JobType.ANTHROPOMETRY_ASSESSMENT
 
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            gcs_object_name = data.get('video_url')
-            
-            if not gcs_object_name:
-                return JsonResponse({"success": False, "error": "Hiányzó 'video_url' a kérésben."}, status=400)
+    try:
+        data = json.loads(request.body)
+        gcs_object_name = data.get('video_url')
+        
+        if not gcs_object_name:
+            return JsonResponse({"success": False, "error": "Hiányzó 'video_url'."}, status=400)
 
-            # 🆕 1. EGYENLEG ELLENŐRZÉSE
-            current_balance = get_analysis_balance(request.user)
+        # 1. Tranzakció: Levonás és Job létrehozása együtt
+        with transaction.atomic():
+            success, new_balance = dedicate_analysis(request.user)
             
-            if current_balance < 1:
+            if not success:
                 return JsonResponse({
                     'success': False, 
                     'error': 'INSUFFICIENT_BALANCE',
-                    'message': 'Nincs elegendő elemzési egyenleged!',
-                    'current_balance': current_balance
+                    'message': 'Nincs elegendő elemzési egyenleged!'
                 }, status=402)
 
             try:
@@ -170,7 +164,6 @@ def upload_anthropometry_video(request):
                 
             full_video_url = f"https://storage.googleapis.com/{GCS_BUCKET_NAME}/{gcs_object_name}"
 
-            # 2. Job létrehozása (PENDING státuszban)
             job = DiagnosticJob.objects.create(
                 user=request.user,
                 sport_type='general', 
@@ -178,39 +171,31 @@ def upload_anthropometry_video(request):
                 video_url=full_video_url,
                 status=DiagnosticJob.JobStatus.PENDING
             )
-            
-            # 🆕 3. ELEMZÉS LEVONÁSA
-            success, new_balance = dedicate_analysis(request.user, job)
-            
-            if not success:
-                job.status = DiagnosticJob.JobStatus.FAILED
-                job.error_message = "Nem sikerült levonni az elemzést."
-                job.save()
-                return JsonResponse({
-                    'success': False,
-                    'error': 'DEDUCTION_FAILED',
-                    'message': job.error_message
-                }, status=500)
-            
-            # 4. Job ütemezése
+
+        # 2. Indítás (tranzakción kívül)
+        try:
             job.status = DiagnosticJob.JobStatus.QUEUED
-            job.save()
+            job.save(update_fields=['status'])
             enqueue_diagnostic_job(job.id) 
 
             return JsonResponse({
                 "success": True, 
                 "job_id": job.id,
-                "message": "A videó sikeresen feltöltve. Az elemzés elindult!",
+                "message": "Az elemzés elindult!",
                 "remaining_balance": new_balance
             }, status=201)
-                
-        except json.JSONDecodeError:
-            return JsonResponse({"success": False, "error": "Hibás JSON formátum."}, status=400)
+
         except Exception as e:
-            logger.exception("Hiba a Job létrehozásakor")
-            return JsonResponse({"success": False, "error": f"Hiba: {e}"}, status=500)
-    
-    return JsonResponse({"success": False, "error": "Csak POST kérés fogadható el."}, status=405)
+            # REFUND, ha nem sikerül sorba állítani
+            refund_analysis(request.user, reason=f"Video job indítási hiba: {job.id}")
+            job.status = DiagnosticJob.JobStatus.FAILED
+            job.error_message = f"Hiba az ütemezéskor: {str(e)}"
+            job.save(update_fields=['status', 'error_message'])
+            return JsonResponse({"success": False, "error": "Hiba az indításkor, jóváírtuk az egységet."}, status=500)
+                
+    except Exception as e:
+        logger.exception("Hiba az antropometria indításakor")
+        return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
 
@@ -315,7 +300,7 @@ def handle_calibration_upload(request, profile):
         )
 
         # 🆕 3. ELEMZÉS LEVONÁSA
-        success, new_balance = dedicate_analysis(request.user, job)
+        success, new_balance = dedicate_analysis(request.user)
         
         if not success:
             job.status = DiagnosticJob.JobStatus.FAILED

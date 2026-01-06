@@ -1,0 +1,45 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls static %}
+
+{% block content %}
+<div class="card p-4 shadow-sm">
+    <h3 class="mb-4">Kredit jóváírása a következő felhasználóknak:</h3>
+    
+    <ul class="list-group mb-4">
+        {% for obj in items %}
+            <li class="list-group-item">
+                <strong>{{ obj.user.get_full_name|default:obj.user.username }}</strong> 
+                ({{ obj.user.email }}) - Jelenlegi: {{ obj.credits }} Cr
+            </li>
+        {% endfor %}
+    </ul>
+
+    <form action="" method="post">
+        {% csrf_token %}
+        
+        <div class="border p-4 bg-light rounded">
+            {% for field in form %}
+                <div class="mb-3">
+                    <label class="form-label fw-bold">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.errors %}
+                        <div class="text-danger">{{ field.errors }}</div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        {% for obj in items %}
+            <input type="hidden" name="{{ action_checkbox_name }}" value="{{ obj.pk }}" />
+        {% endfor %}
+        
+        <input type="hidden" name="action" value="{{ action }}" />
+        <input type="hidden" name="apply" value="True" />
+
+        <div class="mt-4">
+            <input type="submit" value="Jóváírás végrehajtása" class="btn btn-primary btn-lg" />
+            <a href="#" onclick="window.history.back(); return false;" class="btn btn-outline-secondary">Mégse</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

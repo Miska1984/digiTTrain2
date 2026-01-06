@@ -1,0 +1,21 @@
+{% extends "admin/index.html" %}
+{% load static %}
+
+{% block content %}
+<div style="margin-bottom: 1.5em; text-align: right;">
+  <a href="{{ django_admin_url }}" class="button" style="
+      background-color: #417690;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+  ">
+      ⚙️ Django Admin
+  </a>
+
+  <a href="{{ pending_invoices_url }}" class="button">🧾 Vásárlási kérelmek</a>
+</div>
+
+{{ block.super }}
+{% endblock %}
+

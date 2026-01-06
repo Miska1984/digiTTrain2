@@ -72,15 +72,15 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     # 1. BIZTONSÁG ÉS SESSION
-    "django.middleware.security.SecurityMiddleware",
+    "django.middleware.security.SecurityMiddleware", # ok
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
-    "django.middleware.common.CommonMiddleware", # A duplikációt itt szüntettük meg
+    "django.contrib.sessions.middleware.SessionMiddleware", # ok
+    "django.middleware.common.CommonMiddleware", # A duplikációt itt szüntettük meg ok
     
     # 2. HITELÉSÍTÉS ÉS FELHASZNÁLÓ KEZELÉS (EZT KELL ELŐRE HOZNI!)
-    "django.middleware.csrf.CsrfViewMiddleware",        
-    "django.contrib.auth.middleware.AuthenticationMiddleware", # 💥 MUST BE HERE!
-    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",         # ok
+    "django.contrib.auth.middleware.AuthenticationMiddleware", # 💥 MUST BE HERE! ok
+    "django.contrib.messages.middleware.MessageMiddleware", # ok
     
     # 3. CUSTOM LOGIKA (CSAK A HITELÉSÍTÉS UTÁN FUT! CSAK ADDIG LEGYEN KI KOMMENTELVE AMEDDIG A FEJELSZTÉS MEGY)
     'billing.middleware.InterstitialAdMiddleware', # 💥 A CUSTOM MIDDLEWARE HELYE

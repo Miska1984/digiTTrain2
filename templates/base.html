@@ -13,8 +13,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
 
+    {% if not is_ad_free %}
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7737967729637742"
      crossorigin="anonymous"></script>
+    {% endif %}
 
     {% block extra_css %}{% endblock %}
 </head>
@@ -140,7 +142,7 @@
                     <ul class="dropdown-menu dropdown-menu-dark">
                         <li><a class="dropdown-item" href="{% url 'billing:billing_dashboard' %}">Pénzügyi vezérlőpult</a></li>
                         <li><a class="dropdown-item" href="{% url 'billing:billing_purchase' %}">Vásárlás</a></li>
-                        <li><a class="dropdown-item" href="{% url 'billing:ad_credit_earn' %}">Ingyenes elemzés (Hirdetés)</a></li>
+                        <li><a class="dropdown-item" href="{% url 'billing:ad_credit_earn' %}">Kredit Szerzés</a></li>
                     </ul>
                 </li>
                 {% endif %}
@@ -174,15 +176,24 @@
 
 <!-- TARTALOM -->
 <main class="container py-4">
-    <div class="row">
-        <div class="col-lg-9 col-md-8">{% block content %}{% endblock %}</div>
-        <div class="col-lg-3 col-md-4 mt-4 mt-md-0">{% include 'billing/includes/ad_sidebar.html' %}</div>
-    </div>
+        <div class="row">
+            <div class="col-lg-9 col-md-8">
+                {% block content %}{% endblock %}
+            </div>
+            
+            {% if not is_ad_free %}
+            <div class="col-lg-3 col-md-4 mt-4 mt-md-0">
+                {% include 'billing/includes/ad_sidebar.html' %}
+            </div>
+            {% endif %}
+        </div>
 </main>
 
 <footer class="py-3 my-4">
-    {% include 'billing/includes/ad_footer.html' %}
-    <p class="text-center text-muted">© 2025 digiTTrain</p>
+        {% if not is_ad_free %}
+            {% include 'billing/includes/ad_footer.html' %}
+        {% endif %}
+        <p class="text-center text-muted">© 2025 digiTTrain</p>
 </footer>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>

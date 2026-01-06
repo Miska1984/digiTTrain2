@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5 text-center">
+    <div class="alert alert-warning shadow-lg p-5 rounded-3 mx-auto" style="max-width: 600px;">
+        <h3 class="mb-3">
+            🔒 Ez a funkció csak előfizetőknek érhető el
+        </h3>
+        <p class="lead text-muted">
+            Az előfizetéssel korlátlan hozzáférést kapsz az edzésdiagnosztikához,
+            az ML elemzésekhez és a mozgásanalitikához.
+        </p>
+        <div class="mt-4">
+            <a href="{% url 'billing:billing_purchase' %}" class="btn btn-primary btn-lg me-2">
+                💳 Előfizetés megvásárlása
+            </a>
+            <a href="/" class="btn btn-outline-secondary btn-lg">
+                ⬅️ Vissza a főoldalra
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

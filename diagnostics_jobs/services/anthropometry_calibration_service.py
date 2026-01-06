@@ -326,8 +326,8 @@ def process_image_with_mediapipe(image_path: str) -> dict:
 class AnthropometryCalibrationService(BaseDiagnosticService):
     """Két képből (szemből + oldalról) történő antropometriai kalibráció."""
 
-    def __init__(self, job_id):
-        self.job = DiagnosticJob.objects.get(id=job_id)
+    def __init__(self, job):
+        self.job = job
         self.front_landmarks = None
         self.side_landmarks = None
 

@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6 text-center">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-dark text-white py-3">
+                    <h4 class="mb-0 fw-bold"><i class="bi bi-play-circle me-2"></i> Kredit gyűjtése</h4>
+                </div>
+                <div class="card-body p-4 p-md-5">
+                    
+                    {% if already_earned %}
+                        <div class="py-4">
+                            <i class="bi bi-calendar-check text-success display-1 mb-3"></i>
+                            <h3 class="fw-bold">Mára végeztél!</h3>
+                            <p class="text-muted">Ma már begyűjtötted a napi hirdetésért járó bónuszt. Gyere vissza holnap!</p>
+                            <a href="{% url 'billing:billing_dashboard' %}" class="btn btn-primary rounded-pill px-4">
+                                Vissza a vezérlőpultra
+                            </a>
+                        </div>
+                    {% else %}
+                        <div id="ad-box" class="bg-light border rounded-4 d-flex align-items-center justify-content-center mb-4 position-relative" style="height: 300px;">
+                            <div class="text-center p-4">
+                                <div class="spinner-border text-warning mb-3" role="status" id="ad-spinner">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <i class="bi bi-film display-4 text-secondary d-none" id="ad-icon"></i>
+                                <h5 class="mt-3 text-dark fw-bold">Hirdetés betöltése és megtekintése...</h5>
+                                <p class="small text-muted">Kérjük, ne zárd be az ablakot a jóváírásig.</p>
+                            </div>
+                        </div>
+
+                        <div id="timer-wrapper">
+                            <div class="progress mb-3" style="height: 10px;">
+                                <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <p class="fw-bold text-secondary">Hátralévő idő: <span id="seconds">30</span> másodperc</p>
+                        </div>
+
+                        <form method="post" id="claim-form" style="display: none;">
+                            {% csrf_token %}
+                            <div class="alert alert-success border-0 shadow-sm rounded-3 mb-4">
+                                <i class="bi bi-check-circle-fill me-2"></i> A hirdetés véget ért! Most már igényelheted a bónuszt.
+                            </div>
+                            <button type="submit" class="btn btn-success btn-lg w-100 rounded-pill shadow py-3 fw-bold">
+                                <i class="bi bi-gift-fill me-2"></i> 1 KREDIT BEGYŰJTÉSE
+                            </button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let timeLeft = 30; // 30 másodperc
+    const totalTime = 30;
+    const secondsEl = document.getElementById('seconds');
+    const progressBar = document.getElementById('progress-bar');
+    const timerWrapper = document.getElementById('timer-wrapper');
+    const claimForm = document.getElementById('claim-form');
+    const adSpinner = document.getElementById('ad-spinner');
+    const adIcon = document.getElementById('ad-icon');
+
+    if (secondsEl) {
+        const timer = setInterval(() => {
+            timeLeft--;
+            secondsEl.textContent = timeLeft;
+            
+            // Progress bar frissítése
+            let percentage = ((totalTime - timeLeft) / totalTime) * 100;
+            progressBar.style.width = percentage + '%';
+
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                timerWrapper.classList.add('d-none');
+                claimForm.style.display = 'block';
+                adSpinner.classList.add('d-none');
+                adIcon.classList.remove('d-none');
+            }
+        }, 1000);
+
+        // Kilépés elleni védelem
+        window.onbeforeunload = function() {
+            if (timeLeft > 0) {
+                return "Ha most kilépsz, elveszíted a kreditet!";
+            }
+        };
+    }
+});
+</script>
+{% endblock %}

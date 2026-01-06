@@ -1,0 +1,53 @@
+<!-- billing/emails/invoice_approved.html -->
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; }
+    .card {
+      border: 1px solid #eaeaea;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 10px auto;
+      max-width: 600px;
+    }
+    h2 { color: #0073e6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>✅ Előfizetésed aktiválva!</h2>
+    <p>Kedves {{ invoice.user.username }},</p>
+
+    {% if context_type == "ad_free_subscription" %}
+      <p>Örömmel értesítünk, hogy a <strong>hirdetésmentes előfizetésed</strong> sikeresen aktiválva lett!</p>
+      <p>Csomag neve: <strong>{{ invoice.subscription_plan.name }}</strong><br>
+      Időtartam: {{ invoice.subscription_plan.duration_days }} nap<br>
+      Ár: {{ invoice.amount_ft }} Ft</p>
+
+    {% elif context_type == "ml_access_subscription" %}
+      <p>A <strong>Machine Learning funkciók</strong> hozzáférése aktiválva lett!</p>
+      <p>Csomag neve: <strong>{{ invoice.subscription_plan.name }}</strong><br>
+      Időtartam: {{ invoice.subscription_plan.duration_days }} nap<br>
+      Ár: {{ invoice.amount_ft }} Ft</p>
+
+    {% elif context_type == "analysis" %}
+      <p>Elemzési egyenleged feltöltve!</p>
+      <p><strong>{{ invoice.related_analysis_package.analysis_count }} db elemzés</strong> került jóváírásra a fiókodban.</p>
+      <p>Csomag: {{ invoice.related_analysis_package.name }}<br>
+      Ár: {{ invoice.amount_ft }} Ft</p>
+
+    {% else %}
+      <p>Az előfizetésed sikeresen feldolgozásra került.</p>
+    {% endif %}
+
+    <hr>
+    <p>Számla azonosító: #{{ invoice.id }}<br>
+    Dátum: {{ invoice.approved_date|date:"Y.m.d H:i" }}</p>
+
+    <p>Üdvözlettel,<br>
+    <strong>DigiTTrain csapat</strong></p>
+  </div>
+</body>
+</html>

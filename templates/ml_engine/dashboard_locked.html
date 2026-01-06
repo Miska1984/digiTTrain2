@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Prémium hozzáférés szükséges{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="card shadow-lg border-0 p-5">
+                <div class="card-body">
+                    <div class="mb-4">
+                        <span class="fa-stack fa-3x">
+                            <i class="fas fa-circle fa-stack-2x text-light"></i>
+                            <i class="fas fa-lock fa-stack-1x text-warning"></i>
+                        </span>
+                    </div>
+                    
+                    <h2 class="fw-bold mb-3">Fedezd fel a teljesítményed határait!</h2>
+                    <p class="lead text-muted mb-4">
+                        Az ML-alapú analitika segít megérteni a tested jelzéseit és elkerülni a sérüléseket.
+                    </p>
+
+                    <div class="row text-start mb-5 justify-content-center">
+                        <div class="col-md-10">
+                            <ul class="list-unstyled">
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> <strong>Személyre szabott formaindex:</strong> tudd meg, mennyire vagy terhelhető ma.</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> <strong>Sérüléskockázat előrejelzés:</strong> előzd meg a bajt mesterséges intelligenciával.</li>
+                                <li class="mb-2"><i class="fas fa-check-circle text-success me-2"></i> <strong>Trendelemzés:</strong> lásd át, hogyan változik az alvásod és a HRV-d hatása a formádra.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center">
+                        <a href="{% url 'billing:billing_purchase' %}" class="btn btn-warning btn-lg px-5 fw-bold text-dark">
+                            <i class="fas fa-bolt me-2"></i> Előfizetés aktiválása
+                        </a>
+                        <a href="{% url 'core:main_page' %}" class="btn btn-outline-secondary btn-lg px-4">
+                            Vissza a főoldalra
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

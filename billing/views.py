@@ -1,250 +1,160 @@
-# billing/views.py
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.utils import timezone
+from django.http import JsonResponse
+from django.core.mail import send_mail
+from django.conf import settings
 from django.db import transaction
-from datetime import timedelta
-from decimal import Decimal
-
+from django.utils import timezone  # Django specifikus timezone!
+from .models import ServicePlan, TopUpInvoice, UserCreditBalance, UserAnalysisBalance, UserSubscription, FinancialTransaction
 from .forms import CombinedPurchaseForm
-from .models import (
-    UserSubscription, 
-    UserAnalysisBalance,
-    AnalysisTransaction,
-    AdViewStreak,
-    SubscriptionPlan,
-    JobPrice,
-    TopUpInvoice  # ⬅️ fontos!
-)
-from .utils import get_analysis_balance, check_ad_streak, reward_ad_view
-
-import logging
-logger = logging.getLogger(__name__)
-
-
-# ==============================================================================
-# 1. PÉNZÜGYI VEZÉRLŐPULT (Dashboard)
-# ==============================================================================
+from .utils import activate_service, redeem_with_credits
 
 @login_required
 def billing_dashboard_view(request):
-    """Megjeleníti a felhasználó egyenlegét, előfizetését és tranzakcióit"""
+    analysis_balance, _ = UserAnalysisBalance.objects.get_or_create(user=request.user)
+    credit_balance, _ = UserCreditBalance.objects.get_or_create(user=request.user)
     
-    # 1. Elemzési egyenleg lekérése
-    analysis_balance = get_analysis_balance(request.user)
+    # Összes aktív előfizetés lekérése (lehet több is!)
+    active_subscriptions = UserSubscription.objects.filter(
+        user=request.user, 
+        expiry_date__gt=timezone.now()
+    )
     
-    # 2. Aktív előfizetés lekérése
-    current_subscription = UserSubscription.objects.filter(
-        user=request.user,
-        end_date__gt=timezone.now()
-    ).select_related('plan').first()
-    
-    # 3. Hirdetésnézési sorozat
-    current_streak, can_view_today = check_ad_streak(request.user)
-    try:
-        streak_obj = AdViewStreak.objects.get(user=request.user)
-        total_rewards = streak_obj.total_rewards_earned
-    except AdViewStreak.DoesNotExist:
-        total_rewards = 0
-    
-    # 4. Tranzakciók (utolsó 10)
-    transactions = AnalysisTransaction.objects.filter(
-        user=request.user
-    ).order_by('-timestamp')[:10]
-    
-
-    
-    context = {
-        'analysis_balance': analysis_balance,
-        'current_subscription': current_subscription,
-        'current_streak': current_streak,
-        'can_view_ad_today': can_view_today,
-        'total_ad_rewards': total_rewards,
-        'transactions': transactions,
-    }
-    
-    return render(request, 'billing/dashboard.html', context)
-
-
-# ==============================================================================
-# 2. VÁSÁRLÁS (Előfizetés / Elemzési csomag)
-# ==============================================================================
-
-@login_required
-@transaction.atomic
-def purchase_view(request):
-    """
-    Kombinált nézet elemzési csomagok (Credit) és hirdetésmentes előfizetés vásárlására.
-    Létrehozza a TopUpInvoice-t, amit az admin később jóváhagy.
-    """
-    analysis_packages = JobPrice.objects.all().order_by('price_ft')
-    ad_free_plans = SubscriptionPlan.objects.filter(is_ad_free=True).order_by('duration_days')
-
-    # 🔥 ÚJ: Függőben lévő számlák lekérése
+    # Függőben lévő számlák (PENDING és INVOICED)
     pending_invoices = TopUpInvoice.objects.filter(
         user=request.user,
-        status='PENDING'
-    ).select_related('subscription_plan', 'related_analysis_package').order_by('-request_date')
+        status__in=['PENDING', 'INVOICED']
+    ).order_by('-created_at')
 
-    if not analysis_packages.exists() and not ad_free_plans.exists():
-        messages.error(request, "Nincsenek elérhető csomagok vásárlásra.")
-        return redirect('billing:billing_dashboard')
-
-    if request.method == 'POST':
-        form = CombinedPurchaseForm(
-            request.POST, 
-            user=request.user,
-            analysis_packages=analysis_packages,
-            ad_free_plans=ad_free_plans
-        )
-        
-        if form.is_valid():
-            data = form.cleaned_data
-            purchase_type = data['purchase_type']
-            amount_ft = Decimal(0)
-            invoice_type = ''
-            related_package = None
-            related_plan = None
-
-            if purchase_type == 'AD_FREE':
-                related_plan = data['subscription_plan']
-                amount_ft = related_plan.price_ft
-                invoice_type = 'AD_FREE_SUBSCRIPTION'  # ✅ JAVÍTVA
-                description = f"Hirdetésmentes előfizetés: {related_plan.name}"
-
-            elif purchase_type == 'ANALYSIS_PACKAGE':
-                related_package = data['analysis_package']
-                amount_ft = related_package.price_ft
-                invoice_type = 'ANALYSIS_PACKAGE'  # ✅ JAVÍTVA
-                description = f"Elemzési csomag: {related_package.name} ({related_package.analysis_count} db)"
-
-            # =============== Számlázási igény rögzítése ===============
-            invoice = TopUpInvoice.objects.create(
-                user=request.user,
-                target_user=request.user,
-                amount_ft=amount_ft,
-                invoice_type=invoice_type,
-                status='PENDING',
-                request_date=timezone.now(),
-                related_analysis_package=related_package,
-                subscription_plan=related_plan,
-                billing_name=data['billing_name'],
-                billing_address=data['billing_address'],
-                tax_number=data.get('tax_number', ''),
-                billing_email=data['billing_email'],
-            )
-            # =============================================================
-
-            logger.info(f"💰 Számlázási igény létrehozva: {invoice} (összeg: {amount_ft} Ft)")
-            messages.success(
-                request,
-                f"✅ Számlaigénylés rögzítve! Hamarosan visszajelzést kapsz e-mailben: {data['billing_email']}."
-            )
-            return redirect('billing:billing_dashboard')
-
-    else:
-        form = CombinedPurchaseForm(
-            user=request.user,
-            analysis_packages=analysis_packages,
-            ad_free_plans=ad_free_plans
-        )
+    # Ellenőrizzük a mai hirdetést
+    ad_today = FinancialTransaction.objects.filter(
+        user=request.user,
+        transaction_type='EARN',
+        description__icontains="Napi hirdetés bónusz",
+        timestamp__date=timezone.now().date()
+    ).exists()
 
     context = {
-        'form': form,
-        'analysis_packages': analysis_packages,
-        'ad_free_plans': ad_free_plans,
-        'pending_invoices': pending_invoices,  # ✅ ÚJ
+        'analysis_balance': analysis_balance.count,
+        'credit_balance': credit_balance.credits,
+        'active_subscriptions': active_subscriptions, # HTML-hez igazítva
+        'pending_invoices': pending_invoices,         # HTML-hez igazítva
+        'ad_earned_today': ad_today,
+        'transactions': FinancialTransaction.objects.filter(user=request.user).order_by('-timestamp')[:10],
     }
-    return render(request, 'billing/purchase.html', context) 
+    return render(request, 'billing/dashboard.html', context)
 
+@login_required
+def purchase_view(request):
+    wallet, created = UserCreditBalance.objects.get_or_create(user=request.user)
+    
+    initial_data = {'billing_email': request.user.email}
+    if hasattr(request.user, 'profile'):
+        full_name = f"{request.user.profile.first_name} {request.user.profile.last_name}".strip()
+        if full_name: initial_data['billing_name'] = full_name
 
-# ==============================================================================
-# 3. HIRDETÉS MEGTEKINTÉSE (Ingyenes elemzésért)
-# ==============================================================================
+    if request.method == 'POST':
+        # Átadjuk a request.user-t a formnak!
+        form = CombinedPurchaseForm(request.POST, user=request.user)
+        if form.is_valid():
+            plan_id = request.POST.get('selected_plan_id')
+            plan = get_object_or_404(ServicePlan, id=plan_id)
+            
+            # MEGHATÁROZZUK A KEDVEZMÉNYEZETTET:
+            # Ha a szülő választott gyereket, ő lesz az, különben marad a bejelentkezett user
+            target_user = form.cleaned_data.get('target_user') or request.user
+            payment_method = form.cleaned_data['payment_method']
+
+            if payment_method == 'CASH':
+                TopUpInvoice.objects.create(
+                    user=request.user,        # A fizető mindig a szülő
+                    target_user=target_user,  # ⚠️ EHHEZ KELL EGY ÚJ MEZŐ A MODELLBEN (lásd lentebb)
+                    plan=plan,
+                    amount_ft=plan.price_ft,
+                    billing_name=form.cleaned_data['billing_name'],
+                    billing_address=form.cleaned_data['billing_address'],
+                    billing_email=form.cleaned_data['billing_email'],
+                    status='PENDING'
+                )
+                messages.success(request, f"Díjbekérő generálva {target_user.get_full_name()} részére.")
+                return redirect('billing:billing_dashboard')
+
+            elif payment_method == 'CREDIT':
+                if wallet.credits >= plan.price_in_credits:
+                    from .utils import activate_service
+                    # Fontos: a levonás a szülőtől megy, de az aktiválás a target_user-nek!
+                    if activate_service(target_user, plan, payer=request.user):
+                        messages.success(request, f"Sikeresen aktiválva {target_user.get_full_name()} számára!")
+                        return redirect('billing:billing_dashboard')
+                else:
+                    messages.error(request, "Nincs elég kredited!")
+        else:
+            # Ha a form nem valid (pl. hiányzik a cím)
+            messages.error(request, "Kérjük, ellenőrizze a megadott adatokat! Banki utaláshoz kötelező a számlázási cím.")
+    else:
+        form = CombinedPurchaseForm(initial=initial_data, user=request.user)
+
+    return render(request, 'billing/purchase.html', {
+        'form': form,
+        'user_credits': wallet.credits
+    })
+
+# ============================================================
+# 🆕 HIRDETÉSNÉZÉS ÉS KREDIT JÓVÁÍRÁS
+# ============================================================
 
 @login_required
 def ad_for_credit_view(request):
-    """
-    Hirdetés megtekintése 5 egymást követő napon keresztül.
-    Jutalom: +1 ingyenes elemzés
-    """
+    user = request.user
+    today = timezone.now().date()
     
-    # Sorozat állapotának lekérése
-    current_streak, can_view_today = check_ad_streak(request.user)
-    
+    # Ellenőrizzük, kapott-e már ma kreditet hirdetésért
+    already_earned = FinancialTransaction.objects.filter(
+        user=user,
+        transaction_type='EARN',
+        description__icontains="Napi hirdetés bónusz",
+        timestamp__date=today
+    ).exists()
+
     if request.method == 'POST':
-        # Felhasználó megnézte a hirdetést és megnyomta a gombot
-        if not can_view_today:
-            messages.warning(request, "⚠️ Ma már megnézted a hirdetést. Gyere vissza holnap!")
-            return redirect('billing_dashboard')
+        if already_earned:
+            messages.warning(request, "Ma már gyűjtöttél kreditet, gyere vissza holnap!")
+            return redirect('billing:billing_dashboard')
         
-        # Hirdetés megtekintésének rögzítése
-        success, new_streak, rewarded = reward_ad_view(request.user)
-        
-        if rewarded:
-            messages.success(
-                request,
-                f"🎉 Gratulálunk! 5 egymást követő nap teljesítve! "
-                f"+1 ingyenes elemzést kaptál ajándékba!"
-            )
-        elif success:
-            remaining = 5 - new_streak
-            messages.info(
-                request,
-                f"✅ Hirdetés rögzítve! Jelenlegi sorozat: {new_streak}/5 nap. "
-                f"Még {remaining} nap és kapsz +1 ingyenes elemzést!"
+        # Kredit jóváírása (pl. 1 kredit)
+        amount = 1
+        with transaction.atomic():
+            wallet, _ = UserCreditBalance.objects.get_or_create(user=user)
+            wallet.credits += amount
+            wallet.save()
+            
+            FinancialTransaction.objects.create(
+                user=user,
+                transaction_type='EARN',
+                amount=amount,
+                description=f"Napi hirdetés bónusz ({user.email})"
             )
         
-        return redirect('billing_dashboard')
-    
-    # GET kérés: Hirdetési oldal megjelenítése
+        messages.success(request, f"Gratulálunk! {amount} kreditet kaptál.")
+        return redirect('billing:billing_dashboard')
+
+    # GET kérés esetén megjelenítjük a hirdetés oldalt
     context = {
-        'current_streak': current_streak,
-        'can_view_today': can_view_today,
-        'remaining_days': max(0, 5 - current_streak) if can_view_today else 0,
+        'already_earned': already_earned,
     }
-    
-    return render(request, 'billing/ad_for_credit.html', context)
-
-
-# ==============================================================================
-# 4. HIRDETÉSMENTESSÉG AKTIVÁLÁS/KIKAPCSOLÁS
-# ==============================================================================
+    return render(request, 'billing/ad_view.html', context)
 
 @login_required
-def toggle_ad_free_view(request):
-    """
-    Hirdetésmentes előfizetés gyors aktiválása.
-    Ez az oldal átirányít a purchase_view-ra.
-    """
-    
-    # Aktuális előfizetés lekérése
-    current_subscription = UserSubscription.objects.filter(
-        user=request.user,
-        end_date__gt=timezone.now(),
-        plan__is_ad_free=True
-    ).select_related('plan').first()
-    
-    if request.method == 'POST':
-        # Ha van aktív előfizetés, akkor kikapcsolás (törlés)
-        if current_subscription:
-            # Kikapcsolás: end_date-et most-ra állítjuk
-            current_subscription.end_date = timezone.now()
-            current_subscription.save(update_fields=['end_date'])
-            
-            messages.info(request, "ℹ️ Hirdetésmentesség kikapcsolva.")
-            return redirect('billing_dashboard')
-        else:
-            # Ha nincs előfizetés, átirányítás vásárlásra
-            messages.info(request, "ℹ️ Válasszon hirdetésmentes csomagot a vásárláshoz.")
-            return redirect('billing_purchase')
-    
-    # GET kérés: Megerősítő oldal
-    context = {
-        'current_subscription': current_subscription,
-    }
-    
-    return render(request, 'billing/toggle_ad_free.html', context)
+def toggle_ad_free_view(request): return redirect('billing:billing_dashboard')
 
+# ============================================================
+# AJAX VÉGPONT A CSOMAGOKHOZ
+# ============================================================
 
+def get_plans_ajax(request):
+    p_type = request.GET.get('type') # Ezt küldi a JS: ANALYSIS, AD_FREE, vagy ML_ACCESS
+    plans = ServicePlan.objects.filter(plan_type=p_type, is_active=True).values(
+        'id', 'name', 'description', 'price_ft', 'price_in_credits'
+    )
+    return JsonResponse(list(plans), safe=False)

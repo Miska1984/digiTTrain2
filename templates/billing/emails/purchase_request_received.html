@@ -1,0 +1,117 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>DigiTTrain - Vásárlási igény fogadva</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f9f9fb;
+            color: #333;
+            padding: 20px;
+        }
+        .email-container {
+            max-width: 640px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            padding: 30px 40px;
+        }
+        h1 {
+            color: #3f51b5;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+        }
+        .section {
+            margin-top: 25px;
+        }
+        .highlight {
+            background-color: #eef2ff;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 1.1em;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #777;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
+            text-align: center;
+        }
+        a {
+            color: #3f51b5;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <h1>Vásárlási igény fogadva ✅</h1>
+        <p>Kedves <strong>{{ billing_name }}</strong>!</p>
+        <p>
+            Köszönjük, hogy igényelte a következő DigiTTrain szolgáltatást:
+        </p>
+
+        <div class="highlight">
+            {% if purchase_type == "AD_FREE" %}
+                🔕 <strong>Hirdetésmentes előfizetés</strong><br>
+                Csomag: <strong>{{ plan_name }}</strong><br>
+                Időtartam: {{ duration_days }} nap<br>
+                Összeg: <strong>{{ amount_ft|intcomma }} Ft</strong>
+            {% elif purchase_type == "ML_ACCESS" %}
+                🤖 <strong>ML funkciók előfizetés</strong><br>
+                Csomag: <strong>{{ plan_name }}</strong><br>
+                Időtartam: {{ duration_days }} nap<br>
+                Összeg: <strong>{{ amount_ft|intcomma }} Ft</strong>
+            {% elif purchase_type == "ANALYSIS_PACKAGE" %}
+                📊 <strong>Elemzési csomag</strong><br>
+                {{ analysis_count }} db elemzés<br>
+                Összeg: <strong>{{ amount_ft|intcomma }} Ft</strong>
+            {% endif %}
+        </div>
+
+        <div class="section">
+            <h3>💳 Fizetés menete</h3>
+            <p>
+                A fizetéshez kérjük, utalja el az összeget az alábbi bankszámlára:
+            </p>
+            <div class="highlight" style="background-color:#f8fff2;">
+                <strong>Kedvezményezett:</strong> DigiTTrain Kft.<br>
+                <strong>Bankszámlaszám:</strong> 12345678-12345678-12345678<br>
+                <strong>Közlemény:</strong> Vásárlás - {{ user.username }} - {{ invoice_number }}
+            </div>
+            <p class="mt-2">
+                Amint az utalás beérkezik, a rendszer automatikusan aktiválja az előfizetésedet,
+                és e-mailben visszaigazolást kapsz róla.
+            </p>
+        </div>
+
+        <div class="section">
+            <h3>🧾 Számlázási adataid</h3>
+            <p>
+                <strong>{{ billing_name }}</strong><br>
+                {{ billing_address|linebreaksbr }}<br>
+                E-mail: {{ billing_email }}<br>
+                {% if tax_number %}
+                    Adószám: {{ tax_number }}
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>Köszönjük, hogy a DigiTTrain-t választottad! 💪</p>
+            <p>
+                <a href="https://digittrain.hu">digittrain.hu</a> |
+                <a href="mailto:info@digittrain.hu">info@digittrain.hu</a>
+            </p>
+        </div>
+    </div>
+</body>
+</html>

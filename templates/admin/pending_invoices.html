@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% block content %}
+<h1>🧾 Függőben lévő vásárlási kérelmek</h1>
+
+{% if invoices %}
+  <table class="table" style="width:100%; border-collapse: collapse;">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Felhasználó</th>
+        <th>Típus</th>
+        <th>Összeg</th>
+        <th>Igénylés dátuma</th>
+        <th>Művelet</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for invoice in invoices %}
+        <tr style="border-bottom:1px solid #ccc;">
+          <td>{{ invoice.id }}</td>
+          <td>{{ invoice.user.username }}</td>
+          <td>{{ invoice.get_invoice_type_display }}</td>
+          <td>{{ invoice.amount_ft }} Ft</td>
+          <td>{{ invoice.request_date|date:"Y.m.d H:i" }}</td>
+          <td>
+            <form method="post" style="display:inline;">{% csrf_token %}
+              <input type="hidden" name="invoice_id" value="{{ invoice.id }}">
+              <button name="action" value="approve" class="button btn btn-success">✅ Jóváhagyás</button>
+            </form>
+            <form method="post" style="display:inline;">{% csrf_token %}
+              <input type="hidden" name="invoice_id" value="{{ invoice.id }}">
+              <button name="action" value="reject" class="button btn btn-danger">❌ Elutasítás</button>
+            </form>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>Nincs függőben lévő vásárlási kérelem 🎉</p>
+{% endif %}
+{% endblock %}

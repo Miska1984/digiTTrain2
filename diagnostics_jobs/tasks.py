@@ -52,7 +52,7 @@ def _convert_numpy_to_python(data):
     return data
 
 
-@shared_task
+@shared_task(queue='default')
 def run_diagnostic_job(job_id):
     """
     Dinamikus mozgáselemzés feldolgozása, profil frissítés vagy PDF-riport generálás.
@@ -78,7 +78,7 @@ def run_diagnostic_job(job_id):
             # ➡️ ÚJ KÓD: VISSZATÉRÍTÉS KRITIKUS HIBA ESETÉN
             try:
                 # Egyszerűsített hívás:
-                refund_analysis(job) # Csak a job objektumot adjuk át
+                refund_analysis(job.user, reason=f"Hiba a feldolgozás során (Job: {job.id})")
                 logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
             except Exception as refund_error:
                 logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")
@@ -207,7 +207,7 @@ def run_diagnostic_job(job_id):
             # 🆕 VISSZATÉRÍTÉS: Sikertelen job esetén
             try:
                 # Egyszerűsített hívás:
-                refund_analysis(job) # Csak a job objektumot adjuk át
+                refund_analysis(job.user, reason=f"Hiba a feldolgozás során (Job: {job.id})")
                 logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
             except Exception as refund_error:
                 logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")
@@ -221,7 +221,7 @@ def run_diagnostic_job(job_id):
             # 🆕 VISSZATÉRÍTÉS: Sikertelen job esetén
             try:
                 # Egyszerűsített hívás:
-                refund_analysis(job) # Csak a job objektumot adjuk át
+                refund_analysis(job.user, reason=f"Hiba a feldolgozás során (Job: {job.id})")
                 logger.info(f"↩️ [BILLING] Elemzés visszatérítve job_id={job_id}")
             except Exception as refund_error:
                 logger.error(f"❌ [BILLING] Visszatérítési hiba: {refund_error}")

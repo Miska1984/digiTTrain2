@@ -1,195 +1,131 @@
 # billing/forms.py
 from django import forms
-from django.contrib.auth import get_user_model
-from django.core.validators import MinValueValidator
-from .models import SubscriptionPlan, JobPrice
+from datetime import date
+from .models import ServicePlan  # <--- JAVÍTVA: SubscriptionPlan helyett
+from users.models import User
 
-User = get_user_model()
+class UserFullNameChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        if hasattr(obj, 'profile'):
+            # Magyar sorrend: Vezetéknév Keresztnév
+            full_name = f"{obj.profile.first_name} {obj.profile.last_name}"
+            
+            # Életkor kiszámítása
+            age_str = ""
+            if obj.profile.date_of_birth:
+                today = date.today()
+                age = today.year - obj.profile.date_of_birth.year - (
+                    (today.month, today.day) < (obj.profile.date_of_birth.month, obj.profile.date_of_birth.day)
+                )
+                age_str = f"({age} év)"
 
-# ==============================================================================
-# 1. HIRDETÉSMENTESSÉG VÁSÁRLÁS FORM
-# ==============================================================================
+            # Sportág lekérése (Club -> sports mező)
+            sport_str = ""
+            # Megnézzük a sportoló szerepkörét
+            role = obj.user_roles.filter(role__name='Sportoló').first()
+            if role and role.club:
+                # Mivel 'sports' mező van és valószínűleg ManyToMany, vesszővel elválasztva összefűzzük
+                # Ha csak egyet akarsz, akkor a .first()-et használjuk
+                first_sport = role.club.sports.first()
+                if first_sport:
+                    sport_str = f" - {first_sport.name}"
 
-class AdFreeSubscriptionForm(forms.Form):
-    """Hirdetésmentes előfizetési csomag vásárlása"""
-    
-    plan = forms.ModelChoiceField(
-        queryset=SubscriptionPlan.objects.filter(is_ad_free=True).order_by('duration_days'),
-        label="Válasszon csomagot",
-        empty_label="--- Válasszon ---",
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    
-    billing_name = forms.CharField(
-        max_length=255, 
-        label="Számlázási Név",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    
-    billing_address = forms.CharField(
-        label="Számlázási Cím",
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
-    )
-    
-    tax_number = forms.CharField(
-        max_length=50, 
-        required=False, 
-        label="Adószám (opcionális)",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    
-    billing_email = forms.EmailField(
-        label="Számlázási E-mail",
-        widget=forms.EmailInput(attrs={'class': 'form-control'})
-    )
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
+            return f"{full_name} {age_str}{sport_str}"
         
-        if self.user:
-            self.fields['billing_name'].initial = self.user.get_full_name() or self.user.username
-            self.fields['billing_email'].initial = self.user.email
+        return obj.get_full_name() or obj.username
 
-
-# ==============================================================================
-# 2. ELEMZÉSI CSOMAG VÁSÁRLÁS FORM
-# ==============================================================================
-
-class AnalysisPackagePurchaseForm(forms.Form):
-    """Elemzési csomag vásárlása (darabszám alapú)"""
-    
-    package = forms.ModelChoiceField(
-        queryset=JobPrice.objects.all().order_by('price_ft'),
-        label="Válasszon elemzési csomagot",
-        empty_label="--- Válasszon ---",
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    
-    billing_name = forms.CharField(
-        max_length=255, 
-        label="Számlázási Név",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    
-    billing_address = forms.CharField(
-        label="Számlázási Cím",
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
-    )
-    
-    tax_number = forms.CharField(
-        max_length=50, 
-        required=False, 
-        label="Adószám (opcionális)",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    
-    billing_email = forms.EmailField(
-        label="Számlázási E-mail",
-        widget=forms.EmailInput(attrs={'class': 'form-control'})
-    )
-
-    def __init__(self, *args, **kwargs):
-        self.user = kwargs.pop('user', None)
-        super().__init__(*args, **kwargs)
-        
-        if self.user:
-            self.fields['billing_name'].initial = self.user.get_full_name() or self.user.username
-            self.fields['billing_email'].initial = self.user.email
-
-
-# ==============================================================================
-# 3. KOMBINÁLT SZÁMLÁZÁSI FORM (Előfizetés VAGY Elemzési csomag)
-# ==============================================================================
-
-class CombinedPurchaseForm(forms.Form): # ⬅️ A helyes osztálynév a view-ban használt alapján
-    
+class CombinedPurchaseForm(forms.Form):
     PURCHASE_CHOICES = [
-        ('AD_FREE', 'Hirdetésmentes Előfizetés'),
-        ('ANALYSIS_PACKAGE', 'Elemzési Csomag Vásárlása'),
+        ('ANALYSIS', 'Elemzési csomag vásárlása'),
+        ('AD_FREE', 'Hirdetésmentesség előfizetés'),
+        ('ML_ACCESS', 'ML Funkciók elérése'),
     ]
     
+    PAYMENT_METHOD_CHOICES = [
+        ('CASH', 'Banki átutalás (Ft)'),
+        ('CREDIT', 'Vásárlás Kreditpontokkal'),
+    ]
+
     purchase_type = forms.ChoiceField(
-        choices=PURCHASE_CHOICES,
-        label="Vásárlás Típusa",
-        widget=forms.RadioSelect
+        choices=PURCHASE_CHOICES, 
+        widget=forms.RadioSelect,
+        initial='ANALYSIS'
     )
     
-    # ------------------ 1. Elemzési Csomag (AnalysisPackage/JobPrice) ------------------
-    analysis_package = forms.ModelChoiceField(
-        queryset=JobPrice.objects.none(), # Ezt majd a __init__ állítja be
-        label="Válasszon Elemzési Csomagot",
-        required=False,
-        empty_label="--- Válasszon ---",
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    
-    # ------------------ 2. Hirdetésmentes Csomag (SubscriptionPlan) ------------------
-    subscription_plan = forms.ModelChoiceField(
-        queryset=SubscriptionPlan.objects.none(), # Ezt majd a __init__ állítja be
-        label="Válasszon Hirdetésmentes Csomagot",
-        required=False,
-        empty_label="--- Válasszon ---",
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    
-    # Elemzési csomaghoz
-    analysis_package = forms.ModelChoiceField(
-        queryset=JobPrice.objects.none(), # EZ MARADJON!
-        label="Válasszon Elemzési Csomagot",
-        required=False,
-        empty_label="--- Válasszon ---",
-        widget=forms.Select(attrs={'class': 'form-select'})
-    )
-    
-    # Közös számlázási mezők
-    billing_name = forms.CharField(
-        max_length=255, 
-        label="Számlázási Név",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    
-    billing_address = forms.CharField(
-        label="Számlázási Cím",
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3})
-    )
-    
-    tax_number = forms.CharField(
-        max_length=50, 
-        required=False, 
-        label="Adószám",
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
-    
-    billing_email = forms.EmailField(
-        label="Számlázási E-mail",
-        widget=forms.EmailInput(attrs={'class': 'form-control'})
+    payment_method = forms.ChoiceField(
+        choices=PAYMENT_METHOD_CHOICES,
+        widget=forms.RadioSelect,
+        initial='CASH'
     )
 
+    target_user = UserFullNameChoiceField(
+        queryset=User.objects.none(),
+        label="Kedvezményezett kiválasztása",
+        required=False,
+        empty_label="Saját részemre",
+        widget=forms.Select(attrs={'class': 'form-select mb-3', 'data-live-search': 'true'})
+    )
+
+    # Számlázási adatok (Csak CASH fizetésnél lesz kötelező a validációban)
+    billing_name = forms.CharField(max_length=255, required=False, label="Számlázási név")
+    billing_address = forms.CharField(widget=forms.Textarea(attrs={'rows': 2}), required=False, label="Számlázási cím")
+    billing_email = forms.EmailField(required=False, label="Számlázási e-mail")
+
     def __init__(self, *args, **kwargs):
-        # A view-ból érkező custom kwargs-ek kiemelése
-        self.user = kwargs.pop('user', None)
-        analysis_packages = kwargs.pop('analysis_packages', JobPrice.objects.none())
-        ad_free_plans = kwargs.pop('ad_free_plans', SubscriptionPlan.objects.none())
+        user = kwargs.pop('user', None)
         super().__init__(*args, **kwargs)
         
-        # QuerySet beállítása a dinamikus csomagokhoz
-        self.fields['analysis_package'].queryset = analysis_packages
-        self.fields['subscription_plan'].queryset = ad_free_plans
+        if user:
+            from users.models import UserRole, Club
+            from django.db.models import Q
+            
+            # 1. Lekérjük azokat a klubokat, ahol a user 'Egyesületi vezető'
+            # A hibaüzenet szerint a helyes kulcsszó: userrole
+            managed_clubs = Club.objects.filter(
+                userrole__user=user,
+                userrole__role__name='Egyesületi vezető',
+                userrole__status='approved'
+            )
+
+            # 2. Szűrő a sportolókhoz
+            q_filter = Q(role__name='Sportoló', status='approved')
+            
+            # Szülői vagy edzői kapcsolat
+            user_filter = Q(parent=user) | Q(coach=user)
+            
+            # Egyesületi tagság (ha vezető)
+            if managed_clubs.exists():
+                user_filter |= Q(club__in=managed_clubs)
+            
+            # Lekérjük az ID-kat
+            children_ids = UserRole.objects.filter(
+                q_filter & user_filter
+            ).values_list('user_id', flat=True).distinct()
+            
+            # User queryset beállítása
+            self.fields['target_user'].queryset = User.objects.filter(
+                id__in=children_ids
+            ).select_related('profile')
+            
+            # Alapértelmezett választás beállítása
+            if self.fields['target_user'].queryset.exists():
+                # Ha csak egy van, válasszuk ki azt, ha több, maradjon az üres
+                if self.fields['target_user'].queryset.count() == 1:
+                    self.fields['target_user'].initial = self.fields['target_user'].queryset.first()
 
     def clean(self):
         cleaned_data = super().clean()
-        purchase_type = cleaned_data.get('purchase_type')
-        subscription_plan = cleaned_data.get('subscription_plan')
-        analysis_package = cleaned_data.get('analysis_package')
-        
-        # Ellenőrzés: megfelelő csomag ki van-e választva
-        if purchase_type == 'AD_FREE':
-            if not subscription_plan:
-                self.add_error('subscription_plan', 'Kérjük, válasszon hirdetésmentes csomagot!')
-        elif purchase_type == 'ANALYSIS_PACKAGE': # ✅ JAVÍTVA: Használd az 'ANALYSIS_PACKAGE' kulcsot
-            if not analysis_package:
-                self.add_error('analysis_package', 'Kérjük, válasszon elemzési csomagot!')
+        payment_method = cleaned_data.get("payment_method")
+        billing_address = cleaned_data.get("billing_address")
+        billing_name = cleaned_data.get("billing_name")
+
+        # Ha banki utalást választott, de üresek a számlázási adatok
+        if payment_method == 'CASH':
+            if not billing_address:
+                self.add_error('billing_address', "Banki utalás esetén a számlázási cím megadása kötelező!")
+            if not billing_name:
+                self.add_error('billing_name', "Banki utalás esetén a számlázási név megadása kötelező!")
         
         return cleaned_data
-
+    
+    
