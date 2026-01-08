@@ -1,5 +1,3 @@
-# ml_engine/training_service.py
-
 import os
 import joblib
 import pandas as pd
@@ -9,123 +7,147 @@ from sklearn.ensemble import RandomForestRegressor
 from django.conf import settings
 import logging
 
+from ml_engine.models import UserFeatureSnapshot
+from ml_engine.data_generator import SyntheticDataGenerator # Beemeljük a generátort
+
 logger = logging.getLogger(__name__)
 
-
 class TrainingService:
-    """
-    A modell tanításért és predikcióért felelős szolgáltatás.
-    """
     MODEL_PATH = os.path.join(settings.BASE_DIR, "ml_engine", "trained_models", "form_predictor.pkl")
 
     def __init__(self):
         os.makedirs(os.path.dirname(self.MODEL_PATH), exist_ok=True)
         self.model = self.load_model()
 
-    # ------------------------------------------------------
-    # Modell betöltése
-    # ------------------------------------------------------
     def load_model(self):
-        """Megpróbálja betölteni a már betanított modellt."""
         if os.path.exists(self.MODEL_PATH):
             try:
-                model = joblib.load(self.MODEL_PATH)
-                logger.info(f"📦 Modell betöltve: {self.MODEL_PATH}")
-                return model
+                return joblib.load(self.MODEL_PATH)
             except Exception as e:
                 logger.error(f"❌ Modell betöltése sikertelen: {e}")
                 return None
-        else:
-            logger.warning("⚠️ Nincs mentett modell, új tanítás szükséges.")
-            return None
+        return None
 
     # ------------------------------------------------------
-    # Modell tanítása
+    # HIBRID ADAT-ELŐKÉSZÍTÉS
     # ------------------------------------------------------
-    def train_model(self, df: pd.DataFrame):
-        logger.info(f"🎯 Tanítás indul {len(df)} sorral...")
+    def _prepare_training_data(self):
+        """Összegyűjti a valódi adatokat és kiegészíti szintetikussal."""
+        real_snapshots = UserFeatureSnapshot.objects.all()
+        
+        processed_real_data = []
+        for s in real_snapshots:
+            f = s.features
+            # Ha a features véletlenül lista marad: [ {...} ]
+            if isinstance(f, list) and len(f) > 0:
+                f = f[0]
+            
+            # Csak akkor adjuk hozzá, ha szótár és nem üres
+            if isinstance(f, dict):
+                processed_real_data.append(f)
+
+        real_df = pd.DataFrame(processed_real_data)
+        
+        # Szintetikus adatok
+        generator = SyntheticDataGenerator()
+        synthetic_df = generator.generate_batch(count_per_category=2500)
+        
+        if not real_df.empty:
+            # Itt a trükk: Csak azokat az oszlopokat tartsuk meg, amik mindkettőben megvannak
+            # és dobjuk ki azokat a mezőket, amik véletlenül objektumok maradtak
+            final_df = pd.concat([real_df, synthetic_df], ignore_index=True)
+        else:
+            final_df = synthetic_df
+
+        # KÉNYSZERÍTÉS: Minden oszlop legyen numerikus (kivéve a 'category'-t, amit később kódolunk)
+        # Ez kidobja a maradék 'dict' vagy 'list' típusú szemetet a cellákból
+        for col in final_df.columns:
+            if col != 'category':
+                final_df[col] = pd.to_numeric(final_df[col], errors='coerce')
+
+        return final_df.fillna(0)
+
+    # ------------------------------------------------------
+    # MODELL TANÍTÁSA
+    # ------------------------------------------------------
+    def train_model(self):
+        """Összeállítja az adatokat és betanítja a modellt."""
+        df = self._prepare_training_data()
 
         if "form_score" not in df.columns:
-            logger.warning("⚠️ A DataFrame nem tartalmaz 'form_score' oszlopot, tréning kihagyva.")
+            logger.error("⚠️ Hiányzik a 'form_score' oszlop!")
             return
 
-        # Nem numerikus mezők konvertálása
-        for col in df.columns:
-            if df[col].dtype == "object":
-                df[col] = df[col].astype("category").cat.codes
+        # Kategória átalakítása számmá
+        if 'category' in df.columns:
+            df['category'] = df['category'].astype('category').cat.codes
 
-        # Hiányzó célértékek eltávolítása
-        df = df.dropna(subset=["form_score"])
-        if df.empty:
-            logger.warning("⚠️ Minden form_score érték hiányzik, tréning kihagyva.")
-            return
+        # Hiányzó értékek kezelése
+        df = df.fillna(0)
 
-        # Train-test split
-        if len(df) < 3:
-            X_train, y_train = df.drop(columns=["form_score"]), df["form_score"]
-        else:
-            X_train, _, y_train, _ = train_test_split(
-                df.drop(columns=["form_score"]),
-                df["form_score"],
-                test_size=0.2,
-                random_state=42
-            )
+        # Split
+        X = df.drop(columns=["form_score"])
+        y = df["form_score"]
 
-        # Modell tanítása
-        model = RandomForestRegressor(
-            n_estimators=100,
-            random_state=42,
-            n_jobs=-1
-        )
+        # --- EZ AZ ÚJ SOR, AMI MEGOLDJA A HIBÁT ---
+        X.columns = X.columns.astype(str)
+        # -----------------------------------------
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+        model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
         model.fit(X_train, y_train)
 
-        # Mentés és elérhetővé tétel
+        # Mentés
         joblib.dump(model, self.MODEL_PATH)
         self.model = model
-        logger.info(f"✅ Modell elmentve ide: {self.MODEL_PATH}")
+        logger.info(f"✅ Modell sikeresen frissítve: {self.MODEL_PATH}")
 
     # ------------------------------------------------------
-    # Predikció egy adott userre
+    # PREDIKCIÓ (marad az eredeti logikád, csak kicsit tisztítva)
     # ------------------------------------------------------
     def predict_form(self, user):
-        """
-        A megadott felhasználó legfrissebb feature-snapshotját használja
-        a forma index előrejelzésére.
-        """
-        from ml_engine.models import UserFeatureSnapshot
-        from datetime import datetime
-
         if not self.model:
-            logger.warning("⚠️ Nincs betöltött modell a predikcióhoz.")
+            logger.warning("⚠️ Nincs betöltött modell.")
             return None, None
 
         try:
-            latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).latest("generated_at")
-            features = latest_snapshot.features
-
-            if not isinstance(features, dict):
-                logger.error("❌ Snapshot features mező nem dict típusú.")
+            # Megkeressük a legfrissebb snapshotot (időpont szerint)
+            latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).order_by("-snapshot_date").first()
+            if not latest_snapshot:
                 return None, None
+                
+            features = latest_snapshot.features
+            
+            # 1. DataFrame készítése
+            # Ha a features lista (régi adat), vegyük az első elemét, ha dict, tegyük listába
+            data_for_df = features if isinstance(features, list) else [features]
+            df_pred = pd.DataFrame(data_for_df)
+            
+            # 2. 'form_score' eltávolítása, ha benne van (mert ez a célváltozó, nem bemenet)
+            if "form_score" in df_pred.columns:
+                df_pred = df_pred.drop(columns=["form_score"])
 
-            # Pandas DataFrame konverzió (egysoros)
-            X_pred = pd.DataFrame([features])
+            # 3. Kategória kódolása (Ugyanúgy, mint a tanításnál!)
+            if 'category' in df_pred.columns:
+                # Kényszerítjük a kategóriákat, hogy a kódolás konzisztens legyen
+                df_pred['category'] = df_pred['category'].map({
+                    'COMBAT': 0, 'STRENGTH': 1, 'ENDURANCE': 2, 'REHAB': 3
+                }).fillna(0)
 
-            # Csak numerikus oszlopok megtartása
-            X_pred = X_pred.select_dtypes(include=[np.number]).fillna(0)
+            # 4. Biztosítjuk, hogy csak számok maradjanak és az oszloprend fix legyen
+            # A RandomForest érzékeny az oszlopok sorrendjére!
+            X_pred = df_pred.select_dtypes(include=[np.number])
 
-            # ⚙️ A célváltozót (form_score) eltávolítjuk
-            if "form_score" in X_pred.columns:
-                X_pred = X_pred.drop(columns=["form_score"])
+            # 5. Predikció
+            prediction = self.model.predict(X_pred)[0]
+            
+            # Visszatérünk a dátummal és a jósolt értékkel
+            return latest_snapshot.snapshot_date, float(prediction)
 
-            # Predikció
-            predicted_value = self.model.predict(X_pred)[0]
-            logger.info(f"✅ Predikció sikeres: {predicted_value:.2f}")
-
-            return latest_snapshot.generated_at, float(predicted_value)
-
-        except UserFeatureSnapshot.DoesNotExist:
-            logger.warning(f"⚠️ Nincs elérhető snapshot {user.username} számára.")
-            return None, None
         except Exception as e:
             logger.error(f"❌ Predikciós hiba: {e}")
             return None, None
+        
+
+        

@@ -1,20 +1,16 @@
-# ml_engine/features.py
+import logging
 from datetime import timedelta
 from django.utils import timezone
 from django.db import models
-import numpy as np
-import pandas as pd
+# Importáljuk a biometriai modelleket
+from biometric_data.models import WeightData, WorkoutFeedback, HRVandSleepData
 
-from biometric_data.models import (
-    WeightData,
-    WorkoutFeedback,
-    HRVandSleepData,
-    RunningPerformance
-)
+logger = logging.getLogger(__name__)
 
 class FeatureBuilder:
     """
-    FeatureBuilder — felhasználói biometrikus és teljesítményadatokból jellemzők előállítása.
+    Összegyűjti és számszerűsíti a felhasználó biometriai adatait 
+    az ML modell számára (Features).
     """
 
     def __init__(self, user):
@@ -22,140 +18,77 @@ class FeatureBuilder:
 
     def build(self):
         """
-        Fő feature builder — 1 db dictionary-t ad vissza a user aktuális adatairól.
+        Felépíti a feature vektort a felhasználó adataiból.
+        Visszatérési érték: [dict] vagy None
         """
-        now = timezone.now().date()
-        days = 14  # kezdjük 2 héttel
+        # 1. Alapadatok lekérése az elmúlt 30 napból
+        since_date = timezone.now().date() - timedelta(days=30)
+        
+        # Lekérések a különböző táblákból
+        weights = WeightData.objects.filter(user=self.user, workout_date__gte=since_date).order_by('-workout_date')
+        feedback = WorkoutFeedback.objects.filter(user=self.user, workout_date__gte=since_date).order_by('-workout_date')
+        recovery = HRVandSleepData.objects.filter(user=self.user, recorded_at__gte=since_date).order_by('-recorded_at')
 
-        weights = hrv_data = feedback = runs = None
+        # --- 2. HIDRATÁCIÓS MÉRLEG (WeightData-ból) ---
+        latest_weight_entry = weights.first()
+        weight_loss_delta = 0
+        dehydration_index = 0
 
-        # Próbálkozunk tágabb időablakokkal (14 → 30 → 90 nap)
-        for limit in [14, 30, 90]:
-            past_date = now - timedelta(days=limit)
-            weights = WeightData.objects.filter(user=self.user, workout_date__gte=past_date)
-            hrv_data = HRVandSleepData.objects.filter(user=self.user, recorded_at__gte=past_date)
-            feedback = WorkoutFeedback.objects.filter(user=self.user, workout_date__gte=past_date)
-            runs = RunningPerformance.objects.filter(user=self.user, run_date__gte=past_date)
+        if latest_weight_entry:
+            w_pre = latest_weight_entry.pre_workout_weight
+            w_post = latest_weight_entry.post_workout_weight
+            # fluid_intake nálad l-ben van (pl. 0.5), a delta számításhoz float-ra váltunk
+            fluid = latest_weight_entry.fluid_intake or 0
 
-            if weights.exists() or hrv_data.exists() or feedback.exists() or runs.exists():
-                days = limit
-                break
+            if w_pre and w_post:
+                # Képlet: (Előtte - Utána) + Bevitt folyadék
+                weight_loss_delta = float(w_pre - w_post) + float(fluid)
+                dehydration_index = weight_loss_delta / float(w_pre) if w_pre > 0 else 0
 
-        if not (weights.exists() or hrv_data.exists() or feedback.exists() or runs.exists()):
-            return []
+        # --- 3. REGENERÁCIÓS MUTATÓK (HRVandSleepData-ból) ---
+        # Ha nincsenek adatok, biztonsági alapértelmezett értékeket adunk (50 ms HRV, 7.0 alvás)
+        hrv_avg = float(recovery.aggregate(models.Avg('hrv'))['hrv__avg'] or 50.0)
+        sleep_avg = float(recovery.aggregate(models.Avg('sleep_quality'))['sleep_quality__avg'] or 7.0)
 
-        print(f"✅ Adatok találva az elmúlt {days} napból a userhez: {self.user.username}")
+        # --- 4. MAROKERŐ ÉS INTENZITÁS (WorkoutFeedback-ből) ---
+        latest_f = feedback.first()
+        # Ha nincs visszajelzés, 40 kg-os átlagos marokerőt feltételezünk
+        grip_l = float(latest_f.left_grip_strength or 40.0) if latest_f else 40.0
+        grip_r = float(latest_f.right_grip_strength or 40.0) if latest_f else 40.0
 
-        # --- Átlagos értékek és statisztikák számítása ---
+        # --- 5. FEATURE VEKTOR ÖSSZEÁLLÍTÁSA (A te struktúrádhoz igazítva) ---
+        
+        # Életkor lekérése a Profile-ból
+        user_age = 30
+        if hasattr(self.user, 'profile') and self.user.profile.date_of_birth:
+            user_age = self.user.profile.age_years() or 30
+
+        # Nem lekérése a Profile-ból
+        user_gender = 1 # Alapértelmezett Férfi
+        if hasattr(self.user, 'profile'):
+            user_gender = 1 if self.user.profile.gender == 'M' else 0
+
+        # Sport kategória lekérése a UserRole -> Sport útvonalon
+        user_category = 'COMBAT' # Alapértelmezett
+        latest_role = self.user.user_roles.select_related('sport').first()
+        if latest_role and latest_role.sport:
+            user_category = latest_role.sport.category
+
         features = {
-            "avg_weight": float(weights.aggregate(avg=models.Avg("morning_weight"))["avg"] or 0),
-            "avg_body_fat": float(weights.aggregate(avg=models.Avg("body_fat_percentage"))["avg"] or 0),
-            "avg_muscle": float(weights.aggregate(avg=models.Avg("muscle_percentage"))["avg"] or 0),
-            "avg_hrv": float(hrv_data.aggregate(avg=models.Avg("hrv"))["avg"] or 0),
-            "avg_sleep_quality": float(hrv_data.aggregate(avg=models.Avg("sleep_quality"))["avg"] or 0),
-            "avg_alertness": float(hrv_data.aggregate(avg=models.Avg("alertness"))["avg"] or 0),
-            "avg_grip_right": float(feedback.aggregate(avg=models.Avg("right_grip_strength"))["avg"] or 0),
-            "avg_grip_left": float(feedback.aggregate(avg=models.Avg("left_grip_strength"))["avg"] or 0),
-            "avg_intensity": float(feedback.aggregate(avg=models.Avg("workout_intensity"))["avg"] or 0),
-            "avg_run_distance": float(runs.aggregate(avg=models.Avg("run_distance_km"))["avg"] or 0),
-            "avg_run_hr": float(runs.aggregate(avg=models.Avg("run_avg_hr"))["avg"] or 0),
+            'age': user_age,
+            'gender': user_gender,
+            'category': user_category,
+            'avg_hrv': round(hrv_avg, 2),
+            'avg_sleep': round(sleep_avg, 1),
+            'grip_right': round(grip_r, 1),
+            'grip_left': round(grip_l, 1),
+            'weight_loss_delta': round(weight_loss_delta, 3),
+            'dehydration_index': round(dehydration_index, 4),
         }
 
-        # --- Derived (kombinált) jellemzők ---
-        features["grip_balance"] = abs(features["avg_grip_right"] - features["avg_grip_left"])
-        features["fat_to_muscle_ratio"] = (
-            features["avg_body_fat"] / features["avg_muscle"] if features["avg_muscle"] else 0
-        )
+        # Kiszámoljuk a pontszámokat, hogy a Dashboard kártyái lássák
+        features['form_score'] = round((hrv_avg * 0.6) + (sleep_avg * 2), 2)
+        features['injury_risk_index'] = round(1.0 + (dehydration_index * 5), 2)
 
-        # --- Regenerációs index ---
-        features["recovery_score"] = np.clip(
-            (features["avg_hrv"] * 0.4) + (features["avg_sleep_quality"] * 0.3) + (features["avg_alertness"] * 0.3),
-            0,
-            100,
-        )
-
-        # --- Sérüléskockázati jelző ---
-        features["injury_risk_index"] = np.clip(
-            (features["grip_balance"] * 0.5)
-            + (10 - features["avg_sleep_quality"]) * 0.3
-            + (features["avg_intensity"] * 0.2),
-            0,
-            100,
-        )
-
-        # --- Forma pontszám (form_score) — célváltozó a modellhez ---
-        grip_avg = (features["avg_grip_right"] + features["avg_grip_left"]) / 2
-        recovery_score = features.get("recovery_score", 0)
-        balance_penalty = -abs(features["avg_grip_right"] - features["avg_grip_left"]) * 0.1
-
-        # Ez egy kombinált teljesítmény index
-        form_score = grip_avg * 0.4 + recovery_score * 0.4 + features["avg_intensity"] * 2 + balance_penalty
-        features["form_score"] = round(form_score, 2)
-
-        # A Celery task egy listát vár
-        return [features]
-
-def get_recent_weight_features(user, weeks=2):
-    """Testzsír / izom arány és súly trend az elmúlt 2 hétből."""
-    since_date = timezone.now().date() - timedelta(weeks=weeks)
-    qs = WeightData.objects.filter(user=user, workout_date__gte=since_date).order_by('workout_date')
-
-    if not qs.exists():
-        return {
-            "body_fat_avg": None,
-            "muscle_avg": None,
-            "weight_trend": 0.0,
-        }
-
-    df = pd.DataFrame.from_records(qs.values("workout_date", "morning_weight", "body_fat_percentage", "muscle_percentage"))
-    df = df.dropna(subset=["morning_weight"])
-    df["timestamp"] = pd.to_datetime(df["workout_date"])
-
-    # Trend (utolsó - első)
-    trend = float(df["morning_weight"].iloc[-1] - df["morning_weight"].iloc[0]) if len(df) > 1 else 0.0
-
-    return {
-        "body_fat_avg": float(df["body_fat_percentage"].mean()) if df["body_fat_percentage"].notna().any() else None,
-        "muscle_avg": float(df["muscle_percentage"].mean()) if df["muscle_percentage"].notna().any() else None,
-        "weight_trend": trend,
-    }
-
-
-def get_recent_grip_strength(user, weeks=2):
-    """Marokerő átlag (bal/jobb) az elmúlt 2 hétből."""
-    since_date = timezone.now().date() - timedelta(weeks=weeks)
-    qs = WorkoutFeedback.objects.filter(user=user, workout_date__gte=since_date)
-
-    if not qs.exists():
-        return {"grip_left_avg": None, "grip_right_avg": None}
-
-    df = pd.DataFrame.from_records(qs.values("left_grip_strength", "right_grip_strength"))
-    return {
-        "grip_left_avg": float(df["left_grip_strength"].mean(skipna=True)),
-        "grip_right_avg": float(df["right_grip_strength"].mean(skipna=True)),
-    }
-
-
-def get_recent_recovery_features(user, weeks=2):
-    """HRV, alvásminőség, közérzet az elmúlt 2 hétben."""
-    since_date = timezone.now().date() - timedelta(weeks=weeks)
-    qs = HRVandSleepData.objects.filter(user=user, recorded_at__gte=since_date)
-
-    if not qs.exists():
-        return {"hrv_avg": None, "sleep_quality_avg": None, "alertness_avg": None}
-
-    df = pd.DataFrame.from_records(qs.values("hrv", "sleep_quality", "alertness"))
-    return {
-        "hrv_avg": float(df["hrv"].mean(skipna=True)) if df["hrv"].notna().any() else None,
-        "sleep_quality_avg": float(df["sleep_quality"].mean(skipna=True)) if df["sleep_quality"].notna().any() else None,
-        "alertness_avg": float(df["alertness"].mean(skipna=True)) if df["alertness"].notna().any() else None,
-    }
-
-
-def build_user_feature_vector(user):
-    """Összesített feature-építő függvény"""
-    features = {}
-    features.update(get_recent_weight_features(user))
-    features.update(get_recent_grip_strength(user))
-    features.update(get_recent_recovery_features(user))
-    return features
+        # FONTOS: Vedd le a szögletes zárójelet! Csak a szótárat adjuk vissza.
+        return features

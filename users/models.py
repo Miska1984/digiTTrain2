@@ -148,6 +148,14 @@ class Role(models.Model):
         return self.name
 
 class Sport(models.Model):
+    # ML kategóriák a számítási logika elkülönítéséhez
+    CATEGORY_CHOICES = (
+        ('COMBAT', 'Küzdősport (Birkózás, Judo, Vívás)'),
+        ('TEAM', 'Csapatsport (Foci, Kézi, Vízilabda, Kosár)'),
+        ('ENDURANCE', 'Állóképességi (Futás, Úszás, Kerékpár)'),
+        ('POWER_TECH', 'Erő/Technikai (Súlylökés, Fitness, Dobóatlétika)'),
+    )
+
     # A sportágak listáját szintén a kódban tároljuk
     SPORT_CHOICES = (
         ('Kosárlabda', 'Kosárlabda'),
@@ -160,9 +168,14 @@ class Sport(models.Model):
         ('Úszás', 'Úszás'),
     )
     name = models.CharField(max_length=50, choices=SPORT_CHOICES, unique=True)
+    category = models.CharField(
+        max_length=20, 
+        choices=CATEGORY_CHOICES, 
+        default='TEAM' # Alapértelmezett, amit az adminban átállíthatsz
+    )
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_category_display()})"
 
 def club_logo_upload_path(instance, filename):
     """Generálja a feltöltési útvonalat a klub logóknak"""

@@ -73,7 +73,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # 1. BIZTONSÁG ÉS SESSION
     "django.middleware.security.SecurityMiddleware", # ok
-    "whitenoise.middleware.WhiteNoiseMiddleware",
+    # "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware", # ok
     "django.middleware.common.CommonMiddleware", # A duplikációt itt szüntettük meg ok
     
@@ -283,25 +283,23 @@ CELERY_ENABLE_UTC = True
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 perc
 
-# 🕒 Ütemezett batch jobok — minden környezetben látszik
+# ========== CELERY BEAT BEÁLLÍTÁSOK ==========
+
+# Ez mondja meg a Celery-nek, hogy az adatbázisból olvassa az ütemtervet
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+# Alapértelmezett ütemterv (ha az adatbázis üres lenne)
 CELERY_BEAT_SCHEDULE = {
-    "generate-daily-features": {
-        "task": "generate_user_features",
-        "schedule": crontab(hour=2, minute=0),  # minden nap hajnal 02:00
-        "args": (30, True),
+    "napi-feature-generálás": {
+        "task": "ml_engine.tasks.generate_user_features",
+        "schedule": crontab(hour=1, minute=0), # Hajnali 1:00
+    },
+    "napi-modell-tanítás": {
+        "task": "ml_engine.tasks.train_form_prediction_model",
+        "schedule": crontab(hour=2, minute=0), # Hajnali 2:00
+    },
+    "napi-predikció-számítás": {
+        "task": "ml_engine.tasks.predict_form_for_active_subscribers",
+        "schedule": crontab(hour=3, minute=0), # Hajnali 3:00
     },
 }
-
-from kombu import Queue
-
-CELERY_TASK_DEFAULT_QUEUE = 'default'
-CELERY_TASK_QUEUES = (
-    Queue('default', routing_key='default'),
-    Queue('ml_engine', routing_key='ml_engine'),
-)
-
-CELERY_TASK_ROUTES = {
-    'ml_engine.tasks.*': {'queue': 'ml_engine'},
-    'diagnostics.tasks.*': {'queue': 'default'},
-}
-

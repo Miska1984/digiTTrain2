@@ -30,7 +30,7 @@ steps:
         echo "CLOUD_RUN_JOB_NAME: celery-worker-job" >> .env.yaml
         echo "TF_CPP_MIN_LOG_LEVEL: \"2\"" >> .env.yaml
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
-        echo "USE_GCS_STATIC: \"false\"" >> .env.yaml
+        echo "USE_GCS_STATIC: \"true\"" >> .env.yaml
         echo "BUILD_MODE: \"false\"" >> .env.yaml
         
         echo "✅ .env.yaml tartalom:"
@@ -75,6 +75,20 @@ steps:
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
         
+# 6.1 5️⃣ Django Collectstatic (Feltöltés a GCS-be)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run jobs execute collectstatic-job --region=europe-west1 --wait || \
+        gcloud run jobs create collectstatic-job \
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
+          --region europe-west1 \
+          --command "python" \
+          --args "manage.py","collectstatic","--noinput" \
+          --env-vars-file .env.yaml \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
 
 # 7️⃣ Deploy Web service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
