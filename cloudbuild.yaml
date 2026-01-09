@@ -32,6 +32,7 @@ steps:
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
         echo "USE_GCS_STATIC: \"true\"" >> .env.yaml
         echo "BUILD_MODE: \"false\"" >> .env.yaml
+        echo "MPLCONFIGDIR: /tmp/matplotlib_cache" >> .env.yaml
         
         echo "✅ .env.yaml tartalom:"
         cat .env.yaml
@@ -184,7 +185,6 @@ steps:
           --command python \
           --args manage.py,run_daily_ml \
           --env-vars-file .env.yaml \
-          --set-env-vars MPLCONFIGDIR=/tmp/matplotlib_cache \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
           --vpc-connector redis-connector \
           --task-timeout 7200s \
