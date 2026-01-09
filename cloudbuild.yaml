@@ -175,7 +175,7 @@ steps:
     args:
       - -c
       - |
-        echo "🔁 Recreating daily-ml-job with updated env vars..."
+        echo "🔁 Recreating daily-ml-job..."
         gcloud run jobs delete daily-ml-job --region=europe-west1 --quiet || true
 
         gcloud run jobs create daily-ml-job \
@@ -184,10 +184,10 @@ steps:
           --command python \
           --args manage.py,run_daily_ml \
           --env-vars-file .env.yaml \
-          --set-env-vars CLOUDSQL_CONNECTION_NAME=digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
           --vpc-connector redis-connector \
           --task-timeout 7200s \
+          --max-retries 2 \
           --cpu 4 \
           --memory 8Gi \
           --quiet
