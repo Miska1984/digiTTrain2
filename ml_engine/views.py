@@ -8,7 +8,7 @@ from django.utils import timezone
 
 # Modulok és Modellek
 from ml_engine.training_service import TrainingService
-from ml_engine.models import UserFeatureSnapshot
+from ml_engine.models import UserFeatureSnapshot, UserPredictionResult
 from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
 from billing.models import UserSubscription
 from billing.decorators import subscription_required
@@ -183,6 +183,9 @@ def dashboard_view(request):
             trend_message = "📈 <span class='text-success'>Felfelé ívelő teljesítmény!</span>"
         elif trend_values[-1] < trend_values[-2]:
             trend_message = "📉 <span class='text-danger'>Vigyázz, fáradsz! Pihenj többet.</span>"
+    
+    # --- AI Coach tanács lekérése a legutóbbi predikcióból ---
+    latest_prediction = UserPredictionResult.objects.filter(user=user).order_by("-predicted_at").first()
 
     chart_data = {
         "dates": [str(w.workout_date) for w in weight_data],
@@ -197,8 +200,9 @@ def dashboard_view(request):
 
     context = {
         "active_sub": active_sub,
+        "latest_prediction": latest_prediction,
         "current_form_index": f"{ci:.2f}" if ci is not None else "N/A",
-        "predicted_form_index": f"{predicted_form_index:.2f}" if predicted_form_index is not None else "N/A",
+        "predicted_form_index": f"{predicted_form_index:.2f}" if (predicted_form_index is not None and isinstance(predicted_form_index, (int, float))) else "N/A",
         "injury_risk": f"{injury_risk_index:.1f}" if injury_risk_index is not None else None,
         "prediction_status": prediction_status,
         "evaluation_text": evaluation_text,

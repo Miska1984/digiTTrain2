@@ -26,6 +26,31 @@
   </div>
 </div>
 
+{% if latest_prediction %}
+<div class="card shadow mb-4" style="border-left: 5px solid #007bff; background-color: #f8fbff;">
+    <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+            <div class="flex-shrink-0">
+                <i class="fas fa-robot text-primary" style="font-size: 2rem;"></i>
+            </div>
+            <div class="ms-3">
+                <h5 class="card-title mb-0 text-primary fw-bold">DigitTrain AI Coach Tanácsa</h5>
+                <small class="text-muted">Elemzés időpontja: {{ latest_prediction.predicted_at|date:"Y.m.d. H:i" }}</small>
+            </div>
+        </div>
+        <hr>
+        <div class="card-text text-dark" style="font-size: 1.1rem; line-height: 1.7;">
+            {{ latest_prediction.ai_advice|linebreaks }}
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="alert alert-light border shadow-sm d-flex align-items-center">
+    <i class="fas fa-spinner fa-spin me-3 text-primary"></i>
+    <span>Az AI Coach éppen az adataidat elemzi a felhőben... Frissíts az oldalon pár másodperc múlva!</span>
+</div>
+{% endif %}
+
 <!-- Új szakasz: Formaértékelés -->
 <div class="card shadow mt-4">
   <div class="card-header bg-light">

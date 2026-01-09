@@ -9,6 +9,7 @@ import logging
 
 from ml_engine.models import UserFeatureSnapshot
 from ml_engine.data_generator import SyntheticDataGenerator # Beemeljük a generátort
+from .ai_coach_service import AICoachService
 
 logger = logging.getLogger(__name__)
 
@@ -112,38 +113,38 @@ class TrainingService:
             return None, None
 
         try:
-            # Megkeressük a legfrissebb snapshotot (időpont szerint)
+            # 1. Snapshot keresése
             latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).order_by("-snapshot_date").first()
             if not latest_snapshot:
                 return None, None
                 
             features = latest_snapshot.features
-            
-            # 1. DataFrame készítése
-            # Ha a features lista (régi adat), vegyük az első elemét, ha dict, tegyük listába
             data_for_df = features if isinstance(features, list) else [features]
             df_pred = pd.DataFrame(data_for_df)
             
-            # 2. 'form_score' eltávolítása, ha benne van (mert ez a célváltozó, nem bemenet)
             if "form_score" in df_pred.columns:
                 df_pred = df_pred.drop(columns=["form_score"])
 
-            # 3. Kategória kódolása (Ugyanúgy, mint a tanításnál!)
             if 'category' in df_pred.columns:
-                # Kényszerítjük a kategóriákat, hogy a kódolás konzisztens legyen
                 df_pred['category'] = df_pred['category'].map({
                     'COMBAT': 0, 'STRENGTH': 1, 'ENDURANCE': 2, 'REHAB': 3
                 }).fillna(0)
 
-            # 4. Biztosítjuk, hogy csak számok maradjanak és az oszloprend fix legyen
-            # A RandomForest érzékeny az oszlopok sorrendjére!
             X_pred = df_pred.select_dtypes(include=[np.number])
 
-            # 5. Predikció
+            # 2. ML Predikció futtatása
             prediction = self.model.predict(X_pred)[0]
+            predicted_value = float(prediction)
             
-            # Visszatérünk a dátummal és a jósolt értékkel
-            return latest_snapshot.snapshot_date, float(prediction)
+            # 3. AI COACH MEGHÍVÁSA (Itt generáljuk le a tanácsot a friss eredmény alapján)
+            try:
+                coach = AICoachService()
+                coach.generate_advice(user)
+                logger.info(f"✅ AI Coach tanács generálva a következő felhasználónak: {user.username}")
+            except Exception as ai_err:
+                logger.error(f"⚠️ AI Coach hiba (de a predikció kész): {ai_err}")
+
+            return latest_snapshot.snapshot_date, predicted_value
 
         except Exception as e:
             logger.error(f"❌ Predikciós hiba: {e}")

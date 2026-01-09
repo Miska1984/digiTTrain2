@@ -25,6 +25,7 @@ class UserPredictionResult(models.Model):
     predicted_at = models.DateTimeField(auto_now_add=True)
     form_score = models.FloatField()
     source_date = models.DateTimeField(null=True, blank=True)
+    coach_advice = models.TextField(null=True, blank=True)
 
     class Meta:
         ordering = ["-predicted_at"]

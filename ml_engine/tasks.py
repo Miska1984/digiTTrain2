@@ -1,22 +1,21 @@
 # ml_engine/tasks.py
 
 import logging
-from celery import shared_task
 from django.utils import timezone
 from django.db import transaction
 
 from users.models import User
 from ml_engine.features import FeatureBuilder
-from ml_engine.models import UserFeatureSnapshot, UserPredictionResult # Felülre hozva
+from ml_engine.models import UserFeatureSnapshot, UserPredictionResult
 from ml_engine.training_service import TrainingService
 from billing.models import UserSubscription
 
 logger = logging.getLogger(__name__)
 
-@shared_task(queue="ml_engine")
 def generate_user_features():
     """
     Napi feature snapshot generálás minden userre.
+    KÖZVETLENÜL HÍVHATÓ FÜGGVÉNY (nem Celery task).
     """
     logger.info("🚀 [ML_ENGINE] Feature generálás indul minden userre...")
     generated_count = 0
@@ -26,14 +25,12 @@ def generate_user_features():
     for user in users:
         try:
             fb = FeatureBuilder(user)
-            # FONTOS: Ez most már egy SZÓTÁR (dict), nem lista!
             features_dict = fb.build()
 
             if not features_dict:
                 continue
 
-            # JAVÍTÁS: features_list[0] helyett közvetlenül a szótárat adjuk át
-            # Ha véletlenül mégis lista jönne (régi kód miatt), lekezeljük:
+            # Ha véletlenül lista jönne vissza, akkor az első elemet vesszük
             final_features = features_dict[0] if isinstance(features_dict, list) else features_dict
 
             UserFeatureSnapshot.objects.update_or_create(
@@ -42,14 +39,42 @@ def generate_user_features():
                 defaults={'features': final_features}
             )
             generated_count += 1
+            logger.info(f"✅ Feature snapshot készült: {user.username}")
         except Exception as e:
-            logger.error(f"❌ Hiba a {user.username} feldolgozásakor: {e}")
+            logger.error(f"❌ Hiba a {user.username} feldolgozásakor: {e}", exc_info=True)
 
     logger.info(f"🏁 Összesen {generated_count} feature snapshot elkészült.")
+    return generated_count
 
-@shared_task(queue="ml_engine")
+def train_form_prediction_model():
+    """
+    Hibrid modell tréning (valódi + szintetikus adatok).
+    KÖZVETLENÜL HÍVHATÓ FÜGGVÉNY (nem Celery task).
+    """
+    logger.info("🎓 [ML_ENGINE] Modell tréning indul...")
+    
+    try:
+        trainer = TrainingService()
+        # Feltételezem, hogy van egy train metódus vagy train_with_synthetic_data
+        # Ha más a metódus neve, módosítsd itt:
+        if hasattr(trainer, 'train_with_synthetic_data'):
+            metrics = trainer.train_with_synthetic_data()
+        elif hasattr(trainer, 'train'):
+            metrics = trainer.train()
+        else:
+            raise AttributeError("TrainingService-nek nincs train metódusa!")
+        
+        logger.info(f"✅ Tréning sikeres. Metrikák: {metrics}")
+        return metrics
+    except Exception as e:
+        logger.error(f"❌ Tréning hiba: {e}", exc_info=True)
+        raise
+
 def predict_form_for_active_subscribers():
-    """Predikció futtatása az előfizetőknek."""
+    """
+    Predikció futtatása az előfizetőknek.
+    KÖZVETLENÜL HÍVHATÓ FÜGGVÉNY (nem Celery task).
+    """
     logger.info("🤖 [ML_ENGINE] Formaindex predikció indul...")
 
     active_subs = UserSubscription.objects.filter(
@@ -75,9 +100,10 @@ def predict_form_for_active_subscribers():
                     },
                 )
                 processed_count += 1
+                logger.info(f"✅ Predikció készült: {user.username} -> {prediction:.2f}")
         except Exception as e:
-            logger.error(f"❌ Hiba a predikció során ({user.username}): {e}")
+            logger.error(f"❌ Hiba a predikció során ({user.username}): {e}", exc_info=True)
 
     logger.info(f"🏁 {processed_count} predikció elkészült.")
+    return processed_count
 
-    
