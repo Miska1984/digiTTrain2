@@ -184,6 +184,7 @@ steps:
           --command python \
           --args manage.py,run_daily_ml \
           --env-vars-file .env.yaml \
+          --set-env-vars MPLCONFIGDIR=/tmp/matplotlib_cache \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
           --vpc-connector redis-connector \
           --task-timeout 7200s \
