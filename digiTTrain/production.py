@@ -21,7 +21,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 # ===== ADATBÁZIS =====
-CLOUDSQL_CONNECTION_NAME = os.getenv("CLOUDSQL_CONNECTION_NAME")
+CLOUDSQL_CONNECTION_NAME = os.getenv("CLOUDSQL_CONNECTION_NAME", "digittrain-projekt:europe-west1:digitrain-mysql-db-west1")
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
