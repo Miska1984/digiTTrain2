@@ -96,21 +96,22 @@ def generate_user_features():
 
 def train_form_prediction_model():
     """
-    Hibrid modell tréning (valódi + szintetikus adatok).
-    KÖZVETLENÜL HÍVHATÓ FÜGGVÉNY (nem Celery task).
+    Hibrid modell tréning.
     """
     logger.info("🎓 [ML_ENGINE] Modell tréning indul...")
     
     try:
         trainer = TrainingService()
-        # Feltételezem, hogy van egy train metódus vagy train_with_synthetic_data
-        # Ha más a metódus neve, módosítsd itt:
-        if hasattr(trainer, 'train_with_synthetic_data'):
+        
+        # JAVÍTÁS: Hozzáadjuk a 'train_model' ellenőrzést, mert ez a valódi neve a szervizben!
+        if hasattr(trainer, 'train_model'):
+            metrics = trainer.train_model()
+        elif hasattr(trainer, 'train_with_synthetic_data'):
             metrics = trainer.train_with_synthetic_data()
         elif hasattr(trainer, 'train'):
             metrics = trainer.train()
         else:
-            raise AttributeError("TrainingService-nek nincs train metódusa!")
+            raise AttributeError("TrainingService-nek nincs train_model, train vagy train_with_synthetic_data metódusa!")
         
         logger.info(f"✅ Tréning sikeres. Metrikák: {metrics}")
         return metrics
