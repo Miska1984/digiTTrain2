@@ -193,7 +193,7 @@ steps:
           --memory 8Gi \
           --quiet
 
-# 11️⃣ Cloud Scheduler beállítása a Napi ML Jobhoz
+# 11️⃣ Cloud Scheduler beállítása (JAVÍTOTT URL)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -202,15 +202,15 @@ steps:
         gcloud scheduler jobs create http daily-ml-trigger \
           --schedule="0 2 * * *" \
           --location=europe-west1 \
-          --uri="https://europe-west1-run.googleapis.com/api/v1/namespaces/digittrain-projekt/jobs/daily-ml-job:run" \
+          --uri="https://run.googleapis.com/v2/projects/digittrain-projekt/locations/europe-west1/jobs/daily-ml-job:runExecution" \
           --http-method=POST \
-          --oauth-service-account-email=$(gcloud config get-value account) || \
+          --oauth-service-account-email=195803356854-compute@developer.gserviceaccount.com || \
         gcloud scheduler jobs update http daily-ml-trigger \
           --schedule="0 2 * * *" \
           --location=europe-west1 \
-          --uri="https://europe-west1-run.googleapis.com/api/v1/namespaces/digittrain-projekt/jobs/daily-ml-job:run" \
+          --uri="https://run.googleapis.com/v2/projects/digittrain-projekt/locations/europe-west1/jobs/daily-ml-job:runExecution" \
           --http-method=POST \
-          --oauth-service-account-email=$(gcloud config get-value account)
+          --oauth-service-account-email=195803356854-compute@developer.gserviceaccount.com
 
 timeout: 3600s
 
