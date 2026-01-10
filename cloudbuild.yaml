@@ -113,7 +113,30 @@ steps:
       - --timeout
       - 300s
 
-# 7️⃣ Deploy/Update Daily ML Job (A régi celery jobok helyett)
+# 7️⃣ Celery Worker Job frissítése (Videóelemzéshez kell!)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - update 
+      - celery-worker-job
+      - --image
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest
+      - --region
+      - europe-west1
+      - --command=celery
+      - --args=-A,digiTTrain,worker,-l,info
+      - --env-vars-file=.env.yaml
+      - --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector=redis-connector
+      - --task-timeout=3600s
+      - --max-retries=3
+      - --cpu=4
+      - --memory=8Gi
+      - --quiet
+
+# 8️⃣ Daily ML Job frissítése (AI elemzéshez kell!)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -143,7 +166,7 @@ steps:
       - 8Gi
       - --quiet
 
-# 8️⃣ Cloud Scheduler beállítása (A MÁR TESZTELT, JÓ URL-lel)
+# 9️⃣ Cloud Scheduler beállítása (A MÁR TESZTELT, JÓ URL-lel)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
