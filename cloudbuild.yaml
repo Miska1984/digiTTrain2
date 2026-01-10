@@ -3,7 +3,6 @@ options:
   machineType: E2_HIGHCPU_8
   diskSizeGb: 20
 
-
 steps:
 # 0️⃣ Secret betöltése és .env.yaml generálás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -27,15 +26,13 @@ steps:
         echo "GCP_SA_KEY_PATH: /app/gcp_service_account.json" >> .env.yaml
         echo "REDIS_HOST: 10.32.84.131" >> .env.yaml
         echo "REDIS_PORT: \"6379\"" >> .env.yaml
-        echo "CLOUD_RUN_JOB_NAME: celery-worker-job" >> .env.yaml
         echo "TF_CPP_MIN_LOG_LEVEL: \"2\"" >> .env.yaml
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
         echo "USE_GCS_STATIC: \"true\"" >> .env.yaml
         echo "BUILD_MODE: \"false\"" >> .env.yaml
         echo "MPLCONFIGDIR: /tmp/matplotlib_cache" >> .env.yaml
         
-        echo "✅ .env.yaml tartalom:"
-        cat .env.yaml
+        echo "✅ .env.yaml generálva."
 
 # 1️⃣ GCP kulcs letöltés
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -45,23 +42,15 @@ steps:
       - >
         gsutil cp gs://digittrain-secrets/gcp_service_account.json ./gcp_service_account.json
 
-# 2️⃣ Build Web image
+# 2️⃣ Build App image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest', '.']
 
-# 3️⃣ Push Web image
+# 3️⃣ Push App image
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-# 4️⃣ Build Worker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'Dockerfile.worker', '-t', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest', '.']
-
-# 5️⃣ Push Worker image
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest']
-
-# 6️⃣ Django migráció
+# 4️⃣ Django migráció
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -76,7 +65,7 @@ steps:
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
         
-# 6.1 5️⃣ Django Collectstatic (Feltöltés a GCS-be)
+# 5️⃣ Django Collectstatic
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -91,7 +80,7 @@ steps:
           --env-vars-file .env.yaml \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
 
-# 7️⃣ Deploy Web service
+# 6️⃣ Deploy Web service
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -124,76 +113,37 @@ steps:
       - --timeout
       - 300s
 
-# 8️⃣ Deploy Celery Worker Job (LÉTREHOZÁS az első futáshoz)
+# 7️⃣ Deploy/Update Daily ML Job (A régi celery jobok helyett)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - run
       - jobs
-      - update 
-      - celery-worker-job
+      - update
+      - daily-ml-job
       - --image
-      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
+      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest
       - --region
       - europe-west1
-      - --command=celery
-      - --args=-A,digiTTrain,worker,-l,info
-      - --env-vars-file=.env.yaml
-      - --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-      - --vpc-connector=redis-connector
-      - --task-timeout=3600s
-      - --max-retries=3
-      - --cpu=4
-      - --memory=8Gi
+      - --command
+      - python
+      - --args
+      - manage.py,run_daily_ml
+      - --env-vars-file
+      - .env.yaml
+      - --set-cloudsql-instances
+      - digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+      - --vpc-connector
+      - redis-connector
+      - --task-timeout
+      - 7200s
+      - --cpu
+      - '4'
+      - --memory
+      - 8Gi
       - --quiet
-      
-# 9️⃣ Deploy Celery ML Worker Job (LÉTREHOZÁS az első futáshoz)
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - run
-      - jobs
-      - update # Visszaállítjuk create-re
-      - celery-ml-worker-job
-      - --image
-      - europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/worker:latest
-      - --region
-      - europe-west1
-      - --command=celery
-      - --args=-A,digiTTrain,worker,-l,info,-Q,ml_engine
-      - --env-vars-file=.env.yaml
-      - --set-cloudsql-instances=digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-      - --vpc-connector=redis-connector
-      - --task-timeout=3600s
-      - --max-retries=3
-      - --cpu=4
-      - --memory=8Gi
-      - --quiet
-      
-# 🆕 10️⃣ Deploy / Recreate Daily ML Job
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        echo "🔁 Recreating daily-ml-job..."
-        gcloud run jobs delete daily-ml-job --region=europe-west1 --quiet || true
 
-        gcloud run jobs create daily-ml-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
-          --region europe-west1 \
-          --command python \
-          --args manage.py,run_daily_ml \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 \
-          --vpc-connector redis-connector \
-          --task-timeout 7200s \
-          --max-retries 2 \
-          --cpu 4 \
-          --memory 8Gi \
-          --quiet
-
-# 11️⃣ Cloud Scheduler beállítása (A MÁR TESZTELT, JÓ URL-lel)
+# 8️⃣ Cloud Scheduler beállítása (A MÁR TESZTELT, JÓ URL-lel)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
@@ -214,7 +164,6 @@ steps:
 
 timeout: 3600s
 
-# 🔑 GLOBÁLIS SECRETS KONFIGURÁCIÓ
 availableSecrets:
   secretManager:
     - versionName: projects/digittrain-projekt/secrets/db_password/versions/latest
