@@ -11,10 +11,11 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -267,6 +268,8 @@ FILE_UPLOAD_TEMP_DIR = '/tmp'
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
+    'https://digit-train.hu',
+    'https://www.digit-train.hu',
 ]
 
 # 🔹 ÚJ: Request body max size
@@ -305,5 +308,10 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
+if not GEMINI_API_KEY:
+    logger.warning("⚠️ FIGYELEM: GEMINI_API_KEY nincs beállítva a környezeti változók között!")
+else:
+    logger.info("✅ GEMINI_API_KEY sikeresen betöltve.")
 
 

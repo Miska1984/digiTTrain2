@@ -28,6 +28,7 @@ django-widget-tweaks
 gunicorn==22.0.0
 django-celery-beat
 django-celery-results
+python-dotenv
 
 # ============================================
 # CELERY & REDIS
