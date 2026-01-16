@@ -4,6 +4,9 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from users.models import UserRole, Role, Club, Sport
 import logging
+from ml_engine.ai_coach_service import DittaCoachService
+
+ditta_service = DittaCoachService()
 
 logger = logging.getLogger(__name__)
 
@@ -94,11 +97,23 @@ def main_page(request):
         parent=user
     ).count()
 
+    app_context = 'core'
+    if pending_roles_count > 0 or pending_child_approvals_count > 0:
+        app_context = 'main_page_has_pending_tasks'
+
+    # A SZERVIZ meghívása (ez dönti el, hogy Navigator vagy Analyst kell-e)
+    welcome_message = ditta_service.get_ditta_response(
+        user=request.user, 
+        context_app=app_context
+    )
+
     context = {
         'user': user,
         'user_roles': user_roles,
         'pending_roles_count': pending_roles_count,
         'pending_child_approvals_count': pending_child_approvals_count, # Új változó hozzáadása
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     
     logger.info(f"Főoldalra érkezett felhasználó: {user.username}, szerepkörök száma: {len(user_roles)}, függőben lévő kérések száma: {pending_roles_count}, függőben lévő szülői jóváhagyások száma: {pending_child_approvals_count}")

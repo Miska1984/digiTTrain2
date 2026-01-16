@@ -1,12 +1,18 @@
 # ml_engine/views.py
 
 import logging
+import json
+import re
 from datetime import date, timedelta
+from django.http import JsonResponse
 from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 
 # Modulok és Modellek
+from ml_engine.ai_coach_service import DittaCoachService
 from ml_engine.training_service import TrainingService
 from ml_engine.models import UserFeatureSnapshot, UserPredictionResult
 from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
@@ -84,9 +90,22 @@ def dashboard_view(request):
     # Előfizetés adatainak lekérése
     active_sub = UserSubscription.objects.filter(
         user=user, 
-        sub_type='ML_ACCESS', 
-        expiry_date__gt=timezone.now()
+        sub_type='ML_ACCESS',
+        active=True
     ).first()
+
+    # DEBUG LOG a Docker konzolba
+    print(f"--- DITTA DEBUG START ---")
+    print(f"Felhasználó: {user.username}")
+    if active_sub:
+        print(f"Sikeres előfizetés: {active_sub.sub_type}, Lejárat: {active_sub.expiry_date}")
+    else:
+        print("HIBA: Nem található aktív ML_ACCESS előfizetés!")
+        # Megnézzük, mi van az adatbázisban egyáltalán ehhez a userhez
+        all_subs = UserSubscription.objects.filter(user=user)
+        for s in all_subs:
+            print(f"Létező al-adat: Típus: {s.sub_type}, Aktív: {s.active}, Lejárat: {s.expiry_date}")
+    print(f"--- DITTA DEBUG END ---")
 
     # Nyers biometrikus adatok a trendekhez
     weight_data = WeightData.objects.filter(user=user, workout_date__gte=two_weeks_ago).order_by("workout_date")
@@ -215,3 +234,101 @@ def dashboard_view(request):
     }
 
     return render(request, "ml_engine/dashboard.html", context)
+
+ditta_service = DittaCoachService()
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def ditta_chat_api(request):
+    try:
+        data = json.loads(request.body)
+        user_query = data.get('query', '').strip()
+        
+        if not user_query:
+            return JsonResponse({'success': False, 'error': 'Üres kérdés.'}, status=400)
+        
+        session_key = f'ditta_active_role_{request.user.id}'
+        active_role = request.session.get(session_key, None)
+        
+        logger.info(f"Ditta chat - User: {request.user.username}, Query: {user_query[:50]}, Active role from session: {active_role}")
+
+        print(f"=" * 50)
+        print(f"DEBUG - User query: {user_query}")
+        print(f"DEBUG - Session key: {session_key}")
+        print(f"DEBUG - Active role from session: {active_role}")
+        print(f"DEBUG - All session keys: {list(request.session.keys())}")
+        print(f"=" * 50)
+        
+        history = []
+        if active_role:
+            history.append({'metadata': {'selected_role': active_role}})
+            logger.info(f"History built with role: {active_role}")
+        
+        service = DittaCoachService()
+        
+        response_text = service.get_ditta_response(
+            user=request.user,
+            context_app='ml_engine',
+            user_query=user_query,
+            history=history,
+            active_role=active_role
+        )
+
+        print(f"DEBUG - Response (first 200 chars): {response_text[:200]}")
+        
+        # === ÚJ RÉSZ: Ellenőrizzük, hogy sikerült-e szerepkört választani ===
+        # 1. Regex alapú keresés (ha benne van a válaszban)
+        role_pattern = r'Rendben, \*\*([^*]+)\*\* minőségedben segítek'
+        role_match = re.search(role_pattern, response_text)
+        
+        if role_match:
+            new_role = role_match.group(1)
+            request.session[session_key] = new_role
+            request.session.modified = True
+            logger.info(f"[SESSION SAVED] Role from response: {new_role}")
+            print(f"[SESSION SAVED] Role saved: {new_role}")
+        
+        # 2. Ha nincs a válaszban, de sikerült megállapítani a kérdésből
+        # (pl. "gyerekkel" -> Szülő), akkor is mentsük el!
+        elif not active_role:  # Ha még nincs mentve
+            # Próbáljuk meg kitalálni még egyszer
+            from users.models import UserRole
+            user_roles = UserRole.objects.filter(user=request.user, status='approved')
+            
+            # Egyszerű kulcsszó alapú detektálás
+            query_lower = user_query.lower()
+            detected_role = None
+            
+            if any(kw in query_lower for kw in ['gyerek', 'gyermek', 'fiam', 'lányom']):
+                parent_role = user_roles.filter(role__name='Szülő').first()
+                if parent_role:
+                    detected_role = 'Szülő'
+            elif any(kw in query_lower for kw in ['sportoló', 'tanítványaim', 'csapatom']):
+                coach_role = user_roles.filter(role__name='Edző').first()
+                if coach_role:
+                    detected_role = 'Edző'
+            
+            if detected_role:
+                request.session[session_key] = detected_role
+                request.session.modified = True
+                logger.info(f"[SESSION SAVED] Role inferred from query: {detected_role}")
+                print(f"[SESSION SAVED] Role inferred: {detected_role}")
+        
+        # Szerepkör törlés kezelése
+        reset_keywords = ['váltok', 'másik szerepkör', 'új szerep', 'szerepkör váltás']
+        if any(keyword in user_query.lower() for keyword in reset_keywords):
+            if session_key in request.session:
+                del request.session[session_key]
+                request.session.modified = True
+                logger.info(f"Role reset requested by user")
+        
+        return JsonResponse({'success': True, 'response': response_text})
+        
+    except json.JSONDecodeError:
+        logger.error("Invalid JSON in request body")
+        return JsonResponse({'success': False, 'error': 'Érvénytelen kérés formátum.'}, status=400)
+        
+    except Exception as e:
+        logger.error(f"Ditta chat error: {str(e)}", exc_info=True)
+        return JsonResponse({'success': False, 'error': 'Hiba történt a kommunikációban. Kérlek próbáld újra!'}, status=500)

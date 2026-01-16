@@ -51,6 +51,7 @@ services:
       - static_volume:/app/staticfiles
     environment:
       - DEBUG=True
+      - GEMINI_API_KEY=AIzaSyAqFKtYEEGCvcJOFCgnfvZI5FFBKWS3vpo
       - ENVIRONMENT=development
       - DJANGO_SETTINGS_MODULE=digiTTrain.development
       - PYTHONUNBUFFERED=1
@@ -83,6 +84,7 @@ services:
       - /tmp/matplotlib_cache:/tmp/matplotlib_cache
     environment:
       - DJANGO_SETTINGS_MODULE=digiTTrain.development
+      - GEMINI_API_KEY=AIzaSyAqFKtYEEGCvcJOFCgnfvZI5FFBKWS3vpo
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp_sa.json
@@ -115,6 +117,7 @@ services:
       - /tmp/matplotlib_cache:/tmp/matplotlib_cache
     environment:
       - DJANGO_SETTINGS_MODULE=digiTTrain.development
+      - GEMINI_API_KEY=AIzaSyAqFKtYEEGCvcJOFCgnfvZI5FFBKWS3vpo
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp_sa.json
@@ -147,6 +150,7 @@ services:
       - /tmp/matplotlib_cache:/tmp/matplotlib_cache
     environment:
       - DJANGO_SETTINGS_MODULE=digiTTrain.development
+      - GEMINI_API_KEY=AIzaSyAqFKtYEEGCvcJOFCgnfvZI5FFBKWS3vpo
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0
       - GOOGLE_APPLICATION_CREDENTIALS=/app/gcp_sa.json

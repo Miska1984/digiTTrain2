@@ -21,7 +21,9 @@ from .forms import (
     UserRegistrationForm, ProfileForm, UserUpdateForm
 )
 from .models import Profile, UserRole
+from ml_engine.ai_coach_service import DittaCoachService
 
+ditta_service = DittaCoachService()
 logger = logging.getLogger(__name__)
 
 # Meglévő view-k (register, edit_profile stb.) - ezek változatlanok maradnak
@@ -166,9 +168,14 @@ def edit_profile(request):
     print("EDIT PROFILE VIEW VÉGE")
     print("=" * 50)
 
+    app_context = 'edit_profile' # Kontextus beállítása
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     return render(request, "users/edit_profile.html", {
         "user_form": user_form,
         "profile_form": profile_form,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     })
 
 @login_required
@@ -180,8 +187,13 @@ def role_dashboard(request):
     # Lekérdezzük az aktuális felhasználóhoz tartozó összes UserRole-t
     user_roles = UserRole.objects.filter(user=request.user)
     
+    app_context = 'edit_profile' # Kontextus beállítása
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     context = {
         'user_roles': user_roles,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     
     return render(request, 'users/roles/role_dashboard.html', context)

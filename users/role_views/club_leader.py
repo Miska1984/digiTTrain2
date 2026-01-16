@@ -6,7 +6,9 @@ from django.utils import timezone
 from django import forms
 from users.models import UserRole, Club, Sport, Role
 from users.forms import ClubForm, UserRoleForm
+from ml_engine.ai_coach_service import DittaCoachService
 
+ditta_service = DittaCoachService()
 
 @login_required
 def create_club_and_leader_role(request):
@@ -64,9 +66,14 @@ def create_club_and_leader_role(request):
         club_form = ClubForm()
         user_role_form = UserRoleForm()
 
+    app_context = 'create_club_and_leader_role'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     context = {
         "club_form": club_form,
         "user_role_form": user_role_form,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     return render(request, "users/roles/club_leader/create_club.html", context)
 
@@ -129,11 +136,18 @@ def edit_club_leader_role(request, role_id):
         # GET kérés esetén
         club_form = ClubForm(instance=club)
 
+    app_context = 'create_club_and_leader_role'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     # A context szótár inicializálása a hiba elkerülése érdekében
     context = {
         "user_role": user_role,
         "club_form": club_form,
         "locked_sport_ids": locked_sport_ids,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     
+
+
     return render(request, "users/roles/club_leader/edit_club.html", context)

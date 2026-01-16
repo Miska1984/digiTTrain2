@@ -1,0 +1,148 @@
+{% if show_ditta %}
+<div id="ditta-wrapper" class="fixed-bottom end-0 m-4" style="z-index: 1050;">
+    <button id="ditta-toggle" class="btn btn-primary rounded-circle shadow-lg p-3">
+        <i class="fas fa-robot fa-2x"></i>
+    </button>
+
+    <div id="ditta-window" class="card shadow-lg d-none" style="width: 350px; height: 450px;">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <span><i class="fas fa-comment-dots me-2"></i>Ditta - {% if has_ml_access %}Adat-elmező{% else %}Személyi Asszisztens{% endif %}</span>
+            <button type="button" class="btn-close btn-close-white" id="ditta-close"></button>
+        </div>
+        
+        <div class="card-body overflow-auto" id="ditta-chat-content" style="height: 320px;">
+            <div class="ditta-message assistant bg-light p-2 rounded mb-2">
+                {{ welcome_message|safe }}
+            </div>
+            {% if not has_ml_access and app_context == 'ml_engine' %}
+            <div class="alert alert-warning small">
+                Szeretnél mélyebb elemzést? Fizess elő az <strong>ML_Access</strong> csomagra!
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card-footer">
+            <div class="input-group p-2 border-top">
+                <input type="text" id="ditta-input" class="form-control" placeholder="Írj vagy diktálj...">
+                <button class="btn btn-outline-secondary" type="button" id="ditta-mic">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <button class="btn btn-primary" type="button" id="ditta-send">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Üzenet buborék stílusok */
+    .ditta-message { max-width: 85%; word-wrap: break-word; font-size: 0.9rem; }
+    .ditta-message.user { margin-left: auto; }
+    
+    /* Gépelés animáció */
+    .typing { display: flex; align-items: center; gap: 3px; padding: 5px 0; }
+    .typing span {
+        width: 6px; height: 6px;
+        background-color: #0d6efd;
+        border-radius: 50%;
+        animation: blink 1.4s infinite both;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+        0%, 80%, 100% { opacity: 0; }
+        40% { opacity: 1; }
+    }
+</style>
+
+<script>
+    (function() {
+        const dittaToggle = document.getElementById('ditta-toggle');
+        const dittaWindow = document.getElementById('ditta-window');
+        const dittaClose = document.getElementById('ditta-close');
+        const dittaInput = document.getElementById('ditta-input');
+        const dittaSend = document.getElementById('ditta-send');
+        const dittaMic = document.getElementById('ditta-mic'); // Mikrofon gomb
+        const chatContent = document.getElementById('ditta-chat-content');
+
+        window.speechSynthesis.getVoices();
+
+        dittaToggle.onclick = () => dittaWindow.classList.toggle('d-none');
+        dittaClose.onclick = () => dittaWindow.classList.add('d-none');
+
+        // --- DIKTÁLÁS (SPEECH TO TEXT) ---
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (Recognition) {
+            const recognition = new Recognition();
+            recognition.lang = 'hu-HU';
+            recognition.continuous = false; // Megáll, ha befejezted a mondatot
+
+            recognition.onstart = () => {
+                dittaMic.classList.replace('btn-outline-secondary', 'btn-danger');
+                dittaInput.placeholder = "Hallgatlak...";
+            };
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                dittaInput.value = transcript;
+                // Opcionális: automatikus küldés diktálás után
+                // sendMessage(); 
+            };
+
+            recognition.onend = () => {
+                dittaMic.classList.replace('btn-danger', 'btn-outline-secondary');
+                dittaInput.placeholder = "Írj vagy diktálj...";
+            };
+
+            dittaMic.onclick = () => recognition.start();
+        } else {
+            dittaMic.style.display = 'none'; // Ha a böngésző nem támogatja
+        }
+
+        // --- BESZÉD (TEXT TO SPEECH) ---
+        function speakDitta(text) {
+            window.speechSynthesis.cancel();
+            let cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '').replace(/<[^>]*>?/gm, '');
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.lang = 'hu-HU';
+            utterance.pitch = 1.1;
+            const voices = window.speechSynthesis.getVoices();
+            const huVoice = voices.find(v => v.lang.includes('hu'));
+            if (huVoice) utterance.voice = huVoice;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        async function sendMessage() {
+            const query = dittaInput.value.trim();
+            if (!query) return;
+
+            chatContent.innerHTML += `<div class="ditta-message user text-end bg-primary text-white p-2 rounded mb-2">${query}</div>`;
+            dittaInput.value = '';
+            
+            const loaderId = 'loader-' + Date.now();
+            chatContent.innerHTML += `<div id="${loaderId}" class="ditta-message assistant bg-light p-2 rounded mb-2"><div class="typing"><span></span><span></span><span></span></div></div>`;
+            chatContent.scrollTop = chatContent.scrollHeight;
+
+            try {
+                const response = await fetch("{% url 'ml_engine:ditta_chat_api' %}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ query: query, app_context: "{{ app_context }}" })
+                });
+                const data = await response.json();
+                document.getElementById(loaderId).remove();
+                chatContent.innerHTML += `<div class="ditta-message assistant bg-light p-2 rounded mb-2">${data.response}</div>`;
+                speakDitta(data.response);
+            } catch (error) {
+                if (document.getElementById(loaderId)) document.getElementById(loaderId).remove();
+                chatContent.innerHTML += `<div class="alert alert-danger p-2 small">Hiba történt.</div>`;
+            }
+            chatContent.scrollTop = chatContent.scrollHeight;
+        }
+
+        dittaSend.onclick = sendMessage;
+        dittaInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+    })();
+</script>
+{% endif %}

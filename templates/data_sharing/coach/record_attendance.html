@@ -11,13 +11,106 @@
         Dátum: <strong>{{ session_date|date:"Y.m.d. (l)" }}</strong> | Idő: {{ schedule.start_time|date:"H:i" }} - {{ schedule.end_time|date:"H:i" }}
     </div>
 
-<form method="POST">
+<form method="POST" id="attendance-form">
 {% csrf_token %}
 
+<div class="card shadow mb-4 border-left-info">
+    <div class="card-header py-3 d-flex justify-content-between align-items-center bg-light">
+        <h6 class="m-0 font-weight-bold text-dark">
+            <i class="fas fa-stopwatch me-2"></i>Edzés felosztása (Összesen: {{ session.duration_minutes }} perc)
+        </h6>
+        <div class="h5 mb-0 font-weight-bold text-primary">Játék: <span id="toy-display">0</span> perc</div>
+    </div>
+    <div class="card-body">
+        <input type="hidden" name="session_date" value="{{ session.session_date|date:'Y-m-d' }}">
+        <input type="hidden" name="start_time" value="{{ session.start_time|time:'H:i' }}">
+        <input type="hidden" name="duration_minutes" value="{{ session.duration_minutes }}">
+        <input type="hidden" name="location" value="{{ session.location|default:'' }}">
+        
+        {% for field in session_form.hidden_fields %}
+            {{ field }}
+        {% endfor %}
+        
+        {% if session_form.is_warmup_playful.is_hidden %}
+            {{ session_form.is_warmup_playful }}
+        {% endif %}
+
+        <div class="row">
+            <div class="col-md-6">
+                <div class="mb-4">
+                    <label class="small font-weight-bold d-flex justify-content-between">
+                        Bemelegítés <span id="warmup-val" class="text-info">0 perc</span>
+                    </label>
+                    <input type="range" class="form-range t-slider" 
+                           data-target="id_warmup_duration" 
+                           id="warmup-slide" 
+                           step="5" 
+                           value="{{ session.warmup_duration|default:0 }}">
+                    
+                    <div class="form-check form-switch mt-2">
+                        <input type="checkbox" name="{{ session_form.is_warmup_playful.name }}" 
+                               id="{{ session_form.is_warmup_playful.id_for_label }}" 
+                               class="form-check-input"
+                               {% if session.is_warmup_playful %}checked{% endif %}>
+                        <label class="form-check-label small" for="{{ session_form.is_warmup_playful.id_for_label }}">
+                            Játékos bemelegítés
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="small font-weight-bold d-flex justify-content-between">
+                        Technika <span id="technical-val" class="text-info">0 perc</span>
+                    </label>
+                    <input type="range" class="form-range t-slider" 
+                           data-target="id_technical_duration" 
+                           id="technical-slide" 
+                           step="5" 
+                           value="{{ session.technical_duration|default:0 }}">
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="mb-4">
+                    <label class="small font-weight-bold d-flex justify-content-between">
+                        Taktika <span id="tactical-val" class="text-info">0 perc</span>
+                    </label>
+                    <input type="range" class="form-range t-slider" 
+                           data-target="id_tactical_duration" 
+                           id="tactical-slide" 
+                           step="5" 
+                           value="{{ session.tactical_duration|default:0 }}">
+                </div>
+
+                <div class="mb-4">
+                    <label class="small font-weight-bold d-flex justify-content-between">
+                        Sport-specifikus játék <span id="game-val" class="text-info">0 perc</span>
+                    </label>
+                    <input type="range" class="form-range t-slider" 
+                           data-target="id_game_duration" 
+                           id="game-slide" 
+                           step="5" 
+                           value="{{ session.game_duration|default:0 }}">
+                </div>
+
+                <div class="mb-4">
+                    <label class="small font-weight-bold d-flex justify-content-between">
+                        Levezetés <span id="cooldown-val" class="text-info">0 perc</span>
+                    </label>
+                    <input type="range" class="form-range t-slider" 
+                        data-target="id_cooldown_duration" 
+                        id="cooldown-slide" 
+                        step="5" 
+                        value="{{ session.cooldown_duration|default:0 }}">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card shadow mb-4">
-    <div class="card-header py-3 d-flex justify-content-between align-items-center">
-        <h6 class="m-0 font-weight-bold text-primary">Sportolói lista ({{ schedule.birth_years|default:"Minden korosztály" }} év / {{ schedule.genders|default:"Összes nem" }})</h6>
-        <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-save"></i> Jelenlét Mentése</button>
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Sportolói lista</h6>
     </div>
 
     <div class="card-body p-0">
@@ -29,7 +122,8 @@
                         <th class="text-center" style="width: 15%;">Jelen</th>
                         <th class="text-center" style="width: 15%;">Sérült</th>
                         <th class="text-center" style="width: 15%;">Vendég</th>
-                        <th class="text-center" style="width: 10%;">Hiányzik*</th> <th style="width: 15%;">Típus</th>
+                        <th class="text-center" style="width: 10%;">Hiányzik*</th>
+                        <th style="width: 15%;">Típus</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -38,44 +132,23 @@
                         <td class="align-middle">
                             <span class="font-weight-bold">{{ athlete.name }}</span>
                         </td>
-
                         <td class="text-center align-middle">
-                            <input type="checkbox" 
-                                   name="is_present_{{ athlete.type }}_{{ athlete.id }}" 
-                                   value="1" 
+                            <input type="checkbox" name="is_present_{{ athlete.type }}_{{ athlete.id }}" value="1" 
                                    class="attendance-status-checkbox"
-                                   data-status-type="present"
-                                   {% if athlete.is_present %}checked{% endif %}
-                                   data-toggle="tooltip" title="Jelen van az edzésen">
+                                   {% if athlete.is_present %}checked{% endif %}>
                         </td>
-                        
                         <td class="text-center align-middle">
-                            <input type="checkbox" 
-                                   name="is_injured_{{ athlete.type }}_{{ athlete.id }}" 
-                                   value="1" 
+                            <input type="checkbox" name="is_injured_{{ athlete.type }}_{{ athlete.id }}" value="1" 
                                    class="attendance-status-checkbox"
-                                   data-status-type="injured"
-                                   {% if athlete.is_injured %}checked{% endif %}
-                                   data-toggle="tooltip" title="Sérülés miatt hiányzik/nem edz">
+                                   {% if athlete.is_injured %}checked{% endif %}>
                         </td>
-
                         <td class="text-center align-middle">
-                            <input type="checkbox" 
-                                   name="is_guest_{{ athlete.type }}_{{ athlete.id }}" 
-                                   value="1" 
+                            <input type="checkbox" name="is_guest_{{ athlete.type }}_{{ athlete.id }}" value="1" 
                                    class="attendance-status-checkbox"
-                                   data-status-type="guest"
-                                   {% if athlete.is_guest %}checked{% endif %}
-                                   data-toggle="tooltip" title="Vendégként van az edzésen (pl. válogatott keret)">
+                                   {% if athlete.is_guest %}checked{% endif %}>
                         </td>
-                        
-                        <td class="text-center align-middle hiányzik-status-cell">
-                            {# A tartalom a JS által lesz beállítva #}
-                        </td>
-
-                        <td class="align-middle small text-muted">
-                            {{ athlete.type|capfirst }}
-                        </td>
+                        <td class="text-center align-middle hiányzik-status-cell"></td>
+                        <td class="align-middle small text-muted">{{ athlete.type|capfirst }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -84,9 +157,10 @@
     </div>
     
     <div class="card-footer">
-        <small class="text-muted">* A hiányzik állapot automatikusan jelenik meg, ha a **Jelen**, **Sérült** és **Vendég** mezők mind nincsenek bejelölve.</small>
-        <div class="d-flex justify-content-end mt-2">
-            <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Jelenlét Mentése</button>
+        <div class="d-flex justify-content-end">
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-save me-2"></i>Jelenlét és Felosztás Mentése
+            </button>
         </div>
     </div>
 </div>
@@ -96,53 +170,67 @@
 
 {% block extra_js %}
 <script>
-    // FONTOS: Ez a szkript jQuery-t igényel ($). Ha hiba van a konzolban a $-ra, a base.html-ben hiányzik a jQuery.
+document.addEventListener('DOMContentLoaded', function() {
+    const totalMinutes = parseInt("{{ session.duration_minutes|default:0 }}") || 0;
+    const sliders = document.querySelectorAll('.t-slider');
+    const toyHidden = document.getElementById('id_toy_duration');
+    const toyDisplay = document.getElementById('toy-display');
 
-    $(document).ready(function() {
-        console.log("Jelenléti Ív: DOM betöltve, JavaScript inicializálva."); // Debug üzenet
-
-        // Függvény a Hiányzik oszlop tartalmának frissítésére
-        function updateMissingStatus($row) {
-            var isPresent = $row.find('input[data-status-type="present"]').prop('checked');
-            var isInjured = $row.find('input[data-status-type="injured"]').prop('checked');
-            var isGuest = $row.find('input[data-status-type="guest"]').prop('checked');
+    function updateAll() {
+        let otherTotal = 0;
+        sliders.forEach(s => {
+            const hiddenInput = document.getElementById(s.dataset.target);
+            const valSpan = document.getElementById(s.id.replace('-slide', '-val'));
             
-            // A Hiányzik cella megkeresése
-            var $missingCell = $row.find('.hiányzik-status-cell'); 
-
-            // Ha egyik sem jelölt (logikai hiányzás)
-            if (!isPresent && !isInjured && !isGuest) {
-                $missingCell.html('<i class="fas fa-times text-danger"></i>');
-            } else {
-                $missingCell.html('<i class="fas fa-check text-muted"></i>');
+            if (hiddenInput) {
+                let val = parseInt(s.value) || 0;
+                hiddenInput.value = val;
+                if (valSpan) valSpan.innerText = val + " perc";
+                otherTotal += val;
             }
-        }
-
-        // ESEMÉNYKEZELŐ: Csak a kizárólagos státusz jelölőnégyzetekre figyelünk
-        $('.attendance-status-checkbox').on('change', function() {
-            var $currentCheckbox = $(this);
-            var isChecked = $currentCheckbox.prop('checked');
-            
-            console.log("Checkbox státusz megváltozott a sorban:", $currentCheckbox.closest('tr').data('athlete-id')); // Debug üzenet
-
-            // Ha az aktuálisat bejelölték, le kell venni a jelölést a többiről a soron belül
-            if (isChecked) {
-                var $parentRow = $currentCheckbox.closest('tr');
-                
-                // Megszüntetjük a jelölést az összes többi azonos osztályú checkbox-on a soron belül
-                $parentRow.find('.attendance-status-checkbox').not($currentCheckbox).each(function() {
-                    $(this).prop('checked', false);
-                });
-            }
-            
-            // A változás után mindig frissítjük a Hiányzik oszlopot
-            updateMissingStatus($currentCheckbox.closest('tr'));
+            s.max = totalMinutes; 
         });
 
-        // A lap betöltésekor is ellenőrizzük a hiányzó státuszokat (kezdeti állapot megjelenítése)
-        $('table tbody tr').each(function() {
-            updateMissingStatus($(this));
+        const remainingToy = totalMinutes - otherTotal;
+        if (toyHidden) toyHidden.value = remainingToy;
+        if (toyDisplay) {
+            toyDisplay.innerText = remainingToy;
+            toyDisplay.parentElement.classList.toggle('text-danger', remainingToy < 0);
+            toyDisplay.parentElement.classList.toggle('text-primary', remainingToy >= 0);
+        }
+    }
+
+    sliders.forEach(s => {
+        s.addEventListener('input', function() {
+            let otherSum = 0;
+            sliders.forEach(other => {
+                if (other !== s) otherSum += parseInt(other.value) || 0;
+            });
+            if (parseInt(this.value) + otherSum > totalMinutes) {
+                this.value = totalMinutes - otherSum;
+            }
+            updateAll();
         });
     });
+
+    updateAll();
+
+    // Jelenlét logika
+    if (window.jQuery) {
+        $(document).ready(function() {
+            function updateRow($row) {
+                var isSet = $row.find('.attendance-status-checkbox:checked').length > 0;
+                $row.find('.hiányzik-status-cell').html(isSet ? '<i class="fas fa-check text-muted"></i>' : '<i class="fas fa-times text-danger"></i>');
+            }
+            $('.attendance-status-checkbox').on('change', function() {
+                if ($(this).prop('checked')) {
+                    $(this).closest('tr').find('.attendance-status-checkbox').not(this).prop('checked', false);
+                }
+                updateRow($(this).closest('tr'));
+            });
+            $('table tbody tr').each(function() { updateRow($(this)); });
+        });
+    }
+});
 </script>
 {% endblock extra_js %}

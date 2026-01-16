@@ -42,6 +42,7 @@ def billing_dashboard_view(request):
         'pending_invoices': pending_invoices,         # HTML-hez igazítva
         'ad_earned_today': ad_today,
         'transactions': FinancialTransaction.objects.filter(user=request.user).order_by('-timestamp')[:10],
+        'app_context': 'billing_dashboard',
     }
     return render(request, 'billing/dashboard.html', context)
 
@@ -97,7 +98,8 @@ def purchase_view(request):
 
     return render(request, 'billing/purchase.html', {
         'form': form,
-        'user_credits': wallet.credits
+        'user_credits': wallet.credits,
+        'app_context': 'purchase_view',
     })
 
 # ============================================================
@@ -142,6 +144,7 @@ def ad_for_credit_view(request):
     # GET kérés esetén megjelenítjük a hirdetés oldalt
     context = {
         'already_earned': already_earned,
+        'app_context': 'ad_view',
     }
     return render(request, 'billing/ad_view.html', context)
 

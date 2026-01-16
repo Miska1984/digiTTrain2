@@ -8,6 +8,9 @@ from django.urls import reverse
 
 from users.models import UserRole, Role, Club, Sport, User, ParentChild
 from users.forms import ParentRoleForm
+from ml_engine.ai_coach_service import DittaCoachService
+
+ditta_service = DittaCoachService()
 
 @login_required
 def create_parent(request):
@@ -48,7 +51,14 @@ def create_parent(request):
     else:
         form = ParentRoleForm()
 
-    return render(request, "users/roles/parent/create_parent.html", {"form": form})
+    app_context = 'create_parent'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
+    return render(request, "users/roles/parent/create_parent.html", {
+        "form": form,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
+        })
 
 
 
@@ -68,9 +78,14 @@ def edit_parent(request, role_id):
                 messages.success(request, "A szülői szerepkör törölve lett.")
                 return redirect("core:main_page")
     
+    app_context = 'create_parent'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     context = {
         "role": parent_role,
         "has_children": has_children,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     return render(request, "users/roles/parent/edit_parent.html", context)
 

@@ -53,7 +53,8 @@ def activate_service(target_user, plan, payer=None):
             UserSubscription.objects.create(
                 user=target_user,
                 sub_type=plan.plan_type,
-                expiry_date=new_expiry
+                expiry_date=new_expiry,
+                active=True  # <--- Ezt is add hozzá, hogy az új előfizetés rögtön aktív legyen!
             )
             
         # Naplózás a KEDVEZMÉNYEZETTNÉL (ha más vette neki kredittel)
@@ -130,4 +131,10 @@ def refund_analysis(user, reason="Hiba az elemzés során"): # Adjunk hozzá ala
         return True, balance.count
 
 def has_active_subscription(user, sub_type):
-    return UserSubscription.objects.filter(user=user, sub_type=sub_type, expiry_date__gt=timezone.now()).exists()
+    # Hozzáadjuk az active=True feltételt is!
+    return UserSubscription.objects.filter(
+        user=user, 
+        sub_type=sub_type, 
+        active=True,               # <--- Ezt add hozzá
+        expiry_date__gt=timezone.now()
+    ).exists()

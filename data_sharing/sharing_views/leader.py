@@ -119,6 +119,7 @@ def leader_dashboard(request):
     context = {
         'athlete_cards': athlete_cards, 
         'page_title': "Egyesületi Vezetői Dashboard - Sportolói Áttekintés",
+        'app_context': 'leader_dashboard',
     }
     
     return render(request, "data_sharing/leader/dashboard.html", context) 

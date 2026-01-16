@@ -71,13 +71,20 @@ class UserAnalysisBalance(models.Model):
 class UserSubscription(models.Model):
     """Aktív időalapú jogosultságok (Hirdetésmentesség vagy ML)."""
     SUB_TYPES = [('ML_ACCESS', 'ML'), ('AD_FREE', 'Hirdetésmentesség')]
+    
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="subscriptions")
+    
+    # Ezt a sort add vissza (kapcsolat a ServicePlan-hez):
+    plan = models.ForeignKey('ServicePlan', on_delete=models.CASCADE, null=True, blank=True)
+    
     sub_type = models.CharField(max_length=20, choices=SUB_TYPES)
     expiry_date = models.DateTimeField()
+    
+    # Ez a korábbi hiba megoldása:
+    active = models.BooleanField(default=True, verbose_name="Aktív")
 
     def is_active(self):
-        return self.expiry_date > timezone.now()
-
+        return self.active and self.expiry_date > timezone.now()
 
 # ============================================================
 # 3. VÁSÁRLÁSI FOLYAMAT (Direct Path - Pénzes út)

@@ -8,7 +8,7 @@ from datetime import date
 
 from users.models import UserRole, Club, Sport, Role
 from users.forms import AthleteRoleForm, UnderageAthleteRoleForm
-
+from ml_engine.ai_coach.navigator import NavigatorPersona
 
 def is_underage(user):
     """Ellenőrzi, hogy a felhasználó 18 év alatti-e."""
@@ -67,10 +67,15 @@ def create_athlete(request):
             form = UnderageAthleteRoleForm()
         else:
             form = AthleteRoleForm()
+    
+    navigator = NavigatorPersona()
+    welcome = navigator.get_response(request.user, "create_athlete")
 
     return render(request, "users/roles/athlete/create_athlete.html", {
         "form": form,
-        "kiskoru": kiskoru
+        "kiskoru": kiskoru,
+        "app_context": "create_athlete",
+        "welcome_message": welcome,
     })
 
 @login_required
@@ -92,8 +97,13 @@ def edit_athlete(request, role_id):
             messages.success(request, "A sportoló szerepkör sikeresen törölve lett.")
             return redirect("core:main_page")
 
+    navigator = NavigatorPersona()
+    welcome = navigator.get_response(request.user, "create_athlete")
+
     context = {
         "role": athlete_role,
+        "app_context": "create_athlete",
+        "welcome_message": welcome,
     }
     return render(request, "users/roles/athlete/edit_athlete.html", context)
 

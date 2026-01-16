@@ -129,7 +129,8 @@ def data_sharing_center(request):
 
     context = {
         'matrices_data': matrices_data,
-        'page_title': 'Adatmegosztási Központ'
+        'page_title': 'Adatmegosztási Központ',
+        'app_context': 'sharing_center',
     }
     
     return render(request, 'data_sharing/sharing_center.html', context)
@@ -163,7 +164,8 @@ def shared_data_view(request):
         })
     
     context = {
-        'shared_data_by_user': shared_data_by_user
+        'shared_data_by_user': shared_data_by_user,
+        'app_context': 'shared_data_view',
     }
     
     return render(request, 'data_sharing/shared_data_view.html', context)

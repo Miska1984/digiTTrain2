@@ -3,7 +3,7 @@ from django import forms
 from django.db import models
 from django.db.models import Value, CharField, F
 from django.db.models.functions import ExtractYear
-from .models import AbsenceSchedule, TrainingSchedule
+from .models import AbsenceSchedule, TrainingSchedule, TrainingSession
 from users.models import Club, Sport, User
 from users.utils import get_coach_clubs_and_sports
 from assessment.models import PlaceholderAthlete 
@@ -253,4 +253,36 @@ class TrainingScheduleForm(forms.ModelForm):
             cleaned_data['genders'] = ','.join(cleaned_data['genders'])
             
         return cleaned_data
-    
+
+class TrainingSessionForm(forms.ModelForm):
+    """
+    Form az edzés konkrét adatainak és szakmai felbontásának rögzítéséhez.
+    """
+    class Meta:
+        model = TrainingSession
+        fields = [
+            'session_date', 'start_time', 'duration_minutes', 'location',
+            'toy_duration', 'warmup_duration', 'is_warmup_playful',
+            'technical_duration', 'tactical_duration', 'game_duration', 'cooldown_duration'
+        ]
+        widgets = {
+            'session_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
+            'duration_minutes': forms.NumberInput(attrs={'class': 'form-control', 'readonly': 'readonly'}),
+            'location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Helyszín neve...'}),
+            
+            # Rejtett mezők, mert a JS csúszkák fogják állítani az értéküket
+            'toy_duration': forms.HiddenInput(),
+            'warmup_duration': forms.HiddenInput(),
+            'technical_duration': forms.HiddenInput(),
+            'tactical_duration': forms.HiddenInput(),
+            'game_duration': forms.HiddenInput(),
+            'cooldown_duration': forms.HiddenInput(),
+            
+            # A Checkbox stílusozása
+            'is_warmup_playful': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Ha szükséges, itt is lehet dinamikusan szűrni vagy alapértelmezett értékeket adni

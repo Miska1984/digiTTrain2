@@ -303,3 +303,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=3, minute=0), # Hajnali 3:00
     },
 }
+
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY')
+
+

@@ -10,7 +10,7 @@ import logging
 
 from ml_engine.models import UserFeatureSnapshot
 from ml_engine.data_generator import SyntheticDataGenerator # Beemeljük a generátort
-from .ai_coach_service import AICoachService
+from .ai_coach_service import DittaCoachService
 
 logger = logging.getLogger(__name__)
 
@@ -135,11 +135,11 @@ class TrainingService:
             predicted_value = float(prediction)
             
             try:
-                coach = AICoachService()
+                coach = DittaCoachService()
                 coach.generate_advice(user)
-                logger.info(f"✅ AI Coach tanács generálva: {user.username}")
+                logger.info(f"✅ Ditta tanács generálva: {user.username}")
             except Exception as ai_err:
-                logger.error(f"⚠️ AI Coach hiba: {ai_err}")
+                logger.error(f"⚠️ Ditta hiba: {ai_err}")
 
             return latest_snapshot.snapshot_date, predicted_value
 

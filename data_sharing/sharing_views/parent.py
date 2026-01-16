@@ -167,6 +167,7 @@ def parent_athlete_details(request, athlete_id):
         'athlete_club': athlete_club,
         'athlete_sport': athlete_sport,
         'can_view_biometrics': True, # Mindig True a szülőnek
+        'app_context': 'parent_dashboard',
     }
 
     return render(request, 'data_sharing/parent/athlete_details.html', context)

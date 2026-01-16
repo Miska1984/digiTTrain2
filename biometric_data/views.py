@@ -26,6 +26,8 @@ from .analytics import (
     generate_hrv_sleep_feedback,
     generate_running_feedback
 )
+from ml_engine.ai_coach_service import DittaCoachService
+ditta_service = DittaCoachService()
 
 # -------------------- 1. Reggeli Mérések (morning_check) --------------------
 @login_required
@@ -72,10 +74,17 @@ def morning_check(request):
         weight_form = MorningWeightDataForm(instance=weight_instance)
         hrv_form = HRVandSleepDataForm(instance=hrv_instance)
     
+    app_context = 'biometrics_morning_check'
+    check_query = "Most rögzítettem a reggeli adataimat. Mi a véleményed róluk?" if request.method == 'POST' else None
+    
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context, check_query)
+
     context = {
         'weight_form': weight_form,
         'hrv_form': hrv_form,
-        'title': title
+        'title': title,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     return render(request, 'biometric_data/morning_check.html', context)
 
@@ -128,10 +137,15 @@ def after_training(request):
         weight_form = AfterTrainingWeightForm(instance=weight_instance)
         feedback_form = AfterTrainingFeedbackForm(instance=feedback_instance)
     
+    app_context = 'after_training'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     context = {
         'weight_form': weight_form,
         'feedback_form': feedback_form,
-        'title': title
+        'title': title, 
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     return render(request, 'biometric_data/after_training.html', context)
 
@@ -180,10 +194,15 @@ def occasional_measurements(request):
         weight_form = OccasionalWeightForm(instance=weight_instance)
         feedback_form = OccasionalFeedbackForm(instance=feedback_instance)
     
+    app_context = 'occasional_measurements'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     context = {
         'weight_form': weight_form,
         'feedback_form': feedback_form,
-        'title': title
+        'title': title,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     return render(request, 'biometric_data/occasional_measurements.html', context)
 
@@ -208,9 +227,14 @@ def add_running_performance(request):
     else:
         running_form = RunningPerformanceForm() 
 
+    app_context = 'add_running_performance'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     context = {
         'running_form': running_form,
-        'title': title
+        'title': title,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     return render(request, 'biometric_data/add_running_performance.html', context)
 
@@ -375,7 +399,10 @@ def athlete_dashboard(request):
     grip_intensity_chart_data = generate_grip_intensity_chart_data(user)
     running_chart_data = generate_running_chart_data(user)
     
-    
+    app_context = 'biometrics_dashboard'
+    ditta_query = "Kérlek, nézd át az utolsó 30 napos trendjeimet és adj egy rövid helyzetjelentést!"
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context, ditta_query)
+
     # 4. Context összeállítása
     context = {
     'title': 'Sportoló Dashboard',
@@ -393,5 +420,9 @@ def athlete_dashboard(request):
     'hrv_sleep_chart_data_json': json.dumps(hrv_sleep_chart_data, cls=DjangoJSONEncoder),
     'grip_intensity_chart_data_json': json.dumps(grip_intensity_chart_data, cls=DjangoJSONEncoder),
     'running_chart_data_json': json.dumps(running_chart_data, cls=DjangoJSONEncoder),
+
+    # Ditta bekötése
+    'app_context': app_context,
+    'welcome_message': welcome_message,
     }
     return render(request, 'biometric_data/athlete_dashboard.html', context)

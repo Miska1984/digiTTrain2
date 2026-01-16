@@ -1,55 +1,73 @@
-import os
-import google.generativeai as genai
-from .models import UserPredictionResult
+# ml_engine/ai_coach_service.py
+from .ai_coach.factory import get_persona
+from billing.models import UserSubscription
+from .models import DittaMissedQuery  # Importáld az új modellt!
+from django.utils import timezone
 
-class AICoachService:
-    def __init__(self):
-        api_key = os.getenv("GEMINI_API_KEY")
-        if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
-        else:
-            self.model = None
-
-    def generate_advice(self, user):
-        from biometric_data.models import HRVandSleepData
+class DittaCoachService:
+    def get_ditta_response(self, user, context_app, user_query=None, history=None, active_role=None):
+        """
+        Ditta válasz generálása.
         
-        if not self.model:
-            return "AI Coach nem elérhető: Hiányzó API kulcs."
+        Args:
+            user: A felhasználó
+            context_app: Az alkalmazás kontextusa
+            user_query: A felhasználó kérdése
+            history: Beszélgetés előzmények (opcionális)
+        """
+        # 1. Jogosultság ellenőrzése
+        has_ml_access = self._check_ml_access(user)
+        
+        # 2. Persona példányosítása
+        persona = get_persona(context_app, has_ml_access)
+        
+        # 3. Válasz generálása
+        response_text = ""
+        
+        if hasattr(persona, 'get_response'):
+            from .ai_coach.analyst import AnalystPersona
+            
+            if isinstance(persona, AnalystPersona):
+                if user_query:
+                    # FONTOS: Átadjuk a history-t is!
+                    response_text = persona.get_response(
+                        user=user,
+                        query=user_query,
+                        has_ml_access=has_ml_access,
+                        history=history,
+                        active_role=active_role
+                    )
+                else:
+                    # Kezdő üdvözlés
+                    response_text = (
+                        f"Szia {user.profile.last_name if user.profile.last_name else user.username}! "
+                        "Ditta vagyok, az adat-gurud. 📊 Az ML_ACCESS előfizetésed aktív, "
+                        "így készen állok a mélyebb elemzésekre is. Miben segíthetek ma?"
+                    )
+            else:
+                # Navigator (Asszisztens) mód
+                response_text = persona.get_response(user, context_app, user_query)
+        else:
+            response_text = "Szia! Ditta vagyok. Miben segíthetek?"
 
-        try:
-            # 1. Legutóbbi ML predikció lekérése (form_score és predicted_at használatával)
-            prediction = UserPredictionResult.objects.filter(user=user).latest('predicted_at')
-            form_index = int(prediction.form_score * 100)
-            
-            # 2. Legutóbbi biometrikus adatok
-            bio = HRVandSleepData.objects.filter(user=user).order_by('-recorded_at').first()
-            
-            hrv_val = bio.hrv if bio and bio.hrv else "Nincs adat"
-            sleep_q = bio.get_sleep_quality_display() if bio and bio.sleep_quality else "Nincs adat"
-            alertness = bio.get_alertness_display() if bio and bio.alertness else "Nincs adat"
-            
-            # 3. Prompt összeállítása
-            prompt = f"""
-            Te egy profi asztalitenisz szakedző vagy. Elemezd a játékos adatait:
-            - Mai várható formaindex: {form_index}%
-            - Utolsó mért HRV: {hrv_val} ms
-            - Alvás minősége: {sleep_q}
-            - Általános közérzet: {alertness}
-            
-            Adj egy rövid (2-3 mondatos), közvetlen hangvételű tanácsot a mai edzéshez. 
-            Legyél szakmai, de támogató.
-            """
+        # --- Ismeretlen kérések naplózása ---
+        if "[MISSED]" in response_text:
+            DittaMissedQuery.objects.create(
+                user=user,
+                query=user_query,
+                context_app=context_app
+            )
+            response_text = response_text.replace("[MISSED]", "").strip()
+        
+        return response_text
 
-            response = self.model.generate_content(prompt)
-            advice_text = response.text
+    def _check_ml_access(self, user):
+        if not user or not user.is_authenticated:
+            return False
             
-            # 4. Mentés a coach_advice mezőbe
-            prediction.coach_advice = advice_text
-            prediction.save()
-            
-            return advice_text
-            
-        except Exception as e:
-            print(f"Hiba az AI Coach futása közben: {e}")
-            return None
+        return UserSubscription.objects.filter(
+            user=user,
+            sub_type='ML_ACCESS',
+            active=True,
+            expiry_date__gt=timezone.now()
+        ).exists()

@@ -14,7 +14,7 @@ from biometric_data.models import WeightData, HRVandSleepData, RunningPerformanc
 from assessment.models import PlaceholderAthlete, PhysicalAssessment
 from assessment.forms import PlaceholderAthleteForm, PlaceholderAthleteImportForm
 from training_log.models import TrainingSession, Attendance, TrainingSchedule, AbsenceSchedule
-from training_log.forms import TrainingScheduleForm, AbsenceScheduleForm 
+from training_log.forms import TrainingScheduleForm, AbsenceScheduleForm, TrainingSessionForm
 from training_log.utils import get_attendance_summary, TIME_PERIODS, calculate_next_training_sessions
 from data_sharing.models import BiometricSharingPermission
 from datetime import date, datetime, time
@@ -387,8 +387,6 @@ def add_unregistered_athlete(request):
     }
     return render(request, "data_sharing/coach/add_unregistered_athlete.html", context)
 
-
-
 @login_required
 @role_required('Edző')
 def export_placeholder_template(request):
@@ -571,7 +569,6 @@ def manage_attendance(request, session_id):
     # Ide jön a TrainingSession lekérdezése és az Attendance Formset kezelése
     context = {'page_title': "Jelenlét Vezetése"}
     return render(request, "data_sharing/coach/manage_attendance.html", context)
-
 
 @login_required
 @role_required('Edző')
@@ -812,7 +809,10 @@ def add_physical_assessment(request):
     Form edzői felmérések (PhysicalAssessment) rögzítéséhez.
     """
     # Ide jön majd a Django Form kezelése: PhysicalAssessmentForm
-    context = {'page_title': "Fizikai Felmérés Rögzítése"}
+    context = {
+        'page_title': "Fizikai Felmérés Rögzítése", 
+        'app_context': 'physical_assessment_list',
+    }
     return render(request, "data_sharing/coach/add_physical_assessment.html", context)
 
 @login_required
@@ -914,6 +914,7 @@ def manage_schedules(request):
         'schedules': schedules_with_sessions, 
         'absences': absences,
         'page_title': "Edzésrend & Szünetek Kezelése",
+        'app_context': 'manage_schedules',
     }
     return render(request, "data_sharing/coach/manage_schedules.html", context)
 
@@ -935,7 +936,8 @@ def add_schedule(request):
         
     context = {
         'form': form,
-        'page_title': "Új Edzésrend Felvitele"
+        'page_title': "Új Edzésrend Felvitele",
+        'app_context': 'manage_schedules',
     }
     return render(request, "data_sharing/coach/add_schedule.html", context)
 
@@ -977,7 +979,8 @@ def edit_schedule(request, pk): # <-- A view PK-t vár, használjuk a belső kó
     context = {
         'form': form,
         'page_title': "Edzésrend Módosítása",
-        'schedule': schedule
+        'schedule': schedule, 
+        'app_context': 'manage_schedules',
     }
     return render(request, "data_sharing/coach/edit_schedule.html", context) # Ezt a sablont még létre kell hozni!
 
@@ -1087,18 +1090,15 @@ def delete_absence(request, pk):
     return render(request, "data_sharing/coach/delete_confirmation.html", context)
 
 # --- Jelenléti ív ---
-
 @login_required
-@role_required('Edző') # Csak Edző engedélyezett
+@role_required('Edző')
 @transaction.atomic
 def record_attendance(request, schedule_pk, session_date):
-    user = request.user # A bejelentkezett felhasználó
+    user = request.user
     
     # 1. Edzésrend és jogosultság ellenőrzése
     schedule = get_object_or_404(TrainingSchedule.objects.select_related('club', 'sport'), pk=schedule_pk)
     
-    
-    # Ellenőrizzük, hogy a felhasználó Edző-e az edzésrendhez tartozó KLUB/SPORTÁG pároson
     is_coach_of_schedule_group = user.user_roles.filter(
         role__name='Edző', 
         status='approved', 
@@ -1106,51 +1106,67 @@ def record_attendance(request, schedule_pk, session_date):
         sport=schedule.sport 
     ).exists()
     
-    # Ha a felhasználó nem edző az adott csoportban, Nincs jogosultsága.
     if not is_coach_of_schedule_group:
-        logger.warning(f"Jogosultsági hiba: Edző ({user.username}) megpróbálta elérni a {schedule.club.name}/{schedule.sport.name} edzés jelenléti ívét, amihez nincs engedélye.")
+        logger.warning(f"Jogosultsági hiba: Edző ({user.username}) megpróbálta elérni a {schedule.club.name}/{schedule.sport.name} edzését.")
         raise Http404("Nincs jogosultságod ehhez az edzésrendhez.")
 
-    # Mivel a követelmény az, hogy minden jogosult edző szerkeszthessen:
-    can_edit = True 
-       
     try:
         session_date_obj = datetime.strptime(session_date, '%Y-%m-%d').date()
     except ValueError:
-        logger.error(f"Érvénytelen dátum formátum: {session_date}")
         raise Http404("Érvénytelen edzés dátum.")
         
-    # Ellenőrzés: Az edzés napja megegyezik-e a schedule napjával
-    day_of_week_model = session_date_obj.weekday() + 1
-    if str(day_of_week_model) not in schedule.days_of_week.split(','):
-        logger.warning(f"Hiba: A kiválasztott nap ({session_date}) nem tartozik a schedule ({schedule.days_of_week}) napjai közé.")
-        raise Http404("A megadott napon nincs edzés az edzésrend szerint.")
-
-    # 3. Edző lekérdezése    
+    # 2. Edzés (Session) lekérdezése vagy létrehozása
     existing_session_query = TrainingSession.objects.filter(
         session_date=session_date_obj,
-        start_time=schedule.start_time
-        # Hozzáadhatunk szűrést a location-re/schedule.name-re is, ha az is egyedi azonosító
+        start_time=schedule.start_time,
+        schedule=schedule
     )
     
+    session_is_new = False # Segédváltozó az előző betöltéséhez
+    
     if existing_session_query.exists():
-        # Ha létezik, használjuk az elsőt (a duplikációkat manuálisan törölni kell!)
         session = existing_session_query.first() 
-        # Frissítjük a coach mezőt a jelenlegi edzőre (ez opcionális, de jelzi, ki szerkesztette utoljára)
         session.coach = user 
         session.save()
-        created = False
     else:
-        # Ha nem létezik, létrehozzuk (a jelenlegi edzővel)
+        session_is_new = True # Jelezzük, hogy most hozzuk létre
         duration = (datetime.combine(date.today(), schedule.end_time) - datetime.combine(date.today(), schedule.start_time)).total_seconds() / 60
         session = TrainingSession.objects.create(
             coach=user,
+            schedule=schedule,
             session_date=session_date_obj,
             start_time=schedule.start_time,
-            duration_minutes=duration,
+            duration_minutes=int(duration),
             location=schedule.name,
         )
-        created = True
+
+    # --- ÚJ: ELŐZŐ EDZÉS ADATAINAK BETÖLTÉSE ---
+    # Ha a session új, vagy még teljesen üres (minden 0), megpróbáljuk betölteni a legutóbbit
+    if session_is_new or (session.warmup_duration == 0 and session.technical_duration == 0):
+        last_session = TrainingSession.objects.filter(
+            schedule=schedule,
+            session_date__lt=session_date_obj
+        ).order_by('-session_date', '-id').first()
+
+        if last_session:
+            # Csak azokat az értékeket másoljuk át, amik a felosztáshoz kellenek
+            session.warmup_duration = last_session.warmup_duration
+            session.is_warmup_playful = last_session.is_warmup_playful
+            session.technical_duration = last_session.technical_duration
+            session.tactical_duration = last_session.tactical_duration
+            session.game_duration = last_session.game_duration
+            session.cooldown_duration = last_session.cooldown_duration
+            session.toy_duration = last_session.toy_duration
+            # Fontos: itt még NEM hívunk session.save()-et, hogy ne szemeteljük tele az adatbázist, 
+            # ha az edző csak benéz az oldalra, de nem ment semmit.
+    # --- ÚJ RÉSZ VÉGE ---
+
+    # --- Form inicializálása ---
+    from training_log.forms import TrainingSessionForm
+    if request.method == 'POST':
+        session_form = TrainingSessionForm(request.POST, instance=session)
+    else:
+        session_form = TrainingSessionForm(instance=session)
 
     # 3. Sportolók lekérdezése (Regisztrált és Placeholder)
     
@@ -1219,66 +1235,57 @@ def record_attendance(request, schedule_pk, session_date):
             'attendance_id': attendance.id if attendance else None,
         })
         
-    # 4. POST kérés: Jelenlét mentése
+    # 4. POST kérés: Mentés
     if request.method == 'POST':
+        # Fontos: Újra inicializáljuk a formot a POST adatokkal
+        session_form = TrainingSessionForm(request.POST, instance=session)
         
-        # Kezeljük le a jelenléti adatokat:
+        if session_form.is_valid():
+            # Itt történik az adatbázisba írás (warmup_duration stb.)
+            session = session_form.save() 
+            logger.info(f"Szakmai felosztás mentve: {session.id}")
+        else:
+            # Ha ide belép, látni fogod a terminálban a hibát
+            print("FORM HIBA:", session_form.errors)
+
+        # Jelenlét mentése (a sportolók listája)
         for athlete_data in athlete_list:
-            
             athlete_id = athlete_data['id']
             athlete_type = athlete_data['type']
-            # A HTML-ben használt egyedi kulcs (pl. registered_4 vagy placeholder_1)
             unique_key = f"{athlete_type}_{athlete_id}"
             
-            # A request.POST.get(...) csak akkor ad vissza '1'-et, ha a checkbox be van jelölve.
             is_present = request.POST.get(f'is_present_{unique_key}') == '1'
             is_injured = request.POST.get(f'is_injured_{unique_key}') == '1'
             is_guest = request.POST.get(f'is_guest_{unique_key}') == '1'
             
-            # Sportoló objektum beszerzése és Attendance rekord kezelése
             if athlete_type == 'registered':
-                athlete_obj = User.objects.get(id=athlete_id)
-                filter_kwargs = {'session': session, 'registered_athlete': athlete_obj}
-            
-            elif athlete_type == 'placeholder':
-                placeholder_obj = PlaceholderAthlete.objects.get(id=athlete_id)
-                filter_kwargs = {'session': session, 'placeholder_athlete': placeholder_obj}
-            
-            # Minden típushoz
-            defaults_kwargs = {
-                'is_present': is_present,
-                'is_injured': is_injured,
-                'is_guest': is_guest,
-                # ... egyéb default értékek ...
-            }
-            
-            # Megkeressük vagy létrehozzuk az Attendance rekordot
-            attendance, created = Attendance.objects.get_or_create(
-                **filter_kwargs,
-                defaults=defaults_kwargs
-            )
-            
-            # Ha már létezett a rekord, csak frissítjük a mezőket
-            if not created:
-                # Frissítjük a lekérdezett állapotokat
-                attendance.is_present = is_present
-                attendance.is_injured = is_injured
-                attendance.is_guest = is_guest
-                # attendance.rpe_score = request.POST.get(f'rpe_{unique_key}') # RPE
-                attendance.save()
+                filter_kwargs = {'session': session, 'registered_athlete_id': athlete_id}
+            else:
+                filter_kwargs = {'session': session, 'placeholder_athlete_id': athlete_id}
 
-        # Átirányítás a manage_schedules oldalra a mentés után
+            Attendance.objects.update_or_create(
+                **filter_kwargs,
+                defaults={
+                    'is_present': is_present,
+                    'is_injured': is_injured,
+                    'is_guest': is_guest,
+                }
+            )
+
+        messages.success(request, "Sikeres mentés!")
         return redirect('data_sharing:manage_schedules')
 
-
-    # 5. GET kérés: Adatok előkészítése a sablonhoz
+    # 5. GET kérés: Renderelés
     context = {
         'schedule': schedule,
         'session_date': session_date_obj,
         'session': session,
+        'session_form': session_form, # <--- Átadjuk a sablonnak!
         'athlete_list': athlete_list,
-        'page_title': f"Jelenléti Ív: {schedule.name} ({session_date})",
-        'can_edit': can_edit, # Mindig True, de bent hagyjuk a sablon miatt
+        'page_title': f"Jelenléti Ív: {schedule.name}",
+        'can_edit': True,
+        'app_context': 'attendance_sheet',
+
     }
     
     return render(request, 'data_sharing/coach/record_attendance.html', context)

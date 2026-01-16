@@ -6,6 +6,9 @@ from django.http import JsonResponse, Http404
 from django.utils import timezone
 from users.models import UserRole, Role, Club, Sport
 from users.forms import CoachRoleForm
+from ml_engine.ai_coach_service import DittaCoachService
+
+ditta_service = DittaCoachService()
 
 
 @login_required
@@ -47,8 +50,14 @@ def create_coach(request):
     else:
         form = CoachRoleForm()
 
-    return render(request, "users/roles/coach/create_coach.html", {"form": form})
+    app_context = 'create_coach'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
 
+    return render(request, "users/roles/coach/create_coach.html", {
+        "form": form,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
+    })
 
 @login_required
 def edit_coach_role(request, role_id):
@@ -74,9 +83,14 @@ def edit_coach_role(request, role_id):
         # Ha más is van a POST-ban, azt figyelmen kívül hagyjuk
         # A `return redirect` biztosítja, hogy sikeres törlés után elhagyja az oldalt
     
+    app_context = 'create_coach'
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
+
     context = {
         "role": role,
         "has_athletes": has_athletes,
+        'app_context': app_context,
+        'welcome_message': welcome_message,
     }
     return render(request, "users/roles/coach/edit_coach.html", context)
 
