@@ -125,3 +125,6 @@ CELERY_WORKER_CONCURRENCY = 2
 
 
 STATIC_ROOT = '/app/staticfiles'
+
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'AIzaSyDNF4rFtAXoatuOGg9h2By843ua3dib...')
+

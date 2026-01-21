@@ -9,7 +9,7 @@ from django.shortcuts import render
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods,  require_GET
 
 # Modulok és Modellek
 from ml_engine.ai_coach_service import DittaCoachService
@@ -33,39 +33,53 @@ def form_prediction_view(request):
     """
     user = request.user
 
+    # Lekérjük a legfrissebb predikciót az adatbázisból (Ezt hiányolta a kód)
+    latest_prediction = UserPredictionResult.objects.filter(user=user).order_by("-predicted_at").first()
+
     context = {
         'current_form_index': 'N/A',
         'predicted_form_index': 'Nincs adat',
         'prediction_status': 'A modellt még nem futtattuk vagy nincs elég adat.',
+        'prediction_color': 'secondary',
         'today_date': date.today().strftime('%Y-%m-%d'),
+        'latest_prediction': latest_prediction,
     }
 
     # 1. Aktuális formaindex lekérése a snapshotból
     try:
         latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).latest('generated_at')
-        current_form_index = (
-            latest_snapshot.features.get('target_form_index')
-            or latest_snapshot.features.get('form_score')
-        )
+        features = latest_snapshot.features
+        # Kezeljük ha lista vagy dict
+        if isinstance(features, list) and len(features) > 0:
+            features = features[0]
+        
+        current_val = features.get('form_score') or features.get('target_form_index')
 
-        if current_form_index is not None:
-            context['current_form_index'] = f"{float(current_form_index):.2f}"
-            context['prediction_status'] = "✅ Aktuális formaindex sikeresen lekérdezve."
+        if current_val is not None:
+            context['current_form_index'] = f"{float(current_val):.2f}"
     except UserFeatureSnapshot.DoesNotExist:
-        context['prediction_status'] = "⚠️ Nincs elérhető aktuális adat (snapshot)."
+        pass
 
-    # 2. Várható formaindex (ML modell predikció)
-    ml_service = TrainingService()
-    if ml_service.model:
-        try:
-            _, predicted_index = ml_service.predict_form(user)
-            if predicted_index is not None:
-                context['predicted_form_index'] = f"{predicted_index:.2f}"
-                context['prediction_status'] = "✅ Adatok sikeresen kiszámítva."
-        except Exception as e:
-            logger.error(f"❌ Predikciós hiba: {e}", exc_info=True)
-            context['predicted_form_index'] = 'Hiba'
-            context['prediction_status'] = f"❌ Hiba történt: {e}"
+    # 2. Értékelés és Szín beállítása a legfrissebb predikció alapján
+    if latest_prediction:
+        score = latest_prediction.form_score
+        context['predicted_form_index'] = f"{score:.2f}"
+        
+        if score >= 80:
+            status_text = "Kiváló forma! Mehet a maximális terhelés."
+            status_color = "success"
+        elif score >= 60:
+            status_text = "Jó állapotban vagy, stabil fejlődés."
+            status_color = "primary"
+        elif score >= 40:
+            status_text = "Közepes forma. Figyelj a regenerációra!"
+            status_color = "warning"
+        else:
+            status_text = "Fáradtság jelei! Javasolt egy pihenőnap."
+            status_color = "danger"
+            
+        context['prediction_status'] = status_text
+        context['prediction_color'] = status_color
     
     return render(request, 'ml_engine/form_prediction.html', context)
 
@@ -77,163 +91,262 @@ def form_prediction_view(request):
 @login_required
 @subscription_required
 def dashboard_view(request):
-    """
-    Prémium (előfizetéses) ML dashboard:
-    - Aktuális és várható formaindex statisztikákkal
-    - Sérüléskockázat elemzés
-    - Biometrikus trendek és interaktív grafikonok
-    """
     user = request.user
     today = date.today()
     two_weeks_ago = today - timedelta(days=14)
 
-    # Előfizetés adatainak lekérése
     active_sub = UserSubscription.objects.filter(
-        user=user, 
-        sub_type='ML_ACCESS',
-        active=True
+        user=user, sub_type="ML_ACCESS", active=True
     ).first()
 
-    # DEBUG LOG a Docker konzolba
-    print(f"--- DITTA DEBUG START ---")
-    print(f"Felhasználó: {user.username}")
-    if active_sub:
-        print(f"Sikeres előfizetés: {active_sub.sub_type}, Lejárat: {active_sub.expiry_date}")
-    else:
-        print("HIBA: Nem található aktív ML_ACCESS előfizetés!")
-        # Megnézzük, mi van az adatbázisban egyáltalán ehhez a userhez
-        all_subs = UserSubscription.objects.filter(user=user)
-        for s in all_subs:
-            print(f"Létező al-adat: Típus: {s.sub_type}, Aktív: {s.active}, Lejárat: {s.expiry_date}")
-    print(f"--- DITTA DEBUG END ---")
+    # --- Biometrikus adatok ---
+    weight_data = WeightData.objects.filter(
+        user=user, workout_date__gte=two_weeks_ago
+    ).order_by("workout_date")
 
-    # Nyers biometrikus adatok a trendekhez
-    weight_data = WeightData.objects.filter(user=user, workout_date__gte=two_weeks_ago).order_by("workout_date")
-    hrv_data = HRVandSleepData.objects.filter(user=user, recorded_at__gte=two_weeks_ago).order_by("recorded_at")
-    feedback_data = WorkoutFeedback.objects.filter(user=user, workout_date__gte=two_weeks_ago).order_by("workout_date")
+    hrv_data = HRVandSleepData.objects.filter(
+        user=user, recorded_at__gte=two_weeks_ago
+    ).order_by("recorded_at")
 
-    current_form_index = None
+    feedback_data = WorkoutFeedback.objects.filter(
+        user=user, workout_date__gte=two_weeks_ago
+    ).order_by("workout_date")
+
+    # --- Aktuális snapshot ---
+    latest_snapshot = (
+        UserFeatureSnapshot.objects.filter(user=user)
+        .order_by("-generated_at")
+        .first()
+    )
+
+    ci = 0.0
+    injury_risk_index = 0.0
+
+    if latest_snapshot:
+        # Ellenőrizzük a features típusát
+        if isinstance(latest_snapshot.features, dict):
+            ci = float(latest_snapshot.features.get("form_score", 0))
+            injury_risk_index = float(
+                latest_snapshot.features.get("injury_risk_index", 0)
+            )
+        elif isinstance(latest_snapshot.features, list):
+            # Ha lista, próbáljuk az első elemből kinyerni
+            if latest_snapshot.features and len(latest_snapshot.features) > 0:
+                if isinstance(latest_snapshot.features[0], dict):
+                    ci = float(latest_snapshot.features[0].get("form_score", 0))
+                    injury_risk_index = float(
+                        latest_snapshot.features[0].get("injury_risk_index", 0)
+                    )
+
+    # --- Predikció ---
     predicted_form_index = None
-    injury_risk_index = None
-    prediction_status = "✅ Adatok betöltve a központi agyból."
-    evaluation_text, evaluation_color = "Nincs adat", "gray"
-
-    # --- Adatok kinyerése a Snapshotból ---
-    try:
-        latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).order_by("-snapshot_date").first()
-        if latest_snapshot:
-            f = latest_snapshot.features
-            
-            if isinstance(f, dict):
-                current_form_index = f.get("form_score") or f.get("avg_hrv") or 0
-                injury_risk_index = f.get("injury_risk_index") or f.get("dehydration_index") or 0
-            elif isinstance(f, list):
-                current_form_index = f[0] if len(f) > 0 else 0
-                injury_risk_index = 0
-            else:
-                current_form_index = 0
-                injury_risk_index = 0
-        else:
-            current_form_index = 0
-            injury_risk_index = 0
-            
-    except Exception as e:
-        logger.warning(f"⚠️ Snapshot hiba: {e}")
-        current_form_index = 0
-
-    # --- Predikció futtatása a holnapi napra ---
     ml_service = TrainingService()
     if ml_service.model:
         try:
             _, predicted_form_index = ml_service.predict_form(user)
         except Exception as e:
-            logger.error(f"❌ ML hiba: {e}")
-            prediction_status = "❌ A jövőbelátó áramkörök meghibásodtak (Predikciós hiba)."
+            logger.error(f"ML hiba: {e}")
 
-    # --- Értékelés és színek ---
-    # Biztonsági átalakítás számmá
-    try:
-        if isinstance(current_form_index, dict):
-            ci = float(current_form_index.get("form_score", 0))
-        else:
-            ci = float(current_form_index or 0)
-    except (TypeError, ValueError):
-        ci = 0.0
+    # --- Értékelés ---
+    if ci < 20:
+        evaluation_text, evaluation_color = "Gyenge forma", "#e74c3c"
+    elif ci < 30:
+        evaluation_text, evaluation_color = "Közepes forma", "#f39c12"
+    elif ci < 40:
+        evaluation_text, evaluation_color = "Jó forma", "#27ae60"
+    else:
+        evaluation_text, evaluation_color = "Kiemelkedő forma", "#2980b9"
 
-    # Szöveges értékelés a kiszámolt 'ci' alapján
-    if ci < 20: 
-        evaluation_text, evaluation_color = "Gyenge forma - Regeneráció kötelező!", "#e74c3c"
-    elif ci < 30: 
-        evaluation_text, evaluation_color = "Közepes forma - Csak óvatosan!", "#f39c12"
-    elif ci < 40: 
-        evaluation_text, evaluation_color = "Jó forma - Mehet az edzés!", "#27ae60"
-    else: 
-        evaluation_text, evaluation_color = "Kiemelkedő forma - Ma döntsd meg a csúcsot!", "#2980b9"
+    # --- Trend ---
+    snapshots = (
+        UserFeatureSnapshot.objects.filter(user=user)
+        .order_by("snapshot_date")[:14]
+    )
 
-    # --- Chart.js adatok összeállítása ---
-    snapshots = UserFeatureSnapshot.objects.filter(user=user).order_by("snapshot_date")[:14]
-    trend_dates = [s.snapshot_date.strftime("%Y-%m-%d") for s in snapshots]
+    trend_dates = []
     trend_values = []
 
     for s in snapshots:
-        f = s.features
-        # Biztonságos kinyerés: ha dict, keressük a kulcsot, ha nem találjuk, 0
-        if isinstance(f, dict):
-            val = f.get("form_score") or f.get("avg_hrv") or 0
-        else:
-            val = 0
+        trend_dates.append(s.snapshot_date.strftime("%Y-%m-%d"))
+        
+        # Típusellenőrzés
+        val = 0
+        if isinstance(s.features, dict):
+            val = s.features.get("form_score", 0)
+        elif isinstance(s.features, list):
+            if s.features and len(s.features) > 0:
+                if isinstance(s.features[0], dict):
+                    val = s.features[0].get("form_score", 0)
+                else:
+                    try:
+                        val = float(s.features[0])
+                    except (ValueError, TypeError):
+                        val = 0
+        
         trend_values.append(float(val))
 
-    # Ha van jóslat, adjuk hozzá a grafikon végéhez
-    if predicted_form_index:
-        tomorrow = today + timedelta(days=1)
-        trend_dates.append(tomorrow.strftime("%Y-%m-%d"))
+    if predicted_form_index is not None:
+        trend_dates.append((today + timedelta(days=1)).strftime("%Y-%m-%d"))
         trend_values.append(float(predicted_form_index))
 
-    # Statisztikák
     avg_form = sum(trend_values) / len(trend_values) if trend_values else 0
     best_form = max(trend_values) if trend_values else 0
     worst_form = min(trend_values) if trend_values else 0
 
-    # Trend üzenet
     trend_message = "Stagnáló állapot."
     if len(trend_values) > 1:
         if trend_values[-1] > trend_values[-2]:
-            trend_message = "📈 <span class='text-success'>Felfelé ívelő teljesítmény!</span>"
+            trend_message = "📈 <span class='text-success'>Javuló trend</span>"
         elif trend_values[-1] < trend_values[-2]:
-            trend_message = "📉 <span class='text-danger'>Vigyázz, fáradsz! Pihenj többet.</span>"
-    
-    # --- AI Coach tanács lekérése a legutóbbi predikcióból ---
-    latest_prediction = UserPredictionResult.objects.filter(user=user).order_by("-predicted_at").first()
+            trend_message = "📉 <span class='text-danger'>Romló trend</span>"
+
+    latest_prediction = (
+        UserPredictionResult.objects.filter(user=user)
+        .order_by("-predicted_at")
+        .first()
+    )
 
     chart_data = {
         "dates": [str(w.workout_date) for w in weight_data],
         "weights": [float(w.morning_weight) for w in weight_data],
         "hrv": [float(h.hrv or 0) for h in hrv_data],
-        "sleep_quality": [h.sleep_quality or 0 for h in hrv_data],
         "intensity": [f.workout_intensity or 0 for f in feedback_data],
         "trend_dates": trend_dates,
         "trend_values": trend_values,
-        "injury_risk": [float(injury_risk_index or 0)] * len(trend_dates)
+        "injury_risk": [injury_risk_index] * len(trend_dates),
     }
 
     context = {
         "active_sub": active_sub,
-        "latest_prediction": latest_prediction,
-        "current_form_index": f"{ci:.2f}" if ci is not None else "N/A",
-        "predicted_form_index": f"{predicted_form_index:.2f}" if (predicted_form_index is not None and isinstance(predicted_form_index, (int, float))) else "N/A",
-        "injury_risk": f"{injury_risk_index:.1f}" if injury_risk_index is not None else None,
-        "prediction_status": prediction_status,
+        "current_form_index": round(ci, 2),
+        "predicted_form_index": round(predicted_form_index, 2)
+        if predicted_form_index is not None
+        else None,
         "evaluation_text": evaluation_text,
         "evaluation_color": evaluation_color,
         "trend_message": trend_message,
-        "avg_form": f"{avg_form:.1f}",
-        "best_form": f"{best_form:.1f}",
-        "worst_form": f"{worst_form:.1f}",
+        "avg_form": round(avg_form, 1),
+        "best_form": round(best_form, 1),
+        "worst_form": round(worst_form, 1),
+        "injury_risk": round(injury_risk_index, 1),
+        "latest_prediction": latest_prediction,
         "chart_data": chart_data,
     }
 
     return render(request, "ml_engine/dashboard.html", context)
+
+@login_required
+@subscription_required
+@require_GET
+def dashboard_data_api(request):
+    """AJAX adatforrás – 7 / 14 / 30 nap"""
+
+    user = request.user
+    days = int(request.GET.get("days", 14))
+    today = date.today()
+    since = today - timedelta(days=days)
+
+    # Snapshotok
+    snapshots = (
+        UserFeatureSnapshot.objects
+        .filter(user=user, snapshot_date__gte=since)
+        .order_by("snapshot_date")
+    )
+
+    trend_dates = []
+    trend_values = []
+
+    for s in snapshots:
+        # Ellenőrizzük, hogy mi a features típusa
+        if isinstance(s.features, dict):
+            # Ha dictionary
+            value = s.features.get("form_score", 0) or s.features.get("avg_hrv", 0) or 0
+        elif isinstance(s.features, list):
+            # Ha lista, akkor próbáljuk meg az első elemet használni
+            if s.features and len(s.features) > 0:
+                if isinstance(s.features[0], dict):
+                    value = s.features[0].get("form_score", 0) or s.features[0].get("avg_hrv", 0) or 0
+                else:
+                    # Ha az első elem is nem dict, akkor számként próbáljuk
+                    try:
+                        value = float(s.features[0])
+                    except (ValueError, TypeError):
+                        value = 0
+            else:
+                value = 0
+        else:
+            # Ha egyéb típus (pl. szám vagy string)
+            try:
+                value = float(s.features)
+            except (ValueError, TypeError):
+                value = 0
+        
+        trend_dates.append(s.snapshot_date.strftime("%Y-%m-%d"))
+        trend_values.append(float(value))
+
+    # Predikció
+    predicted_value = None
+    ml_service = TrainingService()
+    
+    # Debug
+    print(f"DEBUG - ML Service model exists: {ml_service.model is not None}")
+    
+    if ml_service.model:
+        try:
+            _, predicted_value = ml_service.predict_form(user)
+            print(f"DEBUG - Predicted value: {predicted_value}")
+        except Exception as e:
+            logger.error(f"Prediction error: {e}")
+            print(f"DEBUG - Prediction error: {e}")
+
+    if predicted_value:
+        trend_dates.append((today + timedelta(days=1)).strftime("%Y-%m-%d"))
+        trend_values.append(float(predicted_value))
+        print(f"DEBUG - Added prediction to trend")
+    else:
+        print(f"DEBUG - No prediction value to add")
+
+    # 1. Injury Risk kinyerése a legfrissebb snapshotból
+    latest_snapshot = UserFeatureSnapshot.objects.filter(user=user).order_by("-generated_at").first()
+    injury_risk_val = 0
+    if latest_snapshot:
+        if isinstance(latest_snapshot.features, dict):
+            injury_risk_val = latest_snapshot.features.get("injury_risk_index", 0)
+        elif isinstance(latest_snapshot.features, list) and len(latest_snapshot.features) > 0:
+            injury_risk_val = latest_snapshot.features[0].get("injury_risk_index", 0)
+
+    # 2. Statisztikák (marad a korábbi)
+    avg_form = sum(trend_values) / len(trend_values) if trend_values else 0
+    best_form = max(trend_values) if trend_values else 0
+    worst_form = min(trend_values) if trend_values else 0
+    current_form = trend_values[-1] if trend_values else 0
+
+    # 3. Értékelés (marad a korábbi)
+    if current_form < 20:
+        evaluation_text, evaluation_color = "Gyenge forma", "#e74c3c"
+    elif current_form < 30:
+        evaluation_text, evaluation_color = "Közepes forma", "#f39c12"
+    elif current_form < 40:
+        evaluation_text, evaluation_color = "Jó forma", "#27ae60"
+    else:
+        evaluation_text, evaluation_color = "Kiemelkedő forma", "#2980b9"
+
+    # 4. A válasz összeállítása - HOZZÁADVA AZ injury_risk
+    response_data = {
+        "current_form_index": round(current_form, 2),
+        "predicted_form_index": round(predicted_value, 2) if predicted_value else None,
+        "avg_form": round(avg_form, 1),
+        "best_form": round(best_form, 1),
+        "worst_form": round(worst_form, 1),
+        "injury_risk": round(float(injury_risk_val), 1), # EZ HIÁNYZOTT!
+        "evaluation_text": evaluation_text,
+        "evaluation_color": evaluation_color,
+        "trend_dates": trend_dates,
+        "trend_values": trend_values,
+    }
+    
+    return JsonResponse(response_data)
+
 
 ditta_service = DittaCoachService()
 

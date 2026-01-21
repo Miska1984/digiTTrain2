@@ -63,7 +63,7 @@
         const dittaClose = document.getElementById('ditta-close');
         const dittaInput = document.getElementById('ditta-input');
         const dittaSend = document.getElementById('ditta-send');
-        const dittaMic = document.getElementById('ditta-mic'); // Mikrofon gomb
+        const dittaMic = document.getElementById('ditta-mic'); 
         const chatContent = document.getElementById('ditta-chat-content');
 
         window.speechSynthesis.getVoices();
@@ -76,7 +76,7 @@
         if (Recognition) {
             const recognition = new Recognition();
             recognition.lang = 'hu-HU';
-            recognition.continuous = false; // Megáll, ha befejezted a mondatot
+            recognition.continuous = false;
 
             recognition.onstart = () => {
                 dittaMic.classList.replace('btn-outline-secondary', 'btn-danger');
@@ -86,8 +86,6 @@
             recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript;
                 dittaInput.value = transcript;
-                // Opcionális: automatikus küldés diktálás után
-                // sendMessage(); 
             };
 
             recognition.onend = () => {
@@ -97,26 +95,41 @@
 
             dittaMic.onclick = () => recognition.start();
         } else {
-            dittaMic.style.display = 'none'; // Ha a böngésző nem támogatja
+            if (dittaMic) dittaMic.style.display = 'none';
         }
 
-        // --- BESZÉD (TEXT TO SPEECH) ---
-        function speakDitta(text) {
+        // --- BESZÉD (TEXT TO SPEECH) FUNKCIÓ ---
+        // Ablak szintűvé tesszük, hogy a gombokból hívható legyen
+        window.speakDitta = function(text, btnElement) {
             window.speechSynthesis.cancel();
+            
+            // Tisztítás: Markdown és HTML elemek eltávolítása a beszédből
             let cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/#/g, '').replace(/<[^>]*>?/gm, '');
+            
             const utterance = new SpeechSynthesisUtterance(cleanText);
             utterance.lang = 'hu-HU';
             utterance.pitch = 1.1;
+
+            // Gomb vizuális visszajelzése (opcionális)
+            if (btnElement) {
+                btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                utterance.onend = () => {
+                    btnElement.innerHTML = '<i class="fas fa-volume-up"></i>';
+                };
+            }
+
             const voices = window.speechSynthesis.getVoices();
             const huVoice = voices.find(v => v.lang.includes('hu'));
             if (huVoice) utterance.voice = huVoice;
+            
             window.speechSynthesis.speak(utterance);
-        }
+        };
 
         async function sendMessage() {
             const query = dittaInput.value.trim();
             if (!query) return;
 
+            // Felhasználói üzenet
             chatContent.innerHTML += `<div class="ditta-message user text-end bg-primary text-white p-2 rounded mb-2">${query}</div>`;
             dittaInput.value = '';
             
@@ -131,12 +144,30 @@
                     body: JSON.stringify({ query: query, app_context: "{{ app_context }}" })
                 });
                 const data = await response.json();
-                document.getElementById(loaderId).remove();
-                chatContent.innerHTML += `<div class="ditta-message assistant bg-light p-2 rounded mb-2">${data.response}</div>`;
-                speakDitta(data.response);
+                
+                const loader = document.getElementById(loaderId);
+                if (loader) loader.remove();
+
+                // ÚJ: Válasz megjelenítése gombbal
+                // A data.response-t biztonságosan kezeljük az idézőjelek miatt
+                const safeText = data.response.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                chatContent.innerHTML += `
+                    <div class="ditta-message assistant bg-light p-2 rounded mb-2 position-relative">
+                        <div class="message-text">${data.response}</div>
+                        <div class="text-end mt-1">
+                            <button class="btn btn-sm btn-light border py-0 px-2 text-muted" 
+                                    onclick="window.speakDitta('${safeText}', this)" 
+                                    title="Felolvasás">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                        </div>
+                    </div>`;
+
             } catch (error) {
-                if (document.getElementById(loaderId)) document.getElementById(loaderId).remove();
-                chatContent.innerHTML += `<div class="alert alert-danger p-2 small">Hiba történt.</div>`;
+                const loader = document.getElementById(loaderId);
+                if (loader) loader.remove();
+                chatContent.innerHTML += `<div class="alert alert-danger p-2 small">Hiba történt a kommunikációban.</div>`;
             }
             chatContent.scrollTop = chatContent.scrollHeight;
         }
