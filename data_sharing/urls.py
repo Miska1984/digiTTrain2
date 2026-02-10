@@ -19,16 +19,14 @@ urlpatterns = [
     
 
     # -------------------- Egyesületi Vezetői Nézetek --------------------
-    path('leader/', leader.leader_dashboard, name='leader_dashboard'),
-    path('leader/athlete/details/<str:athlete_type>/<int:athlete_id>/', leader.leader_athlete_details, name='leader_athlete_details'), 
+    path('leader/dashboard/', leader.leader_dashboard, name='leader_dashboard'),
+    path('leader/athlete/details/<int:athlete_id>/<int:role_id>/', leader.leader_athlete_details, name='leader_athlete_details'), 
     
     # -------------------- Edzői Nézetek --------------------
     path('coach/', coach.coach_dashboard, name='coach_dashboard'),
     
     # Edzői részletes sportoló nézet (ha szükséges)
-    path('coach/athlete/details/<str:athlete_type>/<int:athlete_id>/', 
-         coach.coach_athlete_details, 
-         name='coach_athlete_details'),
+    path('coach/athlete/details/<int:athlete_id>/<int:role_id>/', coach.coach_athlete_details, name='athlete_details'),
     
     # 1. PlaceholderAthlete felvitel
     path('coach/add_unregistered_athlete/', coach.add_unregistered_athlete, name='add_unregistered_athlete'),

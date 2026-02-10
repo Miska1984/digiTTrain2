@@ -1,0 +1,73 @@
+<div class="card shadow-sm mb-4 border-start border-5 border-info">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0 text-info"><i class="fas fa-microscope me-2"></i>AI Videóelemzések (Ditta Scan)</h5>
+        {% if 'DiagnosticJob' in permissions %}
+            <span class="badge bg-info text-dark">{{ diagnostic_jobs|length }} kész elemzés</span>
+        {% endif %}
+    </div>
+
+    <div class="card-body p-0">
+        {% if 'DiagnosticJob' in permissions %}
+            {# --- HA VAN JOGOSULTSÁG --- #}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light small">
+                        <tr>
+                            <th class="ps-3">Dátum</th>
+                            <th>Típus</th>
+                            <th>Eredmény</th>
+                            <th class="text-end pe-3">Műveletek</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for job in diagnostic_jobs %}
+                        <tr>
+                            <td class="ps-3 text-nowrap">{{ job.created_at|date:"Y. m. d." }}</td>
+                            <td>
+                                <span class="small fw-bold text-uppercase">{{ job.get_job_type_display|default:"Általános" }}</span>
+                            </td>
+                            <td>
+                                {% if job.result %}
+                                    <span class="badge bg-light text-dark border">
+                                        {{ job.result.overall_rating|default:"Elemzve" }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted small">Feldolgozva</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                {% if job.pdf_report_path %}
+                                    <a href="{{ job.pdf_report_path.url }}" class="btn btn-sm btn-outline-danger" target="_blank" title="PDF Riport">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </a>
+                                {% endif %}
+                                {% if job.video_path %}
+                                    <a href="{{ job.video_path.url }}" class="btn btn-sm btn-outline-primary" target="_blank" title="Elemzett videó">
+                                        <i class="fas fa-play-circle"></i>
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5 text-muted">
+                                <i class="fas fa-video-slash d-block fs-2 mb-2 opacity-50"></i>
+                                <p class="small mb-0">Még nem készült AI videóelemzés.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {# --- HA NINCS JOGOSULTSÁG --- #}
+            <div class="text-center py-5 px-3">
+                <i class="fas fa-lock text-warning display-4 mb-3"></i>
+                <h6 class="fw-bold">AI Diagnosztika korlátozva</h6>
+                <p class="text-muted small mb-0">
+                    A sportoló nem engedélyezte a videóelemzések és technikai riportok megtekintését.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>

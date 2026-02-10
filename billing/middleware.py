@@ -17,6 +17,7 @@ class InterstitialAdMiddleware(MiddlewareMixin):
         '/static/',
         '/media/',
         '/billing/ad-for-credit/',
+        '/data-sharing/toggle/',
         '/billing/toggle-ad-free/',
         '/billing/run-algorithm/',
         '/login/',
@@ -34,6 +35,11 @@ class InterstitialAdMiddleware(MiddlewareMixin):
         for prefix in self.EXCLUDE_PREFIXES:
             if path.startswith(prefix):
                 return True
+        
+        # AJAX (fetch/XMLHttpRequest) kérések felismerése
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return True
+        #
 
         # 2) AJAX automatikus kizárás
         if '/ajax/' in path:

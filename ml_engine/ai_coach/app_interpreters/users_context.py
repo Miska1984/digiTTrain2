@@ -1,7 +1,7 @@
 # users_context.py
 
 from users.models import UserRole, ParentChild, User
-from data_sharing.models import BiometricSharingPermission
+from data_sharing.models import DataSharingPermission
 from billing.models import UserSubscription
 from django.utils import timezone
 from datetime import date
@@ -111,15 +111,25 @@ class UsersContext:
         return summary_list
 
     def get_data_availability(self, target_users):
-        """Ellenőrzi a megosztásokat és ML előfizetéseket."""
+        """Ellenőrzi a megosztásokat és ML előfizetéseket az ÚJ modell szerint."""
         report = {"osszesen": len(target_users), "nincs_megosztas": [], "nincs_ml_access": []}
         
         for u in target_users:
             full_name = u.get_full_name()
             if u != self.user:
-                shared = BiometricSharingPermission.objects.filter(
-                    user=u, target_user=self.user, enabled=True
-                ).exists()
+                # JAVÍTVA: Az új mezőneveket használjuk (athlete, target_person)
+                # Itt egy egyszerűsített ellenőrzést végzünk: 
+                # Ha bármelyik szerepkörében van engedélye, akkor shared = True
+                shared = DataSharingPermission.objects.filter(
+                    athlete=u, 
+                    target_person=self.user
+                ).exists() 
+                
+                # Megjegyzés: Ha szigorúbb akarsz lenni, ide beteheted az 
+                # 'athlete_consent=True' és 'parent_consent=True' feltételeket is,
+                # de a legtöbb esetben a .filter(...).exists() elég, ha csak az 
+                # engedély tényére vagy kíváncsi.
+                
                 if not shared:
                     report["nincs_megosztas"].append(full_name)
 

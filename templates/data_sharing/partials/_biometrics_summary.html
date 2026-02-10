@@ -1,0 +1,66 @@
+
+
+{# 2. KÖZTES AI SZEKCIÓ (Ide kérted) #}
+<div class="row mb-4">
+    <div class="col-md-6 mb-3">
+        {% if 'UserFeatureSnapshot' in permissions %}
+            {% include 'data_sharing/partials/_ml_engine_module.html' %}
+        {% endif %}
+    </div>
+    <div class="col-md-6 mb-3">
+        {% if 'DiagnosticJob' in permissions %}
+            {% include 'data_sharing/partials/_diagnostics_module.html' %}
+        {% endif %}
+    </div>
+</div>
+
+{# 3. NÉGY NAGY GRAFIKON (Mint a Dashboardon) #}
+<div class="row">
+    {% if 'WeightData' in permissions and weight_chart_data_json %}
+    <div class="col-md-12 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">Testsúly Trend</div>
+            <div class="card-body">
+                <canvas id="weightChart" style="max-height: 300px;"></canvas>
+                <div class="mt-3">{{ weight_feedback|safe }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if 'HRVandSleepData' in permissions and hrv_sleep_chart_data_json %}
+    <div class="col-md-12 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-success text-white">HRV és Regeneráció</div>
+            <div class="card-body">
+                <canvas id="hrvSleepChart" style="max-height: 300px;"></canvas>
+                <div class="mt-3">{{ hrv_sleep_feedback|safe }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if 'WorkoutFeedback' in permissions and grip_intensity_chart_data_json %}
+    <div class="col-md-12 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-warning">Marokerő és Edzésintenzitás</div>
+            <div class="card-body">
+                <canvas id="gripIntensityChart" style="max-height: 300px;"></canvas>
+                <div class="mt-3">{{ grip_timing_feedback|safe }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if 'RunningPerformance' in permissions and running_chart_data_json %}
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-danger text-white fw-bold small">Futóteljesítmény</div>
+            <div class="card-body">
+                <canvas id="runningChart"></canvas>
+                <div class="mt-3 alert alert-danger small">{{ running_feedback|safe }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>

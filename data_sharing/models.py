@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 
 
+''' Régi Megosztási medel
 class BiometricSharingPermission(models.Model):
     """
     Biometriai adatok megosztási engedélyei.
@@ -50,6 +51,18 @@ class BiometricSharingPermission(models.Model):
         verbose_name="Utolsó módosítás időpontja"
     )
 
+    # A sportoló saját döntése
+    athlete_consent = models.BooleanField(
+        default=False, 
+        verbose_name="Sportoló beleegyezése"
+    )
+
+    # A szülői felügyeleti jóváhagyás
+    parent_consent = models.BooleanField(
+        default=False, 
+        verbose_name="Szülői jóváhagyás"
+    )
+
     class Meta:
         unique_together = ('user', 'target_user', 'app_name', 'table_name')
         verbose_name = "Biometriai adat megosztási engedély"
@@ -60,6 +73,24 @@ class BiometricSharingPermission(models.Model):
             models.Index(fields=['target_user', 'enabled']),
             models.Index(fields=['app_name', 'table_name']),
         ]
+    
+    def save(self, *args, **kwargs):
+        """
+        Automatikus jogosultság-kezelés:
+        - Ha kiskorú: enabled = sportoló ÉS szülő jóváhagyása kell.
+        - Ha nagykorú: enabled = csak a sportoló jóváhagyása kell.
+        """
+        # A User modell property-jét használjuk, az már tudja a date_of_birth-et kezelni
+        is_adult = self.user.is_adult
+
+        if is_adult:
+            # Nagykorú esetén csak a sportoló beleegyezése számít
+            self.enabled = self.athlete_consent
+        else:
+            # Kiskorú esetén mindkét beleegyezés szükséges
+            self.enabled = self.athlete_consent and self.parent_consent
+        
+        super().save(*args, **kwargs)
 
     def __str__(self):
         status = "✅" if self.enabled else "❌"
@@ -100,3 +131,45 @@ class BiometricSharingPermission(models.Model):
         self.enabled = not self.enabled
         self.save(update_fields=['enabled', 'updated_at'])
         return self.enabled
+'''
+
+# ÚJ MODELL - A TISZTA LAP
+class DataSharingPermission(models.Model):
+    # Az adat tulajdonosa (Mindig Sportoló)
+    athlete = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='permissions_given'
+    )
+    
+    # Aki látni szeretné (Edző, Vezető, Szülő)
+    target_person = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE, 
+        related_name='permissions_received'
+    )
+    
+    # Milyen minőségben? (MBSZ edző, TBDSK vezető, stb.)
+    # Ha ez törlődik (kikerül a keretből), a megosztás is törlődik.
+    target_role = models.ForeignKey(
+        'users.UserRole', 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+
+    app_name = models.CharField(max_length=100)
+    table_name = models.CharField(max_length=100)
+
+    # A két kulcs a zárhoz
+    athlete_consent = models.BooleanField(default=False)
+    parent_consent = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "Adatmegosztási engedély"
+        verbose_name_plural = "Adatmegosztási engedélyek"
+        # Biztosítjuk, hogy egy szerepkörhöz/adathoz ne legyen dupla sor
+        unique_together = ('athlete', 'target_person', 'target_role', 'app_name', 'table_name')
+
+    def __str__(self):
+        return f"{self.athlete.username} -> {self.target_person.username} ({self.table_name})"

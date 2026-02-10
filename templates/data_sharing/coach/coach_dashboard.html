@@ -3,27 +3,27 @@
 {% block content %}
 <div class="container mx-auto p-4">
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Gyermekeim Áttekintője</h1>
-        <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-semibold">
-            {{ children_data|length }} Sportoló
+        <h1 class="text-3xl font-bold text-gray-800">Sportolóim Áttekintője</h1>
+        <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+            {{ athletes_data|length }} Versenyző
         </span>
     </div>
     
-    {% if children_data %}
+    {% if athletes_data %}
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for data in children_data %}
-                <div class="bg-white shadow-lg rounded-xl p-6 border-t-4 border-indigo-500 hover:shadow-2xl transition duration-300 flex flex-col h-100">
+            {% for data in athletes_data %}
+                <div class="bg-white shadow-lg rounded-xl p-6 border-t-4 border-blue-500 hover:shadow-2xl transition duration-300 flex flex-col h-100">
                     
                     <div class="flex justify-between items-start mb-4">
                         <div>
-                            <h2 class="text-xl font-bold text-indigo-900">
+                            <h2 class="text-xl font-bold text-blue-900">
                                 {{ data.profile_data.first_name }} {{ data.profile_data.last_name }}
                             </h2>
                             <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">
-                                {{ data.athlete_sport.name|default:"Sportág nincs megadva" }}
+                                {{ data.athlete_club.name }} | {{ data.athlete_sport.name }}
                             </p>
                         </div>
-                        
+
                         {# AI READYNESS BADGE - Csak ha van rá jog #}
                         {% if 'UserFeatureSnapshot' in data.permissions %}
                             <div class="text-center bg-gray-50 p-2 rounded-lg border">
@@ -35,19 +35,25 @@
                         {% endif %}
                     </div>
 
-                    <div class="space-y-1 mb-4">
-                        <p class="text-sm text-gray-600 flex items-center">
-                            <i class="fas fa-university mr-2 text-indigo-400 w-5"></i> 
-                            {{ data.athlete_club.name|default:"Nincs klub" }}
-                        </p>
-                        <p class="text-sm text-gray-600 flex items-center">
-                            <i class="fas fa-birthday-cake mr-2 text-indigo-400 w-5"></i>
-                            {{ data.profile_data.date_of_birth|date:"Y. m. d." }}
-                        </p>
+                    <div class="space-y-3 mb-6 flex-grow">
+                        {% if 'WeightData' in data.permissions %}
+                        <div class="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
+                            <span class="text-gray-600">Utolsó súly:</span>
+                            <span class="font-bold text-gray-800">{{ data.last_weight.morning_weight|default:"--" }} kg</span>
+                        </div>
+                        {% endif %}
+
+                        {% if 'Attendance' in data.permissions and data.attendance_stats %}
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-600">Jelenlét (30 nap):</span>
+                            <span class="px-2 py-0.5 rounded bg-green-100 text-green-700 font-bold">
+                                {{ data.attendance_stats.percent }}%
+                            </span>
+                        </div>
+                        {% endif %}
                     </div>
 
-                    <hr class="border-gray-100 mb-4">
-
+                    {# Ikonok jelzik, mihez van jog #}
                     <div class="mt-4">
                         <p class="text-[10px] uppercase text-gray-400 font-bold mb-2 tracking-widest">Megosztott adatok és állapot</p>
                         
@@ -104,28 +110,18 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-2 mb-6 border-t pt-3 border-gray-50">
-                        <span class="text-[10px] text-gray-400 uppercase font-bold self-center mr-1">Jogok:</span>
-                        <i class="fas fa-chart-line {% if 'HRVandSleepData' in data.permissions %}text-indigo-500{% else %}text-gray-300{% endif %}" title="HRV"></i>
-                        <i class="fas fa-microscope {% if 'DiagnosticJob' in data.permissions %}text-indigo-500{% else %}text-gray-300{% endif %}" title="Diagnosztika"></i>
-                        <i class="fas fa-comments {% if 'WorkoutFeedback' in data.permissions %}text-indigo-500{% else %}text-gray-300{% endif %}" title="Visszajelzés"></i>
-                    </div>
-
-                    <a href="{% url 'data_sharing:parent_athlete_details' athlete_id=data.athlete_object.id %}"
-                       class="mt-auto w-full block text-center bg-indigo-600 text-white py-3 px-4 rounded-xl font-bold hover:bg-indigo-700 shadow-md hover:shadow-lg transition duration-300">
-                        Adatlap megnyitása
+                    <a href="{% url 'data_sharing:athlete_details' athlete_id=data.athlete_object.id role_id=data.role_id %}"
+                       class="mt-auto w-full block text-center bg-blue-600 text-white py-3 px-4 rounded-xl font-bold hover:bg-blue-700 shadow-md transition duration-300">
+                        Részletek megnyitása
                     </a>
                 </div>
             {% endfor %}
         </div>
     {% else %}
-        <div class="bg-white border border-yellow-200 rounded-xl p-10 text-center shadow-sm">
-            <div class="bg-yellow-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="fas fa-user-friends text-yellow-600 text-2xl"></i>
-            </div>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Nincs megjeleníthető gyermek</h3>
-            <p class="text-gray-600">Jelenleg nincs jóváhagyott kiskorú sportoló Önhöz rendelve a rendszerben.</p>
+        <div class="bg-white border border-gray-200 rounded-xl p-10 text-center shadow-sm">
+            <h3 class="text-xl font-bold text-gray-800">Még nincsenek sportolói.</h3>
+            <p class="text-gray-500">A sportolóknak jóvá kell hagyniuk az edzői felkérést.</p>
         </div>
     {% endif %}
 </div>
-{% endblock content %}
+{% endblock %}

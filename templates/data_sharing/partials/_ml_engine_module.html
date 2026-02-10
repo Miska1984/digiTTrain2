@@ -1,0 +1,33 @@
+<div class="card shadow-sm mb-4 border-0 overflow-hidden" style="background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);">
+    <div class="card-body text-center py-4">
+        <h6 class="text-uppercase fw-bold mb-3" style="color: #6f42c1;">
+            <i class="bi bi-robot me-2"></i>DITTA AI Állapot
+        </h6>
+
+        {% if 'UserFeatureSnapshot' in permissions %}
+            {# --- HA VAN JOGOSULTSÁG --- #}
+            <div class="position-relative d-inline-block">
+                <div class="display-4 fw-bold mb-0 {% if ditta_score.readiness_index > 70 %}text-success{% elif ditta_score.readiness_index > 40 %}text-warning{% else %}text-danger{% endif %}">
+                    {{ ditta_score.readiness_index|default:"--" }}%
+                </div>
+            </div>
+            <p class="fw-bold mb-1">Készültségi Index</p>
+            <p class="text-muted small px-3">
+                {% if ditta_score.readiness_index > 70 %}
+                    A sportoló kiváló állapotban van, terhelhető.
+                {% elif ditta_score.readiness_index %}
+                    Mérsékelt fáradtság jelei mutatkoznak, figyelmet igényel.
+                {% else %}
+                    Nincs elegendő adat az elemzéshez.
+                {% endif %}
+            </p>
+        {% else %}
+            {# --- HA NINCS JOGOSULTSÁG --- #}
+            <div class="py-3">
+                <i class="bi bi-shield-slash text-muted fs-1 d-block mb-2"></i>
+                <span class="badge bg-secondary">Zárolt elemzés</span>
+                <p class="text-muted small mt-2 mb-0">Az AI alapú állapotfelmérés nincs megosztva.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>

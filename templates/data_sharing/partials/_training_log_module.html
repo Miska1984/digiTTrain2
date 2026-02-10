@@ -1,0 +1,76 @@
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <h5 class="mb-0 text-primary">
+            <i class="bi bi-calendar-check me-2"></i>Edzésnapló és Jelenlét
+        </h5>
+        {# Csak akkor mutatunk rátát, ha van jogosultság és adat #}
+        {% if 'Attendance' in permissions and attendance_stats %}
+            <span class="badge bg-primary px-3 py-2">{{ attendance_stats.attendance_rate }}% részvétel</span>
+        {% endif %}
+    </div>
+
+    <div class="card-body p-0">
+        {% if 'Attendance' in permissions %}
+            {# --- HA VAN JOGOSULTSÁG --- #}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light small text-uppercase">
+                        <tr>
+                            <th class="ps-3">Dátum</th>
+                            <th>Státusz</th>
+                            <th>Intenzitás</th>
+                            <th class="text-end pe-3">Súlyváltozás</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in attendance_logs %}
+                        <tr>
+                            <td class="ps-3">
+                                <div class="fw-bold">{{ log.session.session_date|date:"Y.m.d" }}</div>
+                                <div class="small text-muted">{{ log.session.session_time|time:"H:i" }}</div>
+                            </td>
+                            <td>
+                                {% if log.is_present %}
+                                    <span class="badge bg-success text-white border border-success">Jelen</span>
+                                {% else %}
+                                    <span class="badge bg-danger text-white border border-danger">Hiányzott</span>
+                                {% endif %}
+                                
+                                {% if log.is_smart_guest %}
+                                    <span class="badge bg-info text-dark" title="Extra edzés egy másik csoportnál">Vendég</span>
+                                {% endif %}
+                            </td>
+                            <td class="small">{{ log.feedback_data.intensity_label|default:"-" }}</td>
+                            <td class="text-end pe-3">
+                                {% if log.feedback_data.loss_kg %}
+                                    <span class="fw-bold {% if log.feedback_data.loss_kg > 1 %}text-danger{% else %}text-success{% endif %}">
+                                        {{ log.feedback_data.loss_kg }} kg
+                                    </span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-center py-5 text-muted small">
+                                <i class="bi bi-info-circle d-block fs-2 mb-2"></i>
+                                Nincs rögzített edzés az elmúlt időszakban.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            {# --- HA NINCS JOGOSULTSÁG --- #}
+            <div class="text-center py-5 px-3">
+                <i class="bi bi-shield-lock-fill text-warning display-4"></i>
+                <h6 class="mt-3 fw-bold">Jelenléti adatok zárolva</h6>
+                <p class="text-muted small mb-0">
+                    A sportoló nem engedélyezte az edzésnapló és a jelenléti ív megtekintését.
+                </p>
+            </div>
+        {% endif %}
+    </div>
+</div>

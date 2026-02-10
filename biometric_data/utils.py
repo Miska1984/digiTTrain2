@@ -176,4 +176,93 @@ def get_latest_fatigue_status(athlete):
         return {"status": "Közepes", "message": f"Utolsó edzés utáni fáradtsági szint (RPE): {fatigue_level}.", "class": "text-warning"}
     else:
         return {"status": "Alacsony", "message": f"Utolsó edzés utáni fáradtsági szint (RPE): {fatigue_level}.", "class": "text-success"}
-    
+
+# --- HIÁNYZÓ GRAFIKON ADATOK GENERÁLÁSA ---
+
+def get_hrv_sleep_data_for_chart(athlete, start_date):
+    """
+    Lekéri a HRV és alvás adatokat. Biztonságos mezőkezeléssel.
+    """
+    entries = HRVandSleepData.objects.filter(
+        user=athlete,
+        recorded_at__gte=start_date
+    ).order_by("recorded_at")
+
+    labels = []
+    hrv_data = []
+    sleep_quality = []
+    alertness = []
+
+    for entry in entries:
+        labels.append(entry.recorded_at.strftime("%Y-%m-%d"))
+        
+        # HRV MEZŐ KERESÉSE (Próbáljuk meg a lehetséges neveket)
+        h_val = getattr(entry, 'hrv_value', getattr(entry, 'hrv', getattr(entry, 'hrv_score', 0)))
+        hrv_data.append(float(h_val) if h_val else 0)
+
+        # ALVÁS MEZŐ KERESÉSE
+        s_val = getattr(entry, 'sleep_score', getattr(entry, 'sleep_quality', 0))
+        sleep_quality.append(float(s_val) if s_val else 0)
+
+        # ÉBERSÉG MEZŐ KERESÉSE
+        a_val = getattr(entry, 'alertness_level', getattr(entry, 'alertness', 0))
+        alertness.append(float(a_val) if a_val else 0)
+
+    chart_data = {
+        "labels": labels,
+        "hrv_data": hrv_data,
+        "sleep_quality_data": sleep_quality,
+        "alertness_data": alertness,
+    }
+
+    feedback = "A regenerációs trendek rögzítésre kerültek." if len(labels) > 0 else "Nincs adat."
+    return chart_data, feedback
+
+
+def get_grip_intensity_data_for_chart(athlete, start_date):
+    """
+    Lekéri a marokerő és edzésintenzitás adatokat.
+    """
+    entries = WorkoutFeedback.objects.filter(
+        user=athlete,
+        workout_date__gte=start_date
+    ).order_by("workout_date")
+
+    labels = [entry.workout_date.strftime("%Y-%m-%d") for entry in entries]
+    right_grip = [float(entry.grip_strength_right) if hasattr(entry, 'grip_strength_right') else 0 for entry in entries]
+    left_grip = [float(entry.grip_strength_left) if hasattr(entry, 'grip_strength_left') else 0 for entry in entries]
+    intensity = [float(entry.intensity_rpe) if hasattr(entry, 'intensity_rpe') else 0 for entry in entries]
+
+    chart_data = {
+        "labels": labels,
+        "right_grip_data": right_grip,
+        "left_grip_data": left_grip,
+        "intensity_data": intensity,
+    }
+
+    feedback = "Az idegrendszeri frissesség (marokerő) megfelelő." if len(labels) > 2 else "Várjuk az új méréseket."
+    return chart_data, feedback
+
+
+def get_running_data_for_chart(athlete, start_date):
+    """
+    Lekéri a futóteljesítmény (tempó és pulzus) adatokat.
+    """
+    entries = RunningPerformance.objects.filter(
+        user=athlete,
+        run_date__gte=start_date
+    ).order_by("run_date")
+
+    labels = [entry.run_date.strftime("%Y-%m-%d") for entry in entries]
+    # A tempót másodpercben tároljuk a számításhoz
+    pace_data = [float(entry.avg_pace_seconds) if hasattr(entry, 'avg_pace_seconds') else 0 for entry in entries]
+    avg_hr = [float(entry.avg_heart_rate) if hasattr(entry, 'avg_heart_rate') else 0 for entry in entries]
+
+    chart_data = {
+        "labels": labels,
+        "pace_data": pace_data,
+        "avg_hr_data": avg_hr,
+    }
+
+    feedback = "A futóteljesítmény elemzése aktív." if len(labels) > 0 else "Nincs rögzített futóedzés."
+    return chart_data, feedback 

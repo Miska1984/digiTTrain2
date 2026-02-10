@@ -103,8 +103,15 @@ SHAREABLE_DATA_MODELS = {
         'WorkoutFeedback',
         'RunningPerformance',
     ],
-    "diagnostics_jobs": [
-        "DiagnosticJob",  # 🧩 új — a gépi látás diagnosztikai eredmények megosztása
+    'diagnostics_jobs': [
+        'DiagnosticJob',
+    ],
+    'ml_engine': [
+        'UserFeatureSnapshot',  # Aktuális forma és sérülés kockázat
+        'UserPredictionResult', # Predikciók (pl. a 89.46-os érték)
+    ],
+    'training_log': [
+        'Attendance',           # Jelenléti adatok és edzésen való részvétel
     ],
 }
 
