@@ -13,8 +13,11 @@ steps:
       - |
         echo "🔐 Generating .env.yaml with secrets..."
         
+        # Első sor: létrehozza a fájlt (>)
         echo "SECRET_KEY: \"Nagyonbiztonságostitkoskulcs\"" > .env.yaml
-        echo "DB_NAME: digittraindb" > .env.yaml
+        
+        # Többi sor: hozzáfüz (>>)
+        echo "DB_NAME: digittraindb" >> .env.yaml
         echo "DB_USER: root" >> .env.yaml
         echo "DB_PASS: $$DB_PASS" >> .env.yaml 
         echo "DJANGO_SETTINGS_MODULE: digiTTrain.settings" >> .env.yaml
@@ -35,7 +38,7 @@ steps:
         echo "MPLCONFIGDIR: /tmp/matplotlib_cache" >> .env.yaml
         
         echo "✅ .env.yaml generálva."
-
+        
 # 1️⃣ GCP kulcs letöltés
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
