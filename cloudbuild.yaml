@@ -55,13 +55,19 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-# 4️⃣ Django migráció
+# 4️⃣ Django migráció (Javított: először frissít, aztán futtat)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
-        gcloud run jobs execute migrate-job --region=europe-west1 --wait || \
+        echo "🔄 Updating migrate-job configuration..."
+        gcloud run jobs update migrate-job \
+          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
+          --region europe-west1 \
+          --env-vars-file .env.yaml \
+          --vpc-connector redis-connector \
+          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 || \
         gcloud run jobs create migrate-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
           --region europe-west1 \
@@ -70,6 +76,9 @@ steps:
           --env-vars-file .env.yaml \
           --vpc-connector redis-connector \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
+        
+        echo "🚀 Running migration..."
+        gcloud run jobs execute migrate-job --region=europe-west1 --wait
         
 # 5️⃣ Django Collectstatic
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
