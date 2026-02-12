@@ -41,15 +41,16 @@ ENV CUDA_VISIBLE_DEVICES=-1
 # =====================================================
 COPY requirements.txt .
 RUN pip install --upgrade pip
-RUN pip install --no-cache-dir --upgrade \
+RUN pip install --no-cache-dir \
     numpy==1.26.4 \
     protobuf==4.25.3 \
     tensorflow==2.16.2 \
     tensorflow-hub==0.16.1 \
     tensorflow-probability==0.23.0 \
     mediapipe==0.10.14 \
-    opencv-python-headless==4.8.1.78 \
-    && pip install --no-cache-dir -r requirements.txt
+    opencv-python-headless==4.8.1.78 && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir django-redis redis
 
 # =====================================================
 # 🧱 Project files
