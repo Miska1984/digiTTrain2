@@ -28,7 +28,7 @@ steps:
         echo "REDIS_PORT: \"6379\"" >> .env.yaml
         echo "TF_CPP_MIN_LOG_LEVEL: \"2\"" >> .env.yaml
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
-        echo "GEMINI_API_KEY: $$GEMINI_API_KEY" >> .env.yaml
+        echo "GEMINI_API_KEY: \"$$GEMINI_API_KEY\"" >> .env.yaml
         echo "USE_GCS_STATIC: \"true\"" >> .env.yaml
         echo "BUILD_MODE: \"false\"" >> .env.yaml
         echo "MPLCONFIGDIR: /tmp/matplotlib_cache" >> .env.yaml
