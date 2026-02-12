@@ -114,6 +114,7 @@ services:
       - ./gcp_service_account.json:/app/gcp_sa.json:ro
       - /tmp/matplotlib_cache:/tmp/matplotlib_cache
     environment:
+      - SECRET_KEY=MISHEK_1234567890
       - DJANGO_SETTINGS_MODULE=digiTTrain.development
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0

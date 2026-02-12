@@ -33,6 +33,8 @@ DATABASES = {
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
         },
+        'CONN_MAX_AGE': 60,  # Kapcsolat életideje 60 mp
+        'ATOMIC_REQUESTS': True,  # Tranzakciós biztonság
     }
 }
 
@@ -140,6 +142,15 @@ REDIS_PORT = os.getenv('REDIS_PORT', '6379')
 
 CELERY_BROKER_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
 CELERY_RESULT_BACKEND = f'redis://{REDIS_HOST}:{REDIS_PORT}/0'
+# 🔧 ÚJ: Újracsatlakozási logika
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+CELERY_BROKER_TRANSPORT_OPTIONS = {
+    'visibility_timeout': 3600,
+    'max_retries': 3,
+    'interval_start': 0,
+    'interval_step': 0.2,
+    'interval_max': 0.5,
+}
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
@@ -158,3 +169,20 @@ CELERY_WORKER_CONCURRENCY = int(os.getenv('CELERY_WORKER_CONCURRENCY', 2))
 print(f">>> [DEBUG] CELERY_BROKER_URL: {CELERY_BROKER_URL}", file=sys.stderr)
 print(f">>> [DEBUG] USE_GCS_STATIC={USE_GCS_STATIC}, BUILD_MODE={BUILD_MODE}", file=sys.stderr)
 print(f">>> [DEBUG] Active static backend: {STORAGES['staticfiles']['BACKEND']}", file=sys.stderr)
+
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f'redis://{REDIS_HOST}:{REDIS_PORT}/1',
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'CONNECTION_POOL_KWARGS': {'max_connections': 50}
+        }
+    }
+}
+
+# Session-öket Redis-be
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
+

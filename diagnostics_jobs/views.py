@@ -22,6 +22,7 @@ from .tasks import run_diagnostic_job
 from .cloud_tasks import enqueue_diagnostic_job
 from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
 from diagnostics.utils.gcs_signer import get_storage_client
+from core.security import PermissionChecker
 
 # 🆕 ÚJ IMPORT: Billing utils
 from billing.utils import dedicate_analysis, get_analysis_balance, refund_analysis
@@ -35,10 +36,10 @@ def create_diagnostic_job(request):
     """
     Új diagnosztikai feladat létrehozása és ELEMZÉS LEVONÁSA az egyenlegből.
     """
+    user = request.user  # ✅ Current user
+    
     if request.method != "POST":
         return JsonResponse({"error": "POST metódus szükséges"}, status=405)
-
-    user = request.user
     
     try:
         data = json.loads(request.body)

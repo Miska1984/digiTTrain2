@@ -7,7 +7,7 @@ steps:
 # 0️⃣ Secret betöltése és .env.yaml generálás
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
-    secretEnv: ['DB_PASS']
+    secretEnv: ['DB_PASS', 'GEMINI_API_KEY']
     args:
       - -c
       - |
@@ -28,7 +28,7 @@ steps:
         echo "REDIS_PORT: \"6379\"" >> .env.yaml
         echo "TF_CPP_MIN_LOG_LEVEL: \"2\"" >> .env.yaml
         echo "CUDA_VISIBLE_DEVICES: \"-1\"" >> .env.yaml
-        echo "GEMINI_API_KEY: \"AIzaSyAqFKtYEEGCvcJOFCgnfvZI5FFBKWS3vpo\"" >> .env.yaml
+        echo "GEMINI_API_KEY: $$GEMINI_API_KEY" >> .env.yaml
         echo "USE_GCS_STATIC: \"true\"" >> .env.yaml
         echo "BUILD_MODE: \"false\"" >> .env.yaml
         echo "MPLCONFIGDIR: /tmp/matplotlib_cache" >> .env.yaml
@@ -192,3 +192,5 @@ availableSecrets:
   secretManager:
     - versionName: projects/digittrain-projekt/secrets/db_password/versions/latest
       env: 'DB_PASS'
+    - versionName: projects/digittrain-projekt/secrets/gemini_api_key/versions/latest
+      env: 'GEMINI_API_KEY'

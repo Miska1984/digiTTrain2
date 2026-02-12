@@ -11,6 +11,7 @@ from django.conf import settings
 # from django.forms.models import model_to_dict # Nincs rá szükség
 from .models import DiagnosticJob, UserAnthropometryProfile
 from .tasks import run_diagnostic_job # Ezt csak akkor használd, ha szinkron futás a cél!
+from django.contrib.auth.decorators import login_required
 
 User = get_user_model()
 
@@ -79,40 +80,47 @@ def create_diagnostic_job(request):
         return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
-@require_http_methods(["GET"]) # Csak GET-et engedélyez
+@login_required  # ✨ ÚJ: Kötelező bejelentkezés
+@require_http_methods(["GET"])
 def get_job_status(request, job_id):
     """
     Visszaadja egy adott diagnosztikai job aktuális státuszát.
-    Ha kész, visszadja a PDF elérési útvonalát is.
+    
+    🔒 BIZTONSÁGI JAVÍTÁS:
+    - Ellenőrizzük, hogy a job a bejelentkezett user-é
     """
-    job = get_object_or_404(DiagnosticJob, id=job_id)
+    # ✨ ÚJ: user=request.user szűrő hozzáadva
+    job = get_object_or_404(DiagnosticJob, id=job_id, user=request.user)
     
     response_data = {
         "job_id": job.id,
         "status": job.status,
-        "status_display": job.get_status_display(), # ÚJ: Emberi olvasható státusz
+        "status_display": job.get_status_display(),
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "started_at": job.started_at.isoformat() if job.started_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None,
         "error_message": job.error_message,
-        "pdf_path": job.pdf_path, # 🌟 KRITIKUS JAVÍTÁS: A pdf_path mező hozzáadása
+        "pdf_path": job.pdf_path,
     }
 
-    # Ha a job kész vagy hibás, akkor a frontendnek mindkét esetben szüksége van a hibaüzenetre, PDF-re
     if job.status == DiagnosticJob.JobStatus.COMPLETED and not job.pdf_path:
-        response_data["warning"] = "Elemzés kész, de a PDF elérési út hiányzik a job objektumból."
+        response_data["warning"] = "Elemzés kész, de a PDF elérési út hiányzik."
         
     return JsonResponse(response_data)
 
 
-@require_http_methods(["GET"]) # Csak GET-et engedélyez
+@login_required  # ✨ ÚJ: Kötelező bejelentkezés
+@require_http_methods(["GET"])
 def get_job_result(request, job_id):
     """
     Diagnosztikai eredmény lekérése (ha már elkészült).
+    
+    🔒 BIZTONSÁGI JAVÍTÁS:
+    - Ellenőrizzük, hogy a job a bejelentkezett user-é
     """
-    job = get_object_or_404(DiagnosticJob, id=job_id)
+    # ✨ ÚJ: user=request.user szűrő hozzáadva
+    job = get_object_or_404(DiagnosticJob, id=job_id, user=request.user)
 
-    # ❗️ JAVÍTOTT: Státusz ellenőrzése a JobStatus Enummal
     if job.status != DiagnosticJob.JobStatus.COMPLETED:
         return JsonResponse({
             "job_id": job.id,
@@ -125,7 +133,7 @@ def get_job_result(request, job_id):
         "job_id": job.id,
         "status": job.status,
         "result": job.result,
-        "pdf_path": job.pdf_path, # Még itt is visszaadhatjuk, a biztonság kedvéért
+        "pdf_path": job.pdf_path,
     })
 
 
