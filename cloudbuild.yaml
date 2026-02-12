@@ -13,6 +13,7 @@ steps:
       - |
         echo "🔐 Generating .env.yaml with secrets..."
         
+        echo "SECRET_KEY: \"Nagyonbiztonságostitkoskulcs\"" > .env.yaml
         echo "DB_NAME: digittraindb" > .env.yaml
         echo "DB_USER: root" >> .env.yaml
         echo "DB_PASS: $$DB_PASS" >> .env.yaml 
@@ -51,30 +52,21 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest']
 
-# 4️⃣ Django migráció (Javított verzió)
+# 4️⃣ Django migráció
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: bash
     args:
       - -c
       - |
-        echo "🔄 Updating or creating migrate-job..."
-        gcloud run jobs update migrate-job \
-          --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
-          --region europe-west1 \
-          --command "python" \
-          --args "manage.py","migrate","--noinput" \
-          --env-vars-file .env.yaml \
-          --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1 || \
+        gcloud run jobs execute migrate-job --region=europe-west1 --wait || \
         gcloud run jobs create migrate-job \
           --image europe-west1-docker.pkg.dev/digittrain-projekt/digittrain-web/app:latest \
           --region europe-west1 \
           --command "python" \
           --args "manage.py","migrate","--noinput" \
           --env-vars-file .env.yaml \
+          --vpc-connector redis-connector \
           --set-cloudsql-instances digittrain-projekt:europe-west1:digitrain-mysql-db-west1
-        
-        echo "🚀 Executing migrate-job..."
-        gcloud run jobs execute migrate-job --region=europe-west1 --wait
         
 # 5️⃣ Django Collectstatic
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
