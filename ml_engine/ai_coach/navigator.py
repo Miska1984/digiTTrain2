@@ -2,33 +2,20 @@
 from .base_persona import BasePersona
 from django.urls import reverse
 from datetime import date
+from .ui_knowledge import UI_NAVIGATION_MAP
+from ml_engine.models import DittaMissedQuery
 
 class NavigatorPersona(BasePersona):
     """
-    Navigator (Asszisztens) mód - INGYENES, mindenki számára elérhető
-    
-    Feladatai:
-    1. Navigációs segítség → ui_knowledge.py alapján
-    2. Szakmai kérdések → "ML előfizetés szükséges!"
-    3. Ismeretlen kérdések → [MISSED] jelzés fejlesztőknek
+    Navigator (Asszisztens) mód - INGYENES
+    - Intelligens válaszadás a [MISSED] helyett
+    - Adatbázis alapú naplózás a fejlesztéshez
     """
     
     def get_response(self, user, context_app, query=None):
-        """
-        Navigator válasz generálása.
-        
-        Args:
-            user: A felhasználó
-            context_app: Az alkalmazás kontextusa
-            query: A felhasználó kérdése (ha van)
-        
-        Returns:
-            str: Ditta válasza
-        """
         profile = getattr(user, 'profile', None)
         has_profile_name = bool(profile and profile.first_name and profile.last_name)
         
-        # Felhasználó szerepköreinek lekérése
         user_roles = []
         if hasattr(user, 'user_roles'):
             user_roles = list(
@@ -36,30 +23,71 @@ class NavigatorPersona(BasePersona):
                 .values_list('role__name', flat=True)
             )
         
-        # Ha van kérdés, azt dolgozzuk fel
         if query:
-            # 1. NAVIGÁCIÓS KÉRDÉS?
+            # 1. NAVIGÁCIÓS KÉRDÉS KERESÉSE
             if self.is_navigation_question(query):
-                return self.answer_navigation_question(query, user_roles)
+                loc = self.get_navigation_location(query, user_roles)
+                if loc and "❓" not in loc:
+                    return f"📍 Itt találod: {loc}"
+                
+                # Ha bizonytalan a helyszín, naplózunk és AI válaszol
+                self._log_missed_query(user, query, context_app)
+                prompt = f"A felhasználó navigációról kérdez: '{query}'. Segíts neki a DigiT-Train felületén eligazodni."
+                return self._generate(prompt)
             
-            # 2. SZAKMAI/ELEMZŐ KÉRDÉS?
+            # 2. SZAKMAI KÉRDÉS (Upsell)
             elif self.is_analytical_question(query):
-                billing_url = reverse('billing:billing_purchase')
+                billing_url = reverse('billing:subscription_plans')
                 return (
-                    f"🔒 Ehhez ML_ACCESS előfizetés szükséges! "
-                    f"Csak előfizetőknek tudom elemezni az adatokat. "
-                    f"<a href='{billing_url}' class='fw-bold'>Vásárlás itt</a>"
+                    f"🔒 Ez egy szakmai kérdés, amihez **ML_ACCESS** előfizetés szükséges! "
+                    f"Vásárolj előfizetést az adatok mélyreható elemzéséhez: "
+                    f"<a href='{billing_url}' class='fw-bold'>Előfizetési tervek</a>"
                 )
             
-            # 3. ISMERETLEN KÉRDÉS
+            # 3. ISMERETLEN KÉRDÉS -> AI válasz + Adatbázis mentés
             else:
-                return (
-                    f"[MISSED] Hmm, ezt még nem tanultam meg! 🤔 "
-                    f"De jelzem a fejlesztőknek, hogy segíthessek legközelebb!"
+                self._log_missed_query(user, query, context_app)
+                
+                prompt = (
+                    f"A felhasználó kérdése: '{query}'. "
+                    "Válaszolj mint egy digitális asszisztens. "
+                    "Mondd el, hogy a menüben segítesz eligazodni, de az adatok elemzéséhez előfizetés kell."
                 )
+                return self._generate(prompt)
         
-        # Ha nincs kérdés, üdvözlő üzenetet adunk kontextus alapján
         return self._get_smart_welcome(user, context_app, has_profile_name, user_roles)
+
+    def _log_missed_query(self, user, query, context_app):
+        """Mentés a megadott DittaMissedQuery modellbe."""
+        try:
+            DittaMissedQuery.objects.create(
+                user=user,
+                query=query, # A te modelledben 'query' a mezőnév
+                context_app=context_app,
+                context_snapshot={
+                    "detected_as": "Navigator",
+                    "timestamp_day": date.today().isoformat()
+                }
+            )
+        except Exception as e:
+            # Csak konzolra írjuk a hibát, hogy a felhasználó ne lássa
+            print(f"DEBUG: DittaMissedQuery mentési hiba: {e}")
+
+    def get_navigation_location(self, query, user_roles):
+        """Keresés a UI_NAVIGATION_MAP-ben kulcsszavak alapján"""
+        query_lower = query.lower()
+        
+        for key, data in UI_NAVIGATION_MAP.items():
+            # Megnézzük a leírást és a kulcsszavakat (ha lennének)
+            search_text = f"{data.get('leírás', '')} {key}".lower()
+            if any(word in query_lower for word in search_text.split() if len(word) > 3):
+                # Ellenőrizzük a szerepkör jogosultságot
+                req_role = data.get('szerepkör', 'Mindenki')
+                if req_role != 'Mindenki' and req_role not in user_roles:
+                    return f"⚠️ Ehhez {req_role} szerepkör szükséges!"
+                return data.get('lokáció', 'a menüben')
+        
+        return "❓ Pontosíts: profil / mérés / kredit / szerepkörök"
 
     def _get_smart_welcome(self, user, context_app, has_profile_name, user_roles):
         """

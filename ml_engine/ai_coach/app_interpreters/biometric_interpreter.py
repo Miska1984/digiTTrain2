@@ -1,5 +1,7 @@
 # biometric_interpreter.py
 
+from tensorboard import summary
+from tensorboard import summary
 from biometric_data.models import WeightData, HRVandSleepData, WorkoutFeedback
 from django.db.models import Avg
 from datetime import timedelta
@@ -33,10 +35,12 @@ class BiometricInterpreter:
         summary = ["--- Biometriai Trendek (7 nap) ---"]
 
         if hrv_data.exists():
-            # Figyelem: A log szerint a mező neve 'hrv' (nem hrv_rmssd)
             avg_hrv = sum(d.hrv for d in hrv_data if d.hrv) / hrv_data.count()
-            summary.append(f"Átlagos HRV: {round(avg_hrv, 1)} ms")
-            summary.append(f"Utolsó alvásminőség: {hrv_data.first().sleep_quality or '?'}/10")
+            # Adjunk hozzá kontextust Dittának!
+            hrv_msg = f"Átlagos HRV: {round(avg_hrv, 1)} ms"
+            if avg_hrv < 40: hrv_msg += " (Alacsony - pihenés javasolt)"
+            elif avg_hrv > 70: hrv_msg += " (Jó regeneráció)"
+            summary.append(hrv_msg)
 
         if weight_data.exists():
             latest_w = weight_data.first().morning_weight

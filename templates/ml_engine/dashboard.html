@@ -200,24 +200,75 @@ function renderChart(labels, values) {
 }
 
 async function askDitta() {
-    const input = document.getElementById('ditta-input');
-    const box = document.getElementById('ditta-chat-box');
+    const input = document.getElementById('ditta-input'); // Dashboard saját beviteli mezője
+    const box = document.getElementById('ditta-chat-box'); // Dashboard üzenetablaka
+    const widgetBox = document.getElementById('ditta-chat-content'); // A lebegő widget üzenetablaka
+    
     const query = input.value.trim();
     if(!query) return;
 
-    box.innerHTML += `<div class="user-msg small bg-primary text-white p-2 rounded shadow-sm mb-2 text-end">${query}</div>`;
+    // 1. Felhasználói üzenet megjelenítése mindkét helyen
+    const userHtmlDashboard = `<div class="user-msg small bg-primary text-white p-2 rounded shadow-sm mb-2 text-end">${query}</div>`;
+    const userHtmlWidget = `<div class="ditta-message user text-end bg-primary text-white p-2 rounded mb-2">${query}</div>`;
+    
+    box.innerHTML += userHtmlDashboard;
+    if(widgetBox) {
+        widgetBox.innerHTML += userHtmlWidget;
+    }
+
     input.value = '';
     box.scrollTop = box.scrollHeight;
+    if(widgetBox) widgetBox.scrollTop = widgetBox.scrollHeight;
 
-    const res = await fetch('/ml_engine/api/ditta-chat/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query })
-    });
-    const data = await res.json();
+    // Gépelés jelzése a dashboardon (opcionális, de szép)
+    const loaderId = 'dash-loader-' + Date.now();
+    box.innerHTML += `<div id="${loaderId}" class="ditta-msg small bg-light p-2 rounded mb-2">Ditta gondolkodik...</div>`;
+
+    try {
+        const res = await fetch('/ml_engine/api/ditta-chat/', {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}' 
+            },
+            body: JSON.stringify({ 
+                query: query,
+                app_context: 'biometric' // A dashboard kontextusa
+            })
+        });
+        const data = await res.json();
+        
+        // Loader eltávolítása
+        const loader = document.getElementById(loaderId);
+        if(loader) loader.remove();
+
+        // 2. Ditta válaszának megjelenítése mindkét helyen
+        // Dashboard stílus:
+        const dittaHtmlDashboard = `<div class="ditta-msg small bg-white p-2 rounded shadow-sm mb-2 border-start border-info border-4">${data.response}</div>`;
+        box.innerHTML += dittaHtmlDashboard;
+
+        // Widget stílus (felolvasó gombbal):
+        if(widgetBox) {
+            const safeText = data.response.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const dittaHtmlWidget = `
+                <div class="ditta-message assistant bg-light p-2 rounded mb-2">
+                    <div class="message-text">${data.response}</div>
+                    <div class="text-end mt-1">
+                        <button class="btn btn-sm btn-light border py-0 px-2 text-muted" onclick="window.speakDitta('${safeText}', this)">
+                            <i class="fas fa-volume-up"></i>
+                        </button>
+                    </div>
+                </div>`;
+            widgetBox.innerHTML += dittaHtmlWidget;
+        }
+
+    } catch (error) {
+        console.error("Hiba:", error);
+        box.innerHTML += `<div class="alert alert-danger p-2 small">Hiba a kapcsolatban.</div>`;
+    }
     
-    box.innerHTML += `<div class="ditta-msg small bg-white p-2 rounded shadow-sm mb-2 border-start border-info border-4">${data.response}</div>`;
     box.scrollTop = box.scrollHeight;
+    if(widgetBox) widgetBox.scrollTop = widgetBox.scrollHeight;
 }
 
 document.addEventListener('DOMContentLoaded', () => loadDashboard(7));

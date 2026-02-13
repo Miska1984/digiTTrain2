@@ -21,7 +21,9 @@ class BasePersona:
             'profil', 'kép', 'fotó', 'mérés', 'rögzít',
             'vásárol', 'fizet', 'kredit', 'előfizetés',
             'sportoló', 'gyerek', 'gyermek', 'csapat',
-            'megosztás', 'jogosultság', 'hozzáférés'
+            'megosztás', 'jogosultság', 'hozzáférés',
+            'mit tudok', 'mit lehet', 'mire jó', 'segíts', 'mutasd',
+            'szerepkör', 'dashboard', 'vezérlőpult', 'profil'
         ]
         return any(keyword in query_lower for keyword in navigation_keywords)
     
