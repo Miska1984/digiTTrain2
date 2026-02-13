@@ -53,12 +53,38 @@
                         <i class="fas fa-running me-1"></i> Sportoló
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark">
-                        <li><a class="dropdown-item" href="{% url 'biometric_data:athlete_dashboard' %}">Adat Összefoglaló</a></li>
-                        <li><a class="dropdown-item" href="{% url 'biometric_data:morning_check' %}">Reggeli mérések</a></li>
-                        <li><a class="dropdown-item" href="{% url 'biometric_data:after_training' %}">Esti mérések</a></li>
-                        <li><a class="dropdown-item" href="{% url 'biometric_data:occasional_measurements' %}">Eseti mérések</a></li>
-                        <li><a class="dropdown-item" href="{% url 'biometric_data:add_running_performance' %}">Futás teljesítmény</a></li>
-                        <li><a class="dropdown-item" href="{% url 'ml_engine:dashboard' %}">Forma Előrejelzés</a></li>
+                        <li><a class="dropdown-item" href="{% url 'biometric_data:athlete_dashboard' %}">
+                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>Adat Összefoglaló
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'biometric_data:morning_check' %}">
+                            <i class="fas fa-sun me-2 text-warning"></i>Reggeli mérések
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'biometric_data:after_training' %}">
+                            <i class="fas fa-moon me-2 text-secondary"></i>Esti mérések
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'biometric_data:occasional_measurements' %}">
+                            <i class="fas fa-database me-2 text-info"></i>Eseti mérések
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'biometric_data:add_running_performance' %}">
+                            <i class="fas fa-chart-line me-2 text-success"></i>Futás teljesítmény
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'ml_engine:dashboard' %}">
+                                <i class="fas fa-chart-line me-2 text-success"></i> Forma Előrejelzés
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'diagnostics:athlete_diagnostics' %}">
+                                <i class="fas fa-brain me-2 text-info"></i> Általános elemzés
+                            </a>
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'diagnostics_jobs:anthropometry_profile_view' %}">
+                                <i class="fas fa-ruler-combined"></i> Antropometriai Profil
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 {% endif %}
@@ -101,37 +127,7 @@
                 </li>
                 {% endif %}
 
-                <!-- GÉPI LÁTÁS FUNKCIÓK (csak Sportoló) -->
-                {% if request.user|has_any_role:"Sportoló,Edző,Szülő,Egyesületi vezető" %}
-                <li class="nav-item dropdown me-3">
-                    <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="diagnosticsDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-eye me-1"></i> Gépi látás
-                    </a>
-                    <ul class="dropdown-menu dropdown-menu-dark">
-                        <li>
-                            <a class="dropdown-item" href="{% url 'diagnostics:athlete_diagnostics' %}">
-                                <i class="fas fa-brain me-2 text-info"></i> Általános elemzés
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="{% url 'diagnostics_jobs:anthropometry_profile_view' %}">
-                                <i class="fas fa-ruler-combined"></i> Antropometriai Profil
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="#">
-                                <i class="fas fa-video me-2 text-success"></i> Általános elemzés (videó feltöltése lenne de már nem kell)
-                            </a>
-                        </li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li>
-                            <a class="dropdown-item disabled text-muted" href="#">
-                                <i class="fas fa-dumbbell me-2"></i> Sportspecifikus elemzések (fejlesztés alatt)
-                            </a>
-                        </li>
-                    </ul>
-                </li>
-                {% endif %}
+
 
                 <!-- PÉNZÜGYEK -->
                 {% if request.user|has_any_role:"Sportoló,Edző,Szülő,Egyesületi vezető" %}

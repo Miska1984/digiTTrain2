@@ -4,16 +4,22 @@ from .analyst import AnalystPersona
 
 def get_persona(context_app, has_ml_access=False):
     """
-    Kiválasztja a megfelelő személyiséget a jogosultság és a helyszín alapján.
+    Kiválasztja a megfelelő személyiséget a jogosultság alapján.
+    
+    EGYSZERŰSÍTETT LOGIKA:
+    - Van ML előfizetés? → Analyst (Guru mód)
+    - Nincs ML előfizetés? → Navigator (Asszisztens mód)
+    
+    Args:
+        context_app: Alkalmazás kontextusa (nem használt már)
+        has_ml_access: Van-e aktív ML_ACCESS előfizetés
+    
+    Returns:
+        BasePersona: Navigator vagy Analyst persona
     """
-    # Ha a felhasználónak van ML_ACCESS-e, minden oldalon az Analyst (Guru) válaszol
     if has_ml_access:
+        # ML előfizetőknek: Guru mód (mélyreható elemzés)
         return AnalystPersona()
-    
-    # Ha nincs előfizetése, de elemző funkciót próbál használni
-    analyst_apps = ['ml_engine', 'diagnostics', 'diagnostics_jobs']
-    if context_app in analyst_apps:
-        return AnalystPersona()
-    
-    # Minden egyéb esetben marad a segítőkész Navigator
-    return NavigatorPersona()
+    else:
+        # Ingyenes felhasználóknak: Asszisztens mód (navigáció + upsell)
+        return NavigatorPersona()
