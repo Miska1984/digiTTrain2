@@ -25,3 +25,7 @@ env/
 /analysis_output/
 /tmp/
 
+# Google Cloud SDK maradványok
+y/
+google-cloud-sdk/
+.config/gcloud/
