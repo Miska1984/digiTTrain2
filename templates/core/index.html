@@ -47,29 +47,89 @@
                 </div>
             </div>
         </section>
+
+        <section class="py-5 bg-white rounded shadow-sm mb-5" id="arak">
+            <h2 class="text-center mb-5 text-secondary fw-bold">Válassza az Önnek megfelelő csomagot</h2>
+            <div class="row row-cols-1 row-cols-md-3 mb-3 text-center px-4">
+                
+                <div class="col">
+                    <div class="card mb-4 rounded-3 shadow-sm h-100">
+                        <div class="card-header py-3">
+                            <h4 class="my-0 fw-normal">Alap (Free)</h4>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <h1 class="card-title pricing-card-title">0 Ft<small class="text-muted fw-light">/hó</small></h1>
+                            <ul class="list-unstyled mt-3 mb-4 text-start">
+                                <li><i class="bi bi-check2 text-success me-2"></i>Személyes edzésnapló</li>
+                                <li><i class="bi bi-check2 text-success me-2"></i>Alapvető statisztikák</li>
+                                <li><i class="bi bi-check2 text-success me-2"></i>Edző-Sportoló kapcsolat</li>
+                                <li><i class="bi bi-check2 text-success me-2"></i>Ditta Navigator (Alap AI)</li>
+                            </ul>
+                            <a href="{% url 'users:register' %}" class="w-100 btn btn-lg btn-outline-primary mt-auto">Ingyenes regisztráció</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col">
+                    <div class="card mb-4 rounded-3 shadow-sm border-primary h-100">
+                        <div class="card-header py-3 text-white bg-primary border-primary">
+                            <h4 class="my-0 fw-normal">Pro (ML Előfizetés)</h4>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <h1 class="card-title pricing-card-title">Hamarosan<small class="text-muted fw-light"></small></h1>
+                            <ul class="list-unstyled mt-3 mb-4 text-start">
+                                <li><i class="bi bi-star-fill text-warning me-2"></i><strong>Minden, ami az Alapban van</strong></li>
+                                <li><i class="bi bi-cpu-fill text-primary me-2"></i>Gépi látás alapú mozgáselemzés</li>
+                                <li><i class="bi bi-cpu-fill text-primary me-2"></i>Sérüléskockázat becslés</li>
+                                <li><i class="bi bi-cpu-fill text-primary me-2"></i>Ditta Analyst (Mélyelemzés)</li>
+                                <li><i class="bi bi-cpu-fill text-primary me-2"></i>Heti szülői összefoglalók</li>
+                            </ul>
+                            <button type="button" class="w-100 btn btn-lg btn-primary mt-auto">Érdekel a Pro</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col">
+                    <div class="card mb-4 rounded-3 shadow-sm h-100">
+                        <div class="card-header py-3">
+                            <h4 class="my-0 fw-normal">Egyesületi</h4>
+                        </div>
+                        <div class="card-body d-flex flex-column">
+                            <h1 class="card-title pricing-card-title">Egyedi</h1>
+                            <ul class="list-unstyled mt-3 mb-4 text-start">
+                                <li><i class="bi bi-building text-secondary me-2"></i>Korlátlan sportoló kezelése</li>
+                                <li><i class="bi bi-building text-secondary me-2"></i>Vezetői dashboard</li>
+                                <li><i class="bi bi-building text-secondary me-2"></i>Egyedi szakmai protokollok</li>
+                            </ul>
+                            <a href="{% url 'core:contact' %}" class="w-100 btn btn-lg btn-outline-secondary mt-auto">Kérjen ajánlatot</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
         
         <hr class="my-5">
 
         <section class="py-5 bg-light rounded shadow-lg" id="diagnosztika">
             <h2 class="text-center mb-5 text-dark fw-bold display-6">
-                <i class="bi bi-robot me-3 text-danger"></i> Prémium Biomechanikai Elemzés
+                <i class="bi bi-robot me-3 text-danger"></i> Intelligens Mozgásdiagnosztika
             </h2>
-            <p class="lead text-center mb-5 text-muted">
-                A digiT-Train gépi látás technológiája (MediaPipe alapú) videófeltöltés segítségével végzi el az objektív mozgásdiagnosztikát, minimalizálva a sérülésveszélyt.
+            <p class="lead text-center mb-5 text-muted px-4">
+                Rendszerünk a legmodernebb gépi látás technológiával elemzi a sportolók mozgását. Nem kell drága labor, elég egy mobiltelefon, és máris láthatóvá válnak a rejtett hibák.
             </p>
 
             <div class="row g-4 px-4">
-                
                 <div class="col-md-6">
                     <div class="card h-100 border-0 shadow-sm p-3">
                         <div class="card-body">
-                            <h5 class="card-title fw-bold text-primary">Pontos Mozgáselemzés</h5>
-                            <p class="card-text">
-                                A feltöltött videók alapján rendszerünk automatikusan méri a kulcsfontosságú ízületi szögeket és a mozgásminőséget. [cite_start]A guggolás elemzése például a térd, csípő, boka mobilitását és stabilitását, valamint az izomaktiváció sorrendjét becsüli[cite: 55, 56, 57].
+                            <h5 class="card-title fw-bold text-primary"><i class="bi bi-walk me-2"></i> Járás- és Tartáselemzés</h5>
+                            <p class="card-text text-muted">
+                                Pár lépés alapján azonosítjuk a test egyensúlyi állapotát és a mozgás szimmetriáját.
                             </p>
-                            <ul>
-                                [cite_start]<li><i class="bi bi-graph-up me-1 text-success"></i> Objektív teljesítmény- és kontroll pontszámok (0-100)[cite: 25, 179].</li>
-                                [cite_start]<li><i class="bi bi-gear-fill me-1 text-success"></i> Kinematikai adatok: a le- és felfelé mozgás sebességprofilja[cite: 77].</li>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check2-circle text-success me-2"></i> <strong>Lépésszimmetria:</strong> Figyeljük, hogy a két láb egyforma hosszút lép-e (10% feletti eltérésnél jelez a rendszer).</li>
+                                <li><i class="bi bi-check2-circle text-success me-2"></i> <strong>Váll és csípő dőlése:</strong> Kimutatjuk, ha a test féloldalasan terhelődik, ami gerincproblémákhoz vezethet.</li>
+                                <li><i class="bi bi-check2-circle text-success me-2"></i> <strong>Fej stabilitása:</strong> Mérjük a fej felesleges kilengéseit járás közben.</li>
                             </ul>
                         </div>
                     </div>
@@ -78,25 +138,34 @@
                 <div class="col-md-6">
                     <div class="card h-100 border-0 shadow-sm p-3">
                         <div class="card-body">
-                            <h5 class="card-title fw-bold text-danger">Sérülékeny Pontok Azonosítása</h5>
-                            <p class="card-text">
-                                [cite_start]Az **Egylábon állás teszt** feltárja a stabilitási hiányosságokat, beleértve a propriocepciós zavarokat és a gyenge core kontrollt[cite: 2].
+                            <h5 class="card-title fw-bold text-danger"><i class="bi bi-arrow-down-up me-2"></i> Guggolás és Ízületi Kontroll</h5>
+                            <p class="card-text text-muted">
+                                A guggolás az egyik legfontosabb alapmozgás, ahol az alsó végtag erejét és stabilitását mérjük.
                             </p>
-                            <ul>
-                                [cite_start]<li><i class="bi bi-check-circle-fill me-1 text-danger"></i> **Trendelenburg Jel (Pelvis Drop):** A gyenge gluteus medius azonnali azonosítása[cite: 16].</li>
-                                [cite_start]<li><i class="bi bi-check-circle-fill me-1 text-danger"></i> **Térd Valgus/Varus:** A térd befelé esése (valgus) az ACL sérülés kockázatát jelzi[cite: 16, 82].</li>
-                                [cite_start]<li><i class="bi bi-check-circle-fill me-1 text-danger"></i> **Tömegközéppont (COM) Kontroll:** A billegés sebességének és amplitúdójának mérése[cite: 19].</li>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check2-circle text-danger me-2"></i> <strong>Térd és boka stabilitás:</strong> Azonosítjuk, ha a térd befelé bicsaklik, ami szalagsérülések (pl. keresztszalag) melegágya.</li>
+                                <li><i class="bi bi-check2-circle text-danger me-2"></i> <strong>Helyes mélység:</strong> Mérjük a térdszöget (70-120°) és a csípő munkáját az optimális combizom-aktivációhoz.</li>
+                                <li><i class="bi bi-check2-circle text-danger me-2"></i> <strong>Egyensúlyi pontszám:</strong> 0-100 közötti értékelést adunk a mozgás minőségére.</li>
                             </ul>
                         </div>
                     </div>
                 </div>
 
-                <div class="col-12 text-center mt-4">
-                    <i class="bi bi-lightbulb-fill display-5 text-warning mb-3"></i>
-                    <h4 class="fw-bold text-warning">Azonnali, Személyre Szabott Korrekció</h4>
-                    <p class="text-muted">
-                        [cite_start]Az elemzés után a rendszer azonnali visszajelzést és korrekciós javaslatokat ad, például gluteus medius erősítést oldalhíddal vagy boka mobilizációs gyakorlatokat[cite: 31, 125].
-                    </p>
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm p-4 bg-white">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <h5 class="fw-bold text-warning"><i class="bi bi-lightning-charge-fill me-2"></i> Robbanékonyság és Egyensúly</h5>
+                                <p class="mb-0 text-muted">
+                                    A rendszerünk képes az **ugrás helyből** elemzésére a koordináció méréséhez, valamint az **egy lábon állás** tesztre, ami a boka- és csípőstabilitást mutatja meg másodpercre pontosan.
+                                </p>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="display-6 fw-bold text-dark">100% Objektív</div>
+                                <div class="small text-muted">Adatvezérelt visszajelzés</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -109,9 +178,10 @@
             <div class="row align-items-center mb-5">
                 <div class="col-md-6 order-md-1">
                     <h3 class="text-primary"><i class="bi bi-person-bounding-box me-2"></i> Sportoló szemszöge</h3>
-                    <p>Könnyen vezethető edzésnapló, amely segíti a napi feladatok rögzítését. Gyors bevitelek, mobilbarát felület a terhelés és regeneráció azonnali rögzítéséhez.</p>
+                    <p>Könnyen vezethető adatnapló, amely segíti a napi adatok rögzítését. Gyors bevitelek, mobilbarát felület a terhelés és regeneráció azonnali rögzítéséhez.</p>
                     <ul>
                         <li><i class="bi bi-check-circle-fill text-success me-1"></i> Napi kérdőívek a fáradtság mérésére.</li>
+                        <li><i class="bi bi-check-circle-fill text-success me-1"></i> Testsúly és testösszetétel rögzítése.</li>
                         <li><i class="bi bi-check-circle-fill text-success me-1"></i> Részletes eredmény-nyomon követés.</li>
                     </ul>
                 </div>
@@ -133,7 +203,49 @@
                     <img src="{% static 'images/edzo_mockup.png' %}" alt="Edzői felület" class="img-fluid rounded shadow-lg">
                 </div>
             </div>
-            
+        </section>
+        <section class="py-5 bg-dark text-white rounded shadow-lg mx-4 mb-5">
+            <div class="container text-center">
+                <h2 class="fw-bold mb-5"><i class="bi bi-building-fill me-3 text-warning"></i> Egyesületi és Akadémiai Megoldások</h2>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <i class="bi bi-clipboard-data display-4 text-warning mb-3"></i>
+                        <h5>Átfogó Dashboard</h5>
+                        <p class="small text-light">Kövesse nyomon az összes korosztály és szakosztály teljesítményét egyetlen felületen.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <i class="bi bi-award display-4 text-warning mb-3"></i>
+                        <h5>Szakmai Standardok</h5>
+                        <p class="small text-light">Hozzon létre egységes mérési protokollokat az egész egyesület számára.</p>
+                    </div>
+                    <div class="col-md-4">
+                        <i class="bi bi-cash-stack display-4 text-warning mb-3"></i>
+                        <h5>Költséghatékony</h5>
+                        <p class="small text-light">Nincs szükség millióforintos laborokra – a mobilos mérés bárhol, bármikor elérhető.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <section class="py-5 bg-white">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-lg-6">
+                        <h2 class="fw-bold text-primary mb-4"><i class="bi bi-shield-check me-2"></i> Szülői Felügyelet és Nyugalom</h2>
+                        <p class="lead text-muted">Tudjuk, hogy gyermeke fejlődése és egészsége az első. A digiT-Train segít, hogy Ön is részese legyen a folyamatnak.</p>
+                        <ul class="list-unstyled">
+                            <li class="mb-3"><i class="bi bi-graph-up-arrow text-success me-2"></i> <strong>Heti Összefoglalók:</strong> Automatikus jelentés a gyermek edzésmunkájáról és biomechanikai fejlődéséről.</li>
+                            <li class="mb-3"><i class="bi bi-heart-pulse text-danger me-2"></i> <strong>Sérülésmegelőzés:</strong> Azonnali riasztás, ha a rendszer aszimmetriát vagy túlterhelésre utaló jeleket észlel a mozgásban.</li>
+                            <li class="mb-3"><i class="bi bi-lock text-secondary me-2"></i> <strong>Biztonságos Adatkezelés:</strong> Ön dönthet arról, melyik edző láthatja gyermeke adatait.</li>
+                        </ul>
+                    </div>
+                    <div class="col-lg-6 text-center">
+                        <div class="p-4 bg-light rounded-circle shadow-sm d-inline-block">
+                            <i class="bi bi-people-fill display-1 text-primary"></i>
+                        </div>
+                        <p class="mt-3 font-italic">"Végre látom, hogyan fejlődik a fiam tartása az edzések hatására!"</p>
+                    </div>
+                </div>
+            </div>
         </section>
 
         <hr class="my-5">
