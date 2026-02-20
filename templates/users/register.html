@@ -1,14 +1,80 @@
 {% extends "base_out.html" %}
+{% load static %}
 
 {% block content %}
-<div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
-    <div class="card p-4 shadow" style="width: 100%; max-width: 400px;">
-        <h2 class="text-center mb-4">Regisztráció</h2>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.as_p }}
-            <button type="submit" class="btn btn-primary w-100 mt-3">Regisztrálj</button>
-        </form>
+<div class="container d-flex justify-content-center align-items-center" style="min-height: 90vh;">
+    <div class="card border-0 shadow-lg overflow-hidden" style="width: 100%; max-width: 900px; border-radius: 20px;">
+        <div class="row g-0">
+            <div class="col-md-5 bg-dark text-white p-5 d-flex flex-column justify-content-center">
+                <h2 class="fw-bold mb-4">Üdvözlünk a <span class="text-primary">digiT-Train</span>-nél!</h2>
+                <p class="text-secondary">Csatlakozz az adatvezérelt sportolók közösségéhez, ahol a mérés az alapja a fejlődésnek.</p>
+                
+                <div class="mt-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-shield-lock text-primary me-3 fs-4"></i>
+                        <span class="small">Biztonságos, GDPR-konform adatkezelés</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-3">
+                        <i class="bi bi-cpu text-danger me-3 fs-4"></i>
+                        <span class="small">AI alapú mozgásanalízis</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-person-check text-success me-3 fs-4"></i>
+                        <span class="small">Személyre szabott profil</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7 bg-white p-5">
+                <div class="text-center mb-4">
+                    <h3 class="fw-bold text-dark">Fiók létrehozása</h3>
+                    <p class="text-muted small">Töltsd ki az adatokat a kezdéshez</p>
+                </div>
+
+                <form method="post" class="needs-validation">
+                    {% csrf_token %}
+                    
+                    {% for field in form %}
+                    <div class="mb-3 text-start">
+                        <label for="{{ field.id_for_label }}" class="form-label small fw-bold text-secondary">
+                            {{ field.label }}
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0 text-muted">
+                                {% if "user" in field.name %}<i class="bi bi-person"></i>
+                                {% elif "email" in field.name %}<i class="bi bi-envelope"></i>
+                                {% elif "pass" in field.name %}<i class="bi bi-key"></i>
+                                {% else %}<i class="bi bi-pencil"></i>{% endif %}
+                            </span>
+                            <input type="{{ field.field.widget.input_type }}" 
+                                   name="{{ field.html_name }}" 
+                                   id="{{ field.id_for_label }}"
+                                   class="form-control bg-light border-start-0 {% if field.errors %}is-invalid{% endif %}"
+                                   placeholder="{{ field.label }}">
+                        </div>
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors.0 }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <div class="form-check mb-4 text-start">
+                        <input class="form-check-input" type="checkbox" value="" id="terms" required checked>
+                        <label class="form-check-label small text-muted" for="terms">
+                            Elolvastam és elfogadom az <a href="{% url 'core:imprint_terms' %}" class="text-primary text-decoration-none">ÁSZF</a>-et.
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 shadow-sm fw-bold" style="border-radius: 10px;">
+                        Regisztrálok <i class="bi bi-arrow-right ms-2"></i>
+                    </button>
+                </form>
+
+                <div class="text-center mt-4">
+                    <p class="small text-muted">Van már fiókod? <a href="{% url 'users:login' %}" class="fw-bold text-decoration-none text-primary">Jelentkezz be</a></p>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

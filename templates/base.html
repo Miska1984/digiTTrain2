@@ -37,12 +37,24 @@
                 <!-- VEZÉRLŐPULT -->
                 <li class="nav-item dropdown me-3">
                     <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="mainDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-cogs me-1"></i> Vezérlőpult
+                        <i class="fas fa-sliders-h me-1"></i> Vezérlőpult
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-dark">
-                        <li><a class="dropdown-item" href="{% url 'users:role_dashboard' %}">Szerepkörök kezelése</a></li>
-                        <li><a class="dropdown-item" href="{% url 'users:pending_roles' %}">Jóváhagyások</a></li>
-                        <li><a class="dropdown-item" href="{% url 'data_sharing:sharing_center' %}">Megosztási központ</a></li>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'users:role_dashboard' %}">
+                                <i class="fas fa-user-tag me-2 text-info"></i>Szerepkörök kezelése
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'users:pending_roles' %}">
+                                <i class="fas fa-user-clock me-2 text-warning"></i>Jóváhagyások
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'data_sharing:sharing_center' %}">
+                                <i class="fas fa-share-alt me-2 text-success"></i>Megosztási központ
+                            </a>
+                        </li>
                     </ul>
                 </li>
 
@@ -54,27 +66,22 @@
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark">
                         <li><a class="dropdown-item" href="{% url 'biometric_data:athlete_dashboard' %}">
-                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>Adat Összefoglaló
-                            </a>
+                            <i class="fas fa-tachometer-alt me-2 text-primary"></i>Adat Összefoglaló</a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'biometric_data:morning_check' %}">
-                            <i class="fas fa-sun me-2 text-warning"></i>Reggeli mérések
-                            </a>
+                            <i class="fas fa-sun me-2 text-warning"></i>Reggeli mérések</a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'biometric_data:after_training' %}">
-                            <i class="fas fa-moon me-2 text-secondary"></i>Esti mérések
-                            </a>
+                            <i class="fas fa-moon me-2 text-secondary"></i>Esti mérések</a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'biometric_data:occasional_measurements' %}">
-                            <i class="fas fa-database me-2 text-info"></i>Eseti mérések
-                            </a>
+                            <i class="fas fa-database me-2 text-info"></i>Eseti mérések</a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'biometric_data:add_running_performance' %}">
-                            <i class="fas fa-chart-line me-2 text-success"></i>Futás teljesítmény
-                            </a>
+                            <i class="fas fa-chart-line me-2 text-success"></i>Futás teljesítmény</a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'ml_engine:dashboard' %}">
-                                <i class="fas fa-chart-line me-2 text-success"></i> Forma Előrejelzés
+                                <i class="fas fa-magic me-2 text-warning"></i> Forma Előrejelzés
                             </a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'diagnostics:athlete_diagnostics' %}">
@@ -82,7 +89,7 @@
                             </a>
                         </li>
                         <li><a class="dropdown-item" href="{% url 'diagnostics_jobs:anthropometry_profile_view' %}">
-                                <i class="fas fa-ruler-combined"></i> Antropometriai Profil
+                                <i class="fas fa-ruler-combined me-2 text-light"></i> Antropometriai Profil
                             </a>
                         </li>
                     </ul>
@@ -93,36 +100,97 @@
                 {% if request.user|has_role:"Szülő" %}
                 <li class="nav-item dropdown me-3">
                     <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="parentDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-child me-1"></i> Szülő
+                        <i class="fas fa-user-friends me-1"></i> Szülő
                     </a>
                     <ul class="dropdown-menu dropdown-menu-dark">
-                        <li><a class="dropdown-item" href="{% url 'data_sharing:parent_dashboard' %}">Gyermek(ek) adatai</a></li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'data_sharing:parent_dashboard' %}">
+                                <i class="fas fa-chart-pie me-2 text-info"></i>Gyermek(ek) adatai
+                            </a>
+                        </li>
+                        
+                        {% if pending_child_approvals_count > 0 %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'users:pending_roles' %}">
+                                <i class="fas fa-user-check me-2 text-warning"></i>Jóváhagyás vár ({ { pending_child_approvals_count } })
+                            </a>
+                        </li>
+                        {% endif %}
                     </ul>
                 </li>
                 {% endif %}
 
+                
                 <!-- EDZŐ FUNKCIÓK -->
                 {% if request.user|has_role:"Edző" %}
                 <li class="nav-item dropdown me-3">
                     <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="coachDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-user-tie me-1"></i> Edző
+                        <i class="fas fa-chalkboard-teacher me-1"></i> Edző
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-dark">
-                        <li><a class="dropdown-item" href="{% url 'data_sharing:add_unregistered_athlete' %}">Sportoló felvitele</a></li>
-                        <li><a class="dropdown-item" href="{% url 'data_sharing:coach_dashboard' %}">Sportolóim</a></li>
-                        <li><a class="dropdown-item" href="{% url 'data_sharing:manage_schedules' %}">Edzés tervezés</a></li>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'data_sharing:coach_dashboard' %}">
+                                <i class="fas fa-users me-2 text-primary"></i>Sportolóim
+                            </a>
+                        </li>
+
+                        <li>
+                            <a class="dropdown-item" href="{% url 'data_sharing:manage_schedules' %}">
+                                <i class="fas fa-calendar-alt me-2 text-success"></i>Edzés tervezés
+                            </a>
+                        </li>
+
+                        <li><hr class="dropdown-divider opacity-20"></li>
+
+                        <li>
+                            <a class="dropdown-item" href="{% url 'data_sharing:add_unregistered_athlete' %}">
+                                <i class="fas fa-user-plus me-2 text-info"></i>Sportoló felvitele
+                            </a>
+                        </li>
+
+                        {% if pending_roles_count > 0 %}
+                        <li>
+                            <a class="dropdown-item" href="{% url 'users:pending_roles' %}">
+                                <i class="fas fa-bell me-2 text-warning"></i>Jóváhagyások 
+                                <span class="badge rounded-pill bg-danger ms-1">{{ pending_roles_count }}</span>
+                            </a>
+                        </li>
+                        {% endif %}
                     </ul>
                 </li>
                 {% endif %}
+                
 
                 <!-- EGYESÜLETI VEZETŐ FUNKCIÓK -->
                 {% if request.user|has_role:"Egyesületi vezető" %}
                 <li class="nav-item dropdown me-3">
                     <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="leaderDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-crown me-1"></i> Egyesületi Vezető
+                        <i class="fas fa-crown me-1 text-warning"></i> Egyesületi Vezető
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-dark">
-                        <li><a class="dropdown-item" href="{% url 'data_sharing:leader_dashboard' %}">Biometrikus adatok</a></li>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'data_sharing:leader_dashboard' %}">
+                                <i class="fas fa-chart-line me-2 text-success"></i>Szervezeti adatok
+                            </a>
+                        </li>
+
+                        <li><hr class="dropdown-divider opacity-20"></li>
+
+                        <li>
+                            <a class="dropdown-item" href="{% url 'users:pending_roles' %}">
+                                <i class="fas fa-clipboard-check me-2 text-info"></i>Tagságok kezelése
+                                {% if pending_roles_count > 0 %}
+                                    <span class="badge rounded-pill bg-danger ms-1">{{ pending_roles_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                <i class="fas fa-cogs me-2 text-secondary"></i>Egyesületi profil
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 {% endif %}
@@ -133,12 +201,24 @@
                 {% if request.user|has_any_role:"Sportoló,Edző,Szülő,Egyesületi vezető" %}
                 <li class="nav-item dropdown me-3">
                     <a class="nav-link px-2 text-white dropdown-toggle" href="#" id="billingDropdown" role="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-wallet me-1"></i> Pénzügyek
+                        <i class="fas fa-wallet me-1 text-success"></i> Pénzügyek
                     </a>
-                    <ul class="dropdown-menu dropdown-menu-dark">
-                        <li><a class="dropdown-item" href="{% url 'billing:billing_dashboard' %}">Pénzügyi vezérlőpult</a></li>
-                        <li><a class="dropdown-item" href="{% url 'billing:billing_purchase' %}">Vásárlás</a></li>
-                        <li><a class="dropdown-item" href="{% url 'billing:ad_credit_earn' %}">Kredit Szerzés</a></li>
+                    <ul class="dropdown-menu dropdown-menu-dark shadow">
+                        <li>
+                            <a class="dropdown-item" href="{% url 'billing:billing_dashboard' %}">
+                                <i class="fas fa-file-invoice-dollar me-2 text-info"></i>Pénzügyi vezérlőpult
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'billing:billing_purchase' %}">
+                                <i class="fas fa-shopping-cart me-2 text-primary"></i>Vásárlás
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{% url 'billing:ad_credit_earn' %}">
+                                <i class="fas fa-coins me-2 text-warning"></i>Kredit Szerzés
+                            </a>
+                        </li>
                     </ul>
                 </li>
                 {% endif %}

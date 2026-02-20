@@ -59,8 +59,12 @@ class ProfileForm(forms.ModelForm):
     date_of_birth = forms.DateField(
         label="Születési dátum",
         required=False,
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-        input_formats=['%Y-%m-%d'],   # fontos!
+        widget=forms.DateInput(
+            # A format='%Y-%m-%d' kényszeríti a Djangót, hogy így küldje a HTML-be
+            format='%Y-%m-%d', 
+            attrs={'type': 'date', 'class': 'form-control'}
+        ),
+        input_formats=['%Y-%m-%d'],
     )
     gender = forms.ChoiceField(
         label="Nem", required=False,
@@ -74,9 +78,17 @@ class ProfileForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Ha van date_of_birth, állítsuk be helyesen az initial értéket
+        
+        # 1. Ellenőrizzük, hogy van-e már elmentett dátum az adatbázisban
         if self.instance and self.instance.date_of_birth:
-            self.initial['date_of_birth'] = self.instance.date_of_birth.strftime('%Y-%m-%d')
+            # 2. Beállítjuk a mezőt írásvédettre (HTML szinten)
+            self.fields['date_of_birth'].widget.attrs['readonly'] = True
+            
+            # 3. Letiltjuk a mezőt (Django szinten), így a szerver nem fogad el új értéket
+            self.fields['date_of_birth'].disabled = True
+            
+            # 4. Biztosítjuk a formátumot az input mezőnek
+            self.initial['date_of_birth'] = self.instance.date_of_birth
 
 class ClubForm(forms.ModelForm):
     sports = forms.ModelMultipleChoiceField(
