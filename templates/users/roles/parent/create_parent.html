@@ -1,97 +1,142 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block title %}Szülői Regisztráció | digiT-Train{% endblock %}
 
 {% block content %}
-<style>
-    /* Egyedi stílus a form-select elemekhez */
-    .form-select {
-        min-width: 250px; /* Alapértelmezett minimális szélesség, a teljes névhez igazítva */
-    }
-    
-    /* A coach mezőhöz egyedi szélesség, ha szükséges */
-    #id_coach {
-        width: 300px;
-    }
-</style>
-<div class="container mt-4">
-    <h2>Szülői szerepkör létrehozása</h2>
-    
-    {% if form.non_field_errors %}
-    <div class="alert alert-danger" role="alert">
-        {% for error in form.non_field_errors %}
-        {{ error }}
-        {% endfor %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <div class="card border-0 shadow-lg text-white mb-5 overflow-hidden" style="border-radius: 20px; background: linear-gradient(135deg, #ffc107 0%, #d39e00 100%);">
+                <div class="card-body p-4 position-relative">
+                    <div class="row align-items-center position-relative" style="z-index: 2;">
+                        <div class="col-md-2 text-center d-none d-md-block">
+                            <div class="bg-white bg-opacity-25 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-robot text-white" style="font-size: 2.5rem;"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-10">
+                            <p class="small fw-bold text-uppercase mb-1" style="letter-spacing: 1px; color: rgba(255,255,255,0.9);">Ditta Segítő</p>
+                            <h4 class="mb-0 fw-light italic text-white">"{{ welcome_message|default:"Szia! Kérlek válaszd ki a gyermeked edzőjét, hogy láthasd a fejlődését!" }}"</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-3 px-2">
+                <a href="{% url 'users:role_dashboard' %}" class="text-decoration-none text-muted small hover-warning">
+                    <i class="bi bi-arrow-left me-1"></i> Vissza a szerepkörökhöz
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-5">
+                        <div class="role-icon-box bg-warning-subtle text-warning mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 20px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-people-fill fs-1"></i>
+                        </div>
+                        <h2 class="fw-bold">Szülői Regisztráció</h2>
+                        <p class="text-muted small">Add meg, melyik egyesületnél és melyik edzőnél sportol a gyermeked.</p>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4">
+                            {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <form method="post" id="parentForm" class="needs-validation">
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Egyesület</label>
+                                <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-house-door text-warning"></i></span>
+                                    {{ form.club }}
+                                </div>
+                                {% for error in form.club.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Sportág</label>
+                                <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-trophy text-warning"></i></span>
+                                    {{ form.sport }}
+                                </div>
+                                {% for error in form.sport.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Edző</label>
+                                <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-person-badge text-warning"></i></span>
+                                    {{ form.coach }}
+                                </div>
+                                {% for error in form.coach.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Megjegyzés az edzőnek</label>
+                                {{ form.notes }}
+                                {% for error in form.notes.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                                <div class="form-text small italic text-muted">Pl. gyermek neve, vagy egyéb fontos információ.</div>
+                            </div>
+                        </div>
+
+                        <div class="text-center pt-5">
+                            <button type="submit" class="btn btn-warning btn-lg px-5 rounded-pill shadow-lg fw-bold text-white">
+                                <i class="bi bi-send-check me-2"></i> Igénylés Beküldése
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-    {% endif %}
-    
-    <form method="post" enctype="multipart/form-data" id="parentForm">
-        {% csrf_token %}
-        <div class="mb-3">
-            {{ form.club.label_tag }}
-            {{ form.club }}
-            {% if form.club.errors %}
-            <div class="invalid-feedback d-block">
-                {% for error in form.club.errors %}
-                {{ error }}
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        <div class="mb-3">
-            {{ form.sport.label_tag }}
-            {{ form.sport }}
-            {% if form.sport.errors %}
-            <div class="invalid-feedback d-block">
-                {% for error in form.sport.errors %}
-                {{ error }}
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        <div class="mb-3">
-            {{ form.coach.label_tag }}
-            {{ form.coach }}
-            {% if form.coach.errors %}
-            <div class="invalid-feedback d-block">
-                {% for error in form.coach.errors %}
-                {{ error }}
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        <div class="mb-3">
-            {{ form.notes.label_tag }}
-            {{ form.notes }}
-            {% if form.notes.errors %}
-            <div class="invalid-feedback d-block">
-                {% for error in form.notes.errors %}
-                {{ error }}
-                {% endfor %}
-            </div>
-            {% endif %}
-        </div>
-        <button type="submit" class="btn btn-primary">Mentés</button>
-    </form>
 </div>
-{% endblock %}
+
+<style>
+    .italic { font-style: italic; }
+    .hover-warning:hover { color: #ffc107 !important; }
+    
+    .input-group-text {
+        border-radius: 12px 0 0 12px !important;
+        background-color: #fff !important;
+        border: 1px solid #dee2e6;
+    }
+    .form-select, .form-control {
+        border-radius: 0 12px 12px 0 !important;
+        padding: 12px 15px;
+        border: 1px solid #dee2e6;
+    }
+    textarea.form-control { border-radius: 12px !important; }
+    
+    .form-select:focus, .form-control:focus {
+        border-color: #ffc107;
+        box-shadow: 0 0 0 0.25rem rgba(255, 193, 7, 0.1);
+    }
+    .bg-warning-subtle { background-color: #fff9e6 !important; }
+</style>
 
 {% block extra_js %}
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    let clubField = document.getElementById("id_club");
-    let sportField = document.getElementById("id_sport");
-    let coachField = document.getElementById("id_coach");
+    const clubField = document.getElementById("id_club");
+    const sportField = document.getElementById("id_sport");
+    const coachField = document.getElementById("id_coach");
     
-    // Frissítési függvény, amit mindkét helyről hívunk
     function updateCoaches() {
         let clubId = clubField.value;
         let sportId = sportField.value;
-        coachField.innerHTML = "<option value=''>Válassz edzőt...</option>";
         
         if (clubId && sportId) {
-            // ELLENŐRIZZE EZT AZ ÚTVONALAT!
+            coachField.innerHTML = "<option value=''>Betöltés...</option>";
             fetch(`/users/roles/parent/get_coaches_by_club_and_sport/?club_id=${clubId}&sport_id=${sportId}`)
             .then(response => response.json())
             .then(data => {
+                coachField.innerHTML = "<option value=''>Válassz edzőt...</option>";
                 data.coaches.forEach(coach => {
                     let option = new Option(coach.name, coach.id);
                     coachField.add(option);
@@ -100,38 +145,33 @@ document.addEventListener("DOMContentLoaded", function() {
         }
     }
     
-    // Klub változás → sportokat frissít
     clubField.addEventListener("change", function() {
         let clubId = this.value;
-        sportField.innerHTML = "<option value=''>Válassz sportágat...</option>";
-        coachField.innerHTML = "<option value=''>Válassz edzőt...</option>";
+        sportField.innerHTML = "<option value=''>Betöltés...</option>";
+        coachField.innerHTML = "<option value=''>Előbb válassz sportágat</option>";
         
         if (clubId) {
             fetch(`/users/roles/parent/get_sports_by_club/?club_id=${clubId}`)
             .then(response => response.json())
             .then(data => {
+                sportField.innerHTML = "<option value=''>Válassz sportágat...</option>";
                 data.sports.forEach(sport => {
                     let option = new Option(sport.name, sport.id);
                     sportField.add(option);
                 });
-                
-                // Ha volt korábban kiválasztott sport, frissítjük az edzőket
-                if (sportField.value) {
-                    sportField.dispatchEvent(new Event('change'));
-                }
+                // Ha volt érték, frissítsük az edzőket
+                if (sportField.value) updateCoaches();
             });
         }
     });
     
-    // Sport változás → edzőket frissít (Használjuk a fenti updateCoaches függvényt)
     sportField.addEventListener("change", updateCoaches);
     
-    // 💥 ÚJ KÓD: Kezdeti állapot kezelése
-    // Ez a blokk indítja be a láncot a lapbetöltéskor (Club -> Sport -> Coach)
-    if (clubField.value) {
-        // Ha a Club mező már ki van töltve, futtassuk le a Club frissítő logikáját (ami behívja a Sport frissítést is).
+    // Kezdeti állapot (ha vissza gombbal jön vagy validációs hiba volt)
+    if (clubField.value && !sportField.value) {
         clubField.dispatchEvent(new Event('change'));
     }
 });
 </script>
+{% endblock %}
 {% endblock %}

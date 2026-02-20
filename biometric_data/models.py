@@ -1,6 +1,7 @@
 # biometric_data/models.py
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 
 class WeightData(models.Model):
     # A te általad megadott kód ide
@@ -57,7 +58,7 @@ class HRVandSleepData(models.Model):
     hrv = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name="HRV (ms)")
     sleep_quality = models.IntegerField(choices=SLEEP_QUALITY_CHOICES[1:], null=True, blank=True, verbose_name="Alvás Minősége")
     alertness = models.IntegerField(choices=ALERTNESS_CHOICES[1:], null=True, blank=True, verbose_name="Éberség / Közérzet")
-    recorded_at = models.DateField(auto_now_add=True)
+    recorded_at = models.DateField(default=timezone.now, verbose_name="Rögzítés napja")
 
     class Meta:
         verbose_name = "HRV és Alvás Adat"
@@ -95,7 +96,7 @@ class WorkoutFeedback(models.Model):
         help_text="1-10 közötti skálán"
     )
     # 
-    workout_date = models.DateField(auto_now_add=True)
+    workout_date = models.DateField(default=timezone.now, verbose_name="Edzés napja")
     
     class Meta:
         verbose_name = "Edzésvisszajelzés"
@@ -114,7 +115,7 @@ class RunningPerformance(models.Model):
     run_avg_hr = models.IntegerField(null=True, blank=True, verbose_name="Átlagos pulzus (bpm)") # Opcionális
     
     # Kiegészítő mező az időponthoz
-    run_date = models.DateField(auto_now_add=True)
+    run_date = models.DateField(default=timezone.now, verbose_name="Futás napja")
     
     class Meta:
         verbose_name = "Futó teljesítmény"

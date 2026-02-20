@@ -1,98 +1,167 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Jóváhagyásra váró szerepkörök{% endblock %}
+{% block title %}Folyamatban lévő ügyek | digiT-Train{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <h2 class="mb-4">Saját, függőben lévő szerepkörök</h2>
+<div class="container py-5">
+    
+    <div class="card border-0 shadow-lg text-white mb-5 overflow-hidden" style="border-radius: 20px; background: linear-gradient(135deg, #6c757d 0%, #343a40 100%);">
+        <div class="card-body p-4 position-relative">
+            <div class="row align-items-center position-relative" style="z-index: 2;">
+                <div class="col-md-2 text-center d-none d-md-block">
+                    <div class="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                        <i class="bi bi-hourglass-split text-white fs-1"></i>
+                    </div>
+                </div>
+                <div class="col-md-10 text-center text-md-start">
+                    <p class="small fw-bold text-uppercase mb-1" style="letter-spacing: 1px; opacity: 0.8;">Adminisztrációs központ</p>
+                    <h4 class="mb-0 fw-light italic">"Itt követheted nyomon a kéréseid állapotát, vagy bírálhatod el a hozzád érkezőket."</h4>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    {% if my_pending_roles %}
-        <div class="table-responsive mb-5">
-            <table class="table table-bordered align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Szerepkör</th>
-                        <th>Klub</th>
-                        <th>Sportág</th>
-                        <th>Megjegyzések</th>
-                        <th>Műveletek</th>
-                    </tr>
-                </thead>
-                <tbody>
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="d-flex align-items-center mb-4">
+                <div class="bg-primary text-white rounded-3 p-2 me-3">
+                    <i class="bi bi-person-badge fs-4"></i>
+                </div>
+                <h3 class="fw-bold mb-0">Saját szerepkör igényléseim</h3>
+            </div>
+
+            {% if my_pending_roles %}
+                <div class="row g-3">
                     {% for role in my_pending_roles %}
-                        <tr>
-                            <td>{{ role.role.name }}</td>
-                            <td>{{ role.club.short_name }}</td>
-                            <td>{{ role.sport.name }}</td>
-                            <td>{{ role.notes|default:"—" }}</td>
-                            <td>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="card border-0 shadow-sm h-100 card-hover-effect" style="border-radius: 15px;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <span class="badge rounded-pill bg-warning text-dark px-3 py-2">
+                                        <i class="bi bi-clock-history me-1"></i> Függőben
+                                    </span>
+                                    <h5 class="fw-bold text-primary mb-0">{{ role.role.name }}</h5>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="small text-muted text-uppercase fw-bold">Klub / Sportág</div>
+                                    <div class="fw-semibold text-dark">{{ role.club.short_name }} — {{ role.sport.name }}</div>
+                                </div>
+                                <div class="mb-4">
+                                    <div class="small text-muted text-uppercase fw-bold">Megjegyzés</div>
+                                    <div class="small italic text-muted">{{ role.notes|default:"Nincs megjegyzés" }}</div>
+                                </div>
                                 <form method="post" action="{% url 'users:cancel_role' role.id %}" onsubmit="return confirm('Biztosan visszavonja a kérést?');">
                                     {% csrf_token %}
-                                    <button type="submit" class="btn btn-warning btn-sm">Visszavonás</button>
+                                    <button type="submit" class="btn btn-outline-danger btn-sm w-100 rounded-pill">
+                                        <i class="bi bi-x-circle me-1"></i> Kérés visszavonása
+                                    </button>
                                 </form>
-                            </td>
-                        </tr>
+                            </div>
+                        </div>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5 bg-light rounded-4 border-2 border-dashed">
+                    <i class="bi bi-check-all fs-1 text-muted"></i>
+                    <p class="text-muted mt-2">Jelenleg nincs aktív igénylésed.</p>
+                </div>
+            {% endif %}
         </div>
-    {% else %}
-        <div class="alert alert-info mb-5">
-            Jelenleg nincs függőben lévő szerepkör igénylése.
-        </div>
-    {% endif %}
+    </div>
 
-    <h2 class="mb-4">Jóváhagyásra váró szerepkörök (feletteseknek)</h2>
-    
-    {% if pending_roles_for_approval %}
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Felhasználó Név</th>
-                        <th>Szerepkör</th>
-                        <th>Klub</th>
-                        <th>Sportág</th>
-                        <th>Megjegyzések</th>
-                        <th>Műveletek</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for role in pending_roles_for_approval %}
-                        <tr>
-                            <td>
-                                {% if role.user.profile.first_name and role.user.profile.last_name %}
-                                    {{ role.user.profile.first_name }} {{ role.user.profile.last_name }}
-                                {% else %}
-                                    {{ role.user.username }}
-                                {% endif %}
-                            </td>
-                            <td>{{ role.role.name }}</td>
-                            <td>{{ role.club.short_name }}</td>
-                            <td>{{ role.sport.name }}</td>
-                            <td>{{ role.notes|default:"—" }}</td>
-                            <td>
-                                <div class="d-flex gap-2">
-                                    <form method="post" action="{% url 'users:approve_role' role.id %}">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-success btn-sm">Jóváhagyás</button>
-                                    </form>
-                                    <form method="post" action="{% url 'users:reject_role' role.id %}">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-danger btn-sm">Elutasítás</button>
-                                    </form>
-                                </div>
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex align-items-center mb-4">
+                <div class="bg-success text-white rounded-3 p-2 me-3">
+                    <i class="bi bi-shield-check fs-4"></i>
+                </div>
+                <h3 class="fw-bold mb-0">Elbírálásra váró kérések</h3>
+            </div>
+
+            {% if pending_roles_for_approval %}
+                <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 20px;">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4 py-3 border-0">Felhasználó</th>
+                                    <th class="py-3 border-0">Szerepkör</th>
+                                    <th class="py-3 border-0">Klub / Sportág</th>
+                                    <th class="py-3 border-0 text-center">Műveletek</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for role in pending_roles_for_approval %}
+                                <tr>
+                                    <td class="ps-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-sm me-3 bg-secondary bg-opacity-10 text-secondary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                                <i class="bi bi-person-fill"></i>
+                                            </div>
+                                            <div>
+                                                <div class="fw-bold mb-0">
+                                                    {% if role.user.profile.first_name %}
+                                                        {{ role.user.profile.first_name }} {{ role.user.profile.last_name }}
+                                                    {% else %}
+                                                        {{ role.user.username }}
+                                                    {% endif %}
+                                                </div>
+                                                <small class="text-muted italic">{{ role.notes|truncatechars:30 }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge bg-info-subtle text-info rounded-pill px-3">{{ role.role.name }}</span></td>
+                                    <td>
+                                        <div class="small fw-semibold">{{ role.club.short_name }}</div>
+                                        <div class="small text-muted">{{ role.sport.name }}</div>
+                                    </td>
+                                    <td class="pe-4 text-center">
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <form method="post" action="{% url 'users:approve_role' role.id %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-success btn-sm rounded-pill px-3 shadow-sm">
+                                                    <i class="bi bi-check-lg me-1"></i> Jóváhagy
+                                                </button>
+                                            </form>
+                                            <form method="post" action="{% url 'users:reject_role' role.id %}">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                                                    <i class="bi bi-trash me-1"></i> Elutasít
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+                    <div class="bg-success bg-opacity-10 text-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 60px; height: 60px;">
+                        <i class="bi bi-clipboard-check fs-2"></i>
+                    </div>
+                    <h5 class="fw-bold">Mindent feldolgoztál!</h5>
+                    <p class="text-muted mb-0">Jelenleg nincs újabb jóváhagyásra váró igénylés a rendszerben.</p>
+                </div>
+            {% endif %}
         </div>
-    {% else %}
-        <div class="alert alert-info">
-            Jelenleg nincs jóváhagyásra váró szerepkör.
-        </div>
-    {% endif %}
+    </div>
 </div>
+
+<style>
+    .card-hover-effect {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card-hover-effect:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.1) !important;
+    }
+    .italic { font-style: italic; }
+    .bg-info-subtle { background-color: #e0f7fa !important; }
+    .border-dashed { border-style: dashed !important; border-width: 2px !important; }
+</style>
 {% endblock %}

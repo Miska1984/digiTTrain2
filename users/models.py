@@ -175,7 +175,7 @@ class Sport(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} ({self.get_category_display()})"
+        return self.name
 
 def club_logo_upload_path(instance, filename):
     """Generálja a feltöltési útvonalat a klub logóknak"""

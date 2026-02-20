@@ -1,25 +1,33 @@
 from django.contrib import admin
-from .models import Sport, Role, Club, UserRole
+from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from .models import User, Profile, Sport, Role, Club, UserRole, ParentChild
+
+# User regisztráció, hogy lásd a felhasználókat
+@admin.register(User)
+class UserAdmin(BaseUserAdmin):
+    list_display = ('username', 'email', 'first_name', 'last_name', 'is_staff')
+    # Itt használhatod a gyári Django UserAdmin-t
+
+@admin.register(Profile)
+class ProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'first_name', 'last_name', 'date_of_birth', 'gender')
+    search_fields = ('user__username', 'first_name', 'last_name')
+    
+    # Itt az adminban nincs korlátozás, bármit módosíthatsz.
+    # A date_of_birth mező szerkeszthető marad.
+    fields = ('user', 'first_name', 'last_name', 'date_of_birth', 'gender', 'profile_picture')
 
 @admin.register(Sport)
 class SportAdmin(admin.ModelAdmin):
-    # Ezek az oszlopok fognak látszódni a listában
     list_display = ('name', 'category')
-    
-    # Oldalsó szűrő a kategóriák szerint
     list_filter = ('category',)
-    
-    # Keresési lehetőség a sportág neve alapján
     search_fields = ('name',)
-    
-    # Lehetőség a kategória gyors szerkesztésére közvetlenül a listából
     list_editable = ('category',)
 
 @admin.register(Club)
 class ClubAdmin(admin.ModelAdmin):
-    # Csak a nevet és a címet hagyjuk meg, amíg nem látjuk a pontos mezőneveket
-    list_display = ('name', 'address') 
-    search_fields = ('name',)
+    list_display = ('name', 'short_name', 'address') 
+    search_fields = ('name', 'short_name')
 
 @admin.register(Role)
 class RoleAdmin(admin.ModelAdmin):
@@ -27,6 +35,12 @@ class RoleAdmin(admin.ModelAdmin):
 
 @admin.register(UserRole)
 class UserRoleAdmin(admin.ModelAdmin):
-    list_display = ('user', 'club', 'role')
-    list_filter = ('club', 'role')
-    search_fields = ('user__email', 'club__name')
+    list_display = ('user', 'club', 'role', 'status')
+    list_filter = ('club', 'role', 'status')
+    search_fields = ('user__username', 'user__email', 'club__name')
+    list_editable = ('status',) # Így az adminból is gyorsan jóváhagyhatsz
+
+@admin.register(ParentChild)
+class ParentChildAdmin(admin.ModelAdmin):
+    list_display = ('parent', 'child', 'status', 'created_at')
+    list_filter = ('status',)

@@ -1,58 +1,88 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Edző szerepkör szerkesztése{% endblock %}
+{% block title %}Edzői Regisztráció | digiT-Train{% endblock %}
 
 {% block content %}
-<div class="container my-5">
+<div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="h5 mb-0">Edző szerepkör adatok szerkesztése</h2>
+        <div class="col-lg-8">
+            
+            <div class="card border-0 shadow-lg text-white mb-5 overflow-hidden" style="border-radius: 20px; background: linear-gradient(135deg, #198754 0%, #0a5131 100%);">
+                <div class="card-body p-4 position-relative">
+                    <div class="row align-items-center position-relative" style="z-index: 2;">
+                        <div class="col-md-2 text-center d-none d-md-block">
+                            <div class="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-robot text-white" style="font-size: 2.5rem;"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-10">
+                            <p class="small fw-bold text-uppercase mb-1" style="letter-spacing: 1px; opacity: 0.8;">Ditta Edzői Asszisztens</p>
+                            <h4 class="mb-0 fw-light italic">"{{ welcome_message|default:"Üdvözöllek, Coach! Válassz egy klubot, ahol kamatoztatni szeretnéd a tudásod." }}"</h4>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
+            </div>
+
+            <div class="mb-3 px-2">
+                <a href="{% url 'users:role_dashboard' %}" class="text-decoration-none text-muted small hover-success">
+                    <i class="bi bi-arrow-left me-1"></i> Vissza a szerepkörökhöz
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-5">
+                        <div class="role-icon-box bg-success-subtle text-success mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 20px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-person-badge fs-1"></i>
+                        </div>
+                        <h2 class="fw-bold">Edzői Szerepkör Felvétele</h2>
+                        <p class="text-muted">Válaszd ki az egyesületet és a sportágat, amiben oktatsz.</p>
+                    </div>
+
                     {% if messages %}
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px;">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         {% endfor %}
                     {% endif %}
 
-                    <form method="post">
+                    <form method="post" class="needs-validation">
                         {% csrf_token %}
 
-                        <h3 class="h6 text-muted mb-3">Edző szerepkör</h3>
-                        <hr>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <label for="{{ form.club.id_for_label }}" class="form-label small fw-bold text-muted">EGYESÜLET</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-shield-check"></i></span>
+                                    {{ form.club }}
+                                </div>
+                                {% for error in form.club.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                            </div>
 
-                        <div class="row g-3">
                             <div class="col-md-6">
-                                <label for="{{ form.club.id_for_label }}" class="form-label">Klub</label>
-                                {{ form.club }}
-                                {% for error in form.club.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
+                                <label for="{{ form.sport.id_for_label }}" class="form-label small fw-bold text-muted">SPORTÁG</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-trophy"></i></span>
+                                    {{ form.sport }}
+                                </div>
+                                {% for error in form.sport.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
+                                <div id="sport-info" class="small text-muted mt-1 italic">Válassz klubot a sportágak frissítéséhez!</div>
                             </div>
-                            <div class="col-md-6">
-                                <label for="{{ form.sport.id_for_label }}" class="form-label">Sportág</label>
-                                {{ form.sport }}
-                                {% for error in form.sport.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            </div>
+
                             <div class="col-12">
-                                <label for="{{ form.notes.id_for_label }}" class="form-label">Megjegyzések</label>
+                                <label for="{{ form.notes.id_for_label }}" class="form-label small fw-bold text-muted">MEGJEGYZÉS / BEMUTATKOZÁS (OPCIONÁLIS)</label>
                                 {{ form.notes }}
-                                {% for error in form.notes.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
+                                {% for error in form.notes.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                             </div>
                         </div>
 
-                        <div class="d-flex justify-content-end mt-4">
-                            <button type="submit" class="btn btn-primary">Mentés</button>
+                        <div class="text-center pt-5">
+                            <button type="submit" class="btn btn-success btn-lg px-5 rounded-pill shadow-lg fw-bold">
+                                <i class="bi bi-check2-square me-2"></i> Jelentkezés Mentése
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -61,38 +91,88 @@
     </div>
 </div>
 
+<style>
+    .italic { font-style: italic; }
+    .hover-success:hover { color: #198754 !important; }
+    
+    /* Input design szinkronizálása */
+    .input-group-text {
+        border-radius: 12px 0 0 12px !important;
+        border: 1px solid #dee2e6;
+    }
+    .form-control, .form-select {
+        border-radius: 0 12px 12px 0 !important;
+        padding: 10px 15px;
+        border: 1px solid #dee2e6;
+    }
+    textarea.form-control {
+        border-radius: 12px !important;
+    }
+    .form-select:focus, .form-control:focus {
+        border-color: #198754;
+        box-shadow: 0 0 0 0.25rem rgba(25, 135, 84, 0.1);
+    }
+</style>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const clubSelect = document.getElementById("id_club");
     const sportSelect = document.getElementById("id_sport");
+    const sportInfo = document.getElementById("sport-info");
+
+    // Ha van alapból kiválasztva klub (pl. hiba utáni újratöltés), frissítjük a sportokat
+    if (clubSelect.value) {
+        updateSports(clubSelect.value);
+    }
 
     clubSelect.addEventListener("change", function () {
-        const clubId = this.value;
-        sportSelect.innerHTML = '<option value="">Betöltés...</option>';
-
-        if (clubId) {
-            fetch(`/users/roles/coach/get-sports/${clubId}/`)
-                .then(response => response.json())
-                .then(data => {
-                    sportSelect.innerHTML = "";
-                    if (data.sports.length === 0) {
-                        const option = document.createElement("option");
-                        option.text = "Nincs elérhető sportág";
-                        option.value = "";
-                        sportSelect.add(option);
-                    } else {
-                        data.sports.forEach(sport => {
-                            const option = document.createElement("option");
-                            option.value = sport.id;
-                            option.text = sport.name;
-                            sportSelect.add(option);
-                        });
-                    }
-                });
-        } else {
-            sportSelect.innerHTML = '<option value="">Előbb válassz klubot</option>';
-        }
+        updateSports(this.value);
     });
+
+    function updateSports(clubId) {
+        if (!clubId) {
+            sportSelect.innerHTML = '<option value="">Előbb válassz klubot</option>';
+            sportInfo.innerText = "Válassz klubot a sportágak frissítéséhez!";
+            return;
+        }
+
+        sportSelect.innerHTML = '<option value="">Betöltés...</option>';
+        sportInfo.innerText = "Sportágak keresése az egyesületnél...";
+
+        fetch(`/users/roles/coach/get-sports/${clubId}/`)
+            .then(response => {
+                if (!response.ok) throw new Error('Hiba a lekérés során');
+                return response.json();
+            })
+            .then(data => {
+                sportSelect.innerHTML = "";
+                if (data.sports.length === 0) {
+                    const option = document.createElement("option");
+                    option.text = "Nincs elérhető sportág";
+                    option.value = "";
+                    sportSelect.add(option);
+                    sportInfo.innerText = "Ebben a klubban még nincsenek beállítva sportágak.";
+                } else {
+                    // Alapértelmezett üres opció
+                    const defaultOption = document.createElement("option");
+                    defaultOption.text = "-- Válassz sportágat --";
+                    defaultOption.value = "";
+                    sportSelect.add(defaultOption);
+
+                    data.sports.forEach(sport => {
+                        const option = document.createElement("option");
+                        option.value = sport.id;
+                        option.text = sport.name;
+                        sportSelect.add(option);
+                    });
+                    sportInfo.innerText = `Összesen ${data.sports.length} sportág érhető el.`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                sportSelect.innerHTML = '<option value="">Hiba a betöltéskor</option>';
+            });
+    }
 });
 </script>
 {% endblock %}

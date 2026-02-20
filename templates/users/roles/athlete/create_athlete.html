@@ -1,228 +1,182 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block title %}Sportoló Regisztráció | digiT-Train{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <h2>Sportoló szerepkör igénylése</h2>
-    <form method="post" id="athlete-form">
-         {% if form.errors %}
-            <div class="alert alert-danger">
-                <strong>Hiba a beküldésnél:</strong>
-                <ul>
-                    {% for field, errors in form.errors.items %}
-                        <li>{{ field }}: {{ errors|join:", " }}</li>
-                    {% endfor %}
-                </ul>
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            
+            <div class="card border-0 shadow-lg text-white mb-5 overflow-hidden" style="border-radius: 20px; background: linear-gradient(135deg, #0d6efd 0%, #003bab 100%);">
+                <div class="card-body p-4 position-relative">
+                    <div class="row align-items-center position-relative" style="z-index: 2;">
+                        <div class="col-md-2 text-center d-none d-md-block">
+                            <div class="bg-white bg-opacity-20 rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-robot text-white" style="font-size: 2.5rem;"></i>
+                            </div>
+                        </div>
+                        <div class="col-md-10">
+                            <p class="small fw-bold text-uppercase mb-1" style="letter-spacing: 1px; opacity: 0.8;">Ditta Navigator</p>
+                            <h4 class="mb-0 fw-light italic">"{{ welcome_message|default:"Szia! Készen állsz az edzésre? Jelöld be a klubodat és az edződet!" }}"</h4>
+                        </div>
+                    </div>
+                </div>
             </div>
-        {% endif %}
-        {% csrf_token %}
-        <div class="mb-3">
-            <label for="id_club" class="form-label">Egyesület</label>
-            {{ form.club }}
+
+            <div class="mb-3 px-2">
+                <a href="{% url 'users:role_dashboard' %}" class="text-decoration-none text-muted small hover-primary">
+                    <i class="bi bi-arrow-left me-1"></i> Vissza a szerepkörökhöz
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-5">
+                        <div class="role-icon-box bg-primary-subtle text-primary mx-auto mb-3" style="width: 70px; height: 70px; border-radius: 20px; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-person-walking fs-1"></i>
+                        </div>
+                        <h2 class="fw-bold">Sportoló Szerepkör</h2>
+                        <p class="text-muted small">Csatlakozz az egyesületedhez a pontos statisztikákért.</p>
+                    </div>
+
+                    {% if form.errors %}
+                        <div class="alert alert-danger border-0 rounded-4 shadow-sm mb-4">
+                            <ul class="mb-0 small">
+                                {% for field, errors in form.errors.items %}
+                                    <li><strong>{{ field.label }}:</strong> {{ errors|join:", " }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+
+                    <form method="post" id="athlete-form" class="needs-validation">
+                        {% csrf_token %}
+
+                        <div class="row g-4">
+                            <div class="col-md-12">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Egyesület</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-building"></i></span>
+                                    {{ form.club }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Sportág</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-activity"></i></span>
+                                    {{ form.sport }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Edző</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-person-badge"></i></span>
+                                    {{ form.coach }}
+                                </div>
+                            </div>
+
+                            <div class="col-md-12" id="parent-field" {% if not kiskoru %}style="display: none;"{% endif %}>
+                                <div class="p-3 border border-warning border-opacity-25 rounded-4 bg-warning bg-opacity-10">
+                                    <label class="form-label small fw-bold text-warning text-uppercase"><i class="bi bi-info-circle me-1"></i>Szülői felügyelet szükséges</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-white border-end-0 text-warning"><i class="bi bi-people"></i></span>
+                                        {{ form.parent }}
+                                    </div>
+                                    <div class="form-text small mt-2">Kiskorú sportolóként kérjük, válaszd ki a regisztrált szülődet a listából.</div>
+                                </div>
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-muted text-uppercase">Megjegyzés</label>
+                                {{ form.notes }}
+                            </div>
+                        </div>
+
+                        <div class="text-center pt-5">
+                            <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-lg fw-bold">
+                                <i class="bi bi-trophy me-2"></i> Jelentkezés Beküldése
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
-        <div class="mb-3">
-            <label for="id_sport" class="form-label">Sportág</label>
-            {{ form.sport }}
-        </div>
-        <div class="mb-3">
-            <label for="id_coach" class="form-label">Edző</label>
-            {{ form.coach }}
-        </div>
-        <div class="mb-3" id="parent-field" {% if not kiskoru %}style="display: none;"{% endif %}>
-            <label for="id_parent" class="form-label">Szülő</label>
-            {{ form.parent }}
-        </div>
-        <div class="mb-3">
-            <label for="id_notes" class="form-label">Megjegyzés</label>
-            {{ form.notes }}
-        </div>
-        <button type="submit" class="btn btn-primary">Beküldés</button>
-    </form>
+    </div>
 </div>
 
+<style>
+    .italic { font-style: italic; }
+    .hover-primary:hover { color: #0d6efd !important; }
+    .input-group-text { border-radius: 12px 0 0 12px !important; }
+    .form-select, .form-control { border-radius: 0 12px 12px 0 !important; padding: 12px 15px; }
+    textarea.form-control { border-radius: 12px !important; }
+    .form-select:focus, .form-control:focus { border-color: #0d6efd; box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1); }
+</style>
 
 {% endblock %}
 
-
-
 {% block extra_js %}
-
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script>
-
-function isHtmlResponse(data, jqXHR) {
-    const ct = jqXHR.getResponseHeader("Content-Type") || "";
-    return (typeof data === "string" && ct.includes("text/html"));
-}
-
 $(document).ready(function () {
-    console.log("🧠 Új Athlete JS betöltve.");
-
     const isUnderage = "{{ kiskoru|yesno:'true,false' }}" === "true";
-    const initialClub = $("#id_club").val();
-    const initialSport = $("#id_sport").val();
-    const initialCoach = $("#id_coach").val();
-    const initialParent = $("#id_parent").val();
-
-    if (!isUnderage) {
-        $("#parent-field").hide();
-    }
-
-    // ---------------------------------------------------------
-    // 🔧 Helper függvény: csak akkor futtatja a callback-et,
-    // ha a válasz LISTA. Ha nem → logol és leáll.
-    // ---------------------------------------------------------
-    function handleListResponse(data, onSuccess) {
-        if (!Array.isArray(data)) {
-            console.error("❌ Hibás válasz, nem lista:", data);
-            return;
-        }
-        onSuccess(data);
-    }
-
-    // ---------------------------------------------------------
-    // 🔵 SPORTOK BETÖLTÉSE
-    // ---------------------------------------------------------
-    function loadSports(clubId, initialSport = null, initialCoach = null, initialParent = null) {
-        $("#id_sport").empty().append('<option value="">Válassz sportágat</option>');
-        $("#id_coach").empty().append('<option value="">Válassz edzőt</option>');
-        $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
+    
+    function loadSports(clubId, initialSport = null) {
+        let $sport = $("#id_sport");
+        $sport.empty().append('<option value="">Betöltés...</option>');
         
-        if (!clubId) return;
-
         $.get("{% url 'users:get_sports_by_club' %}", { club_id: clubId })
-        .done(function(data, status, jqXHR) {
-
-            // 🚨 HTML válasz ellenőrzése
-            if (isHtmlResponse(data, jqXHR)) {
-                console.error("🚨 HTML érkezett JSON helyett (loadSports) → interstitial valószínű!\n", data.slice(0,150));
-                return;
+        .done(function(data) {
+            $sport.empty().append('<option value="">Válassz sportágat</option>');
+            data.forEach(item => $sport.append(`<option value="${item.id}">${item.name}</option>`));
+            if (initialSport) {
+                $sport.val(initialSport);
+                loadCoaches(clubId, initialSport, "{{ form.coach.value|default:'' }}");
             }
-
-            // 🚨 JSON tömb ellenőrzése
-            if (!Array.isArray(data)) {
-                console.error("❌ Hibás JSON (nem lista):", data);
-                return;
-            }
-
-            // --- ÉRVÉNYES VÁLASZ ---
-            let sportSelect = $("#id_sport");
-            data.forEach(item => sportSelect.append(`<option value="${item.id}">${item.name}</option>`));
-
-            if (initialSport) sportSelect.val(initialSport);
-
-            if (sportSelect.val()) {
-                loadCoaches(clubId, sportSelect.val(), initialCoach, initialParent);
-            }
-        })
-        .fail(function(xhr, status, error) {
-            console.error("AJAX HIBA (loadSports):", xhr.status, xhr.responseText);
         });
     }
 
-
-
-    // ---------------------------------------------------------
-    // 🔵 EDZŐK BETÖLTÉSE
-    // ---------------------------------------------------------
-    function loadCoaches(clubId, sportId, initialCoach = null, initialParent = null) {
-        $("#id_coach").empty().append('<option value="">Válassz edzőt</option>');
-        $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
-
-        if (!clubId || !sportId) return;
-
+    function loadCoaches(clubId, sportId, initialCoach = null) {
+        let $coach = $("#id_coach");
+        $coach.empty().append('<option value="">Betöltés...</option>');
+        
         $.get("{% url 'users:get_coaches_by_club_and_sport' %}", { club_id: clubId, sport_id: sportId })
-        .done(function(data, status, jqXHR) {
-
-            if (isHtmlResponse(data, jqXHR)) {
-                console.error("🚨 HTML érkezett JSON helyett (loadCoaches)!\n", data.slice(0,150));
-                return;
+        .done(function(data) {
+            $coach.empty().append('<option value="">Válassz edzőt</option>');
+            data.forEach(item => $coach.append(`<option value="${item.id}">${item.name}</option>`));
+            if (initialCoach) {
+                $coach.val(initialCoach);
+                if (isUnderage) loadParents(clubId, sportId, initialCoach, "{{ form.parent.value|default:'' }}");
             }
-
-            if (!Array.isArray(data)) {
-                console.error("❌ Hibás JSON (nem lista):", data);
-                return;
-            }
-
-            let coachSelect = $("#id_coach");
-            data.forEach(item => coachSelect.append(`<option value="${item.id}">${item.name}</option>`));
-
-            if (initialCoach) coachSelect.val(initialCoach);
-
-            if (coachSelect.val()) {
-                loadParents(clubId, sportId, coachSelect.val(), initialParent);
-            }
-        })
-        .fail(function(xhr) {
-            console.error("AJAX HIBA (loadCoaches):", xhr.status, xhr.responseText);
         });
     }
 
-
-
-    // ---------------------------------------------------------
-    // 🔵 SZÜLŐK BETÖLTÉSE (csak kiskorúnál)
-    // ---------------------------------------------------------
     function loadParents(clubId, sportId, coachId, initialParent = null) {
-        $("#id_parent").empty().append('<option value="">Válassz szülőt</option>');
-
-        if (!isUnderage) {
-            $("#parent-field").hide();
-            return;
-        }
-
-        $("#parent-field").show();
-
-        if (!clubId || !sportId || !coachId) return;
-
+        if (!isUnderage) return;
+        let $parent = $("#id_parent");
+        $parent.empty().append('<option value="">Betöltés...</option>');
+        
         $.get("{% url 'users:get_parents_by_club_sport_and_coach' %}", {
             club_id: clubId, sport_id: sportId, coach_id: coachId
         })
-        .done(function(data, status, jqXHR) {
-
-            if (isHtmlResponse(data, jqXHR)) {
-                console.error("🚨 HTML érkezett JSON helyett (loadParents)!\n", data.slice(0,150));
-                return;
-            }
-
-            if (!Array.isArray(data)) {
-                console.error("❌ Hibás JSON (nem lista):", data);
-                return;
-            }
-
-            let parentSelect = $("#id_parent");
-            data.forEach(item => parentSelect.append(`<option value="${item.id}">${item.name}</option>`));
-
-            if (initialParent) parentSelect.val(initialParent);
-        })
-        .fail(function(xhr) {
-            console.error("AJAX HIBA (loadParents):", xhr.status, xhr.responseText);
+        .done(function(data) {
+            $parent.empty().append('<option value="">Válassz szülőt</option>');
+            data.forEach(item => $parent.append(`<option value="${item.id}">${item.name}</option>`));
+            if (initialParent) $parent.val(initialParent);
         });
     }
 
+    // Eventek
+    $("#id_club").change(function () { loadSports($(this).val()); });
+    $("#id_sport").change(function () { loadCoaches($("#id_club").val(), $(this).val()); });
+    $("#id_coach").change(function () { loadParents($("#id_club").val(), $("#id_sport").val(), $(this).val()); });
 
-    // ---------------------------------------------------------
-    // 🔄 EVENT LISTENEREK
-    // ---------------------------------------------------------
-    $("#id_club").change(function () {
-        loadSports($(this).val());
-    });
-
-    $("#id_sport").change(function () {
-        loadCoaches($("#id_club").val(), $(this).val());
-    });
-
-    $("#id_coach").change(function () {
-        loadParents($("#id_club").val(), $("#id_sport").val(), $(this).val());
-    });
-
-    // ---------------------------------------------------------
-    // ♻️ ÚJRATÖLTÉS UTÁNI AUTOMATIKUS BETÖLTÉS
-    // ---------------------------------------------------------
-    if (initialClub) {
-        loadSports(initialClub, initialSport, initialCoach, initialParent);
-    }
+    // Kezdő betöltés
+    const startClub = $("#id_club").val();
+    if (startClub) loadSports(startClub, "{{ form.sport.value|default:'' }}");
 });
 </script>
-
-
 {% endblock %}

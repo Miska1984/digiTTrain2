@@ -1,20 +1,43 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Új klub létrehozása{% endblock %}
+{% block title %}Klub Alapítása | digiT-Train{% endblock %}
 
 {% block content %}
-<div class="container my-5">
+<div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-            <div class="card shadow-sm">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="h5 mb-0">Új klub létrehozása</h2>
+        <div class="col-lg-9">
+            
+            <div class="card border-0 shadow-lg text-white mb-5 overflow-hidden" style="border-radius: 20px; background: linear-gradient(135deg, #0d6efd 0%, #003d99 100%);">
+                <div class="card-body p-4 position-relative">
+                    <div class="row align-items-center position-relative" style="z-index: 2;">
+                        <div class="col-md-2 text-center d-none d-md-block">
+                            <i class="bi bi-robot display-4 opacity-50"></i>
+                        </div>
+                        <div class="col-md-10">
+                            <p class="small fw-bold text-uppercase mb-1" style="letter-spacing: 1px; opacity: 0.8;">Ditta Tanácsadó</p>
+                            <h4 class="mb-0 italic fw-light">"{{ welcome_message }}"</h4>
+                        </div>
+                    </div>
                 </div>
-                <div class="card-body">
+            </div>
+
+            <div class="mb-3 px-2">
+                <a href="{% url 'core:main_page' %}" class="text-decoration-none text-muted small hover-primary">
+                    <i class="bi bi-arrow-left me-1"></i> Mégsem, vissza a főoldalra
+                </a>
+            </div>
+
+            <div class="card border-0 shadow-sm" style="border-radius: 20px;">
+                <div class="card-body p-4 p-md-5">
+                    <div class="text-center mb-5">
+                        <h2 class="fw-bold">Új Egyesület Regisztrálása</h2>
+                        <p class="text-muted">Add meg a klubod adatait és válaszd ki a támogatott sportágakat.</p>
+                    </div>
+
                     {% if messages %}
                         {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show border-0 shadow-sm mb-4" role="alert" style="border-radius: 12px;">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
@@ -24,54 +47,67 @@
                     <form method="post" enctype="multipart/form-data">
                         {% csrf_token %}
 
-                        <h3 class="h6 text-muted mb-3">Klub adatai</h3>
-                        <hr>
-                        
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label for="{{ club_form.name.id_for_label }}" class="form-label">Klub neve</label>
-                                {{ club_form.name }}
-                                {% for error in club_form.name.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
+                        <div class="row g-4 mb-5">
+                            <div class="col-md-7">
+                                <label for="{{ club_form.name.id_for_label }}" class="form-label small fw-bold text-muted">EGYESÜLET TELJES NEVE</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-building"></i></span>
+                                    {{ club_form.name }}
+                                </div>
+                                {% for error in club_form.name.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                             </div>
-                            <div class="col-md-6">
-                                <label for="{{ club_form.short_name.id_for_label }}" class="form-label">Rövid név</label>
+                            <div class="col-md-5">
+                                <label for="{{ club_form.short_name.id_for_label }}" class="form-label small fw-bold text-muted">RÖVIDÍTETT NÉV (PL. FTC)</label>
                                 {{ club_form.short_name }}
-                                {% for error in club_form.short_name.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
+                                {% for error in club_form.short_name.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                             </div>
                             <div class="col-12">
-                                <label for="{{ club_form.address.id_for_label }}" class="form-label">Cím</label>
-                                {{ club_form.address }}
-                                {% for error in club_form.address.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            <div class="col-12">
-                                <label for="{{ club_form.logo.id_for_label }}" class="form-label">Logó</label>
-                                {{ club_form.logo }}
-                                {% for error in club_form.logo.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label d-block">Sportágak</label>
-                                {% for checkbox in club_form.sports %}
-                                    <div class="form-check form-check-inline">
-                                        {{ checkbox.tag }}
-                                        <label class="form-check-label" for="{{ checkbox.id_for_label }}">{{ checkbox.choice_label }}</label>
-                                    </div>
-                                {% endfor %}
-                                {% for error in club_form.sports.errors %}
-                                    <div class="invalid-feedback d-block">{{ error }}</div>
-                                {% endfor %}
+                                <label for="{{ club_form.address.id_for_label }}" class="form-label small fw-bold text-muted">HIVATALOS CÍM</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-light border-end-0"><i class="bi bi-geo-alt"></i></span>
+                                    {{ club_form.address }}
+                                </div>
+                                {% for error in club_form.address.errors %}<div class="text-danger small mt-1">{{ error }}</div>{% endfor %}
                             </div>
                         </div>
-                        
-                        <div class="d-flex justify-content-end mt-4">
-                            <button type="submit" class="btn btn-primary">Létrehozás</button>
+
+                        <div class="mb-5">
+                            <label class="form-label small fw-bold text-muted">EGYESÜLETI LOGÓ</label>
+                            <div class="p-4 bg-light rounded-4 border border-dashed text-center">
+                                <i class="bi bi-cloud-arrow-up text-primary display-6 mb-2"></i>
+                                <div class="mx-auto" style="max-width: 350px;">
+                                    {{ club_form.logo }}
+                                </div>
+                                <p class="text-muted small mt-2">JPG, PNG vagy SVG formátum javasolt.</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <label class="form-label small fw-bold text-muted d-block mb-3">VÁLASZTHATÓ SPORTÁGAK</label>
+                            <div class="row row-cols-2 row-cols-md-4 g-3">
+                                {% for checkbox in club_form.sports %}
+                                    <div class="col">
+                                        <div class="form-check custom-sport-card shadow-sm border h-100 p-3 rounded-3 bg-white transition-all">
+                                            {{ checkbox.tag }}
+                                            <label class="form-check-label fw-bold small ms-1" for="{{ checkbox.id_for_label }}">
+                                                {{ checkbox.choice_label }}
+                                            </label>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            {% for error in club_form.sports.errors %}
+                                <div class="text-danger small mt-3 text-center fw-bold">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="text-center pt-4">
+                            <button type="submit" class="btn btn-primary btn-lg px-5 rounded-pill shadow-lg fw-bold">
+                                <i class="bi bi-check2-circle me-2"></i> Egyesület Létrehozása
+                            </button>
+                            <p class="text-muted small mt-4">
+                                <i class="bi bi-info-circle me-1"></i> A mentés után te leszel a klub adminisztrátora.
+                            </p>
                         </div>
                     </form>
                 </div>
@@ -79,4 +115,40 @@
         </div>
     </div>
 </div>
+
+<style>
+    /* Egyedi stílusok a Ditta-felülethez */
+    .italic { font-style: italic; }
+    .custom-sport-card {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+    .custom-sport-card:hover {
+        border-color: #0d6efd !important;
+        background-color: #f8faff !important;
+        transform: translateY(-2px);
+    }
+    .form-check-input {
+        cursor: pointer;
+        width: 1.2em;
+        height: 1.2em;
+    }
+    .form-check-input:checked + .form-check-label {
+        color: #0d6efd;
+    }
+    .input-group-text {
+        border-radius: 10px 0 0 10px !important;
+    }
+    input.form-control {
+        border-radius: 0 10px 10px 0 !important;
+        padding: 12px;
+    }
+    input#id_short_name {
+        border-radius: 10px !important;
+    }
+    .transition-all { transition: all 0.2s ease-in-out; }
+    .hover-primary:hover { color: #0d6efd !important; }
+</style>
 {% endblock %}

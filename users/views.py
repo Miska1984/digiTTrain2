@@ -11,7 +11,6 @@ from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
-from formtools.wizard.views import SessionWizardView
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 import os
