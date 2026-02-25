@@ -256,6 +256,7 @@ class PostureAssessmentService(BaseDiagnosticService):
                 "max_lateral_shift": float(round(max_lateral_shift, 3)),
                 "feedback": feedback,
             },
+            "feedback": feedback,
             "shoulder_snapshot_url": shoulder_snapshot_url,
             "hip_snapshot_url": hip_snapshot_url,
         }

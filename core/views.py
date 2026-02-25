@@ -5,6 +5,7 @@ from django.db.models import Q
 from users.models import UserRole, Role, Club, Sport
 import logging
 from ml_engine.ai_coach_service import DittaCoachService
+from billing.models import ServicePlan
 
 ditta_service = DittaCoachService()
 
@@ -31,6 +32,27 @@ def imprint_terms_view(request):
     Impresszum és ÁSZF oldal megjelenítése (base_out.html-t használja).
     """
     return render(request, 'core/imprint_terms.html')
+
+def features_view(request):
+    """
+    A funkciók és a rendszer működésének részletes bemutatása.
+    """
+    context = {
+        'ad_free_plans': ServicePlan.objects.filter(plan_type='AD_FREE', is_active=True).order_by('price_ft'),
+        'ml_plans': ServicePlan.objects.filter(plan_type='ML_ACCESS', is_active=True).order_by('price_ft'),
+        'analysis_plans': ServicePlan.objects.filter(plan_type='ANALYSIS', is_active=True).order_by('price_ft'),
+    }
+    return render(request, 'core/features.html', context)
+
+def knowledge_base_view(request):
+    """
+    A rendszer tudományos hátterének és algoritmusainak részletes bemutatása.
+    """
+    context = {
+        'section': 'science',
+        'app_context': 'knowledge_base',
+    }
+    return render(request, 'core/knowledge_base.html', context)
 
 @login_required
 def main_page(request):

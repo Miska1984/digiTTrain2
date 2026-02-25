@@ -1,44 +1,102 @@
 {% extends 'base.html' %}
 {% load crispy_forms_tags %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Fitzone - {{ title }}{% endblock %}
 
 {% block content %}
 <div class="container my-5">
     <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-8">
-            <div class="card shadow-lg border-0">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="card-title mb-0">{{ title }}</h2>
-                    <p class="mb-0 small">Kérjük, rögzítse az eseti méréseket testösszetétel, marokerő.</p>
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0" style="border-radius: 20px; overflow: hidden;">
+                <div class="card-header bg-dark text-white py-3">
+                    <h2 class="h4 mb-0"><i class="bi bi-clipboard-data me-2"></i>{{ title|default:"Eseti Mérések" }}</h2>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-4">
                     <form method="post">
                         {% csrf_token %}
-
-                        {# -------------------- 1. Testösszetétel (Body Composition) -------------------- #}
-                        <div class="mb-5 p-4 border rounded border-warning">
-                            <h4 class="fw-bold text-warning mb-3">Testösszetétel Eseti Mérése</h4>
-                            <p class="text-muted small">Ezeket az adatokat ritkábban, 2-3 hetente rögzítse.</p>
-                            
-                            {{ weight_form|crispy }}
-                        </div>
-
-                        {# -------------------- 2. Marokerő (Grip Strength) -------------------- #}
-                        <div class="mb-5 p-4 border rounded border-danger">
-                            <h4 class="fw-bold text-danger mb-3">Marokerő Mérés</h4>
-                            <p class="text-muted small">Ezeket az adatokat ritkábban, 2-3 hetente rögzítse..</p>
-                            
-                            {{ feedback_form|crispy }}
-                        </div>
                         
-                        <button type="submit" class="btn btn-success mt-4 w-100 btn-lg">
-                            <i class="bi bi-save me-2"></i> Adatok Mentése
+                        <div class="alert alert-info border-0 shadow-sm mb-4 d-flex align-items-center" style="border-radius: 12px;">
+                            <i class="bi bi-robot fs-4 me-3 text-primary"></i>
+                            <div>
+                                <strong>Ditta tipp:</strong> Ezeket az adatokat elég 2-3 hetente frissítened, hogy lássuk a hosszú távú fejlődést és a központi idegrendszered állapotát!
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <h5 class="fw-bold text-warning mb-0">Testösszetétel</h5>
+                                <button type="button" class="btn btn-sm btn-link text-muted ms-2" data-bs-toggle="collapse" data-bs-target="#bodyFatHelp">
+                                    <i class="bi bi-question-circle"></i> Mi ez?
+                                </button>
+                            </div>
+                            
+                            <div class="collapse" id="bodyFatHelp">
+                                <div class="p-3 mb-3 bg-light border-start border-warning border-4 small text-dark">
+                                    A testzsír és izomtömeg mérése segít Dittának finomhangolni a kalóriakeretedet és látni, hogy a súlyváltozásod minőségi-e.
+                                </div>
+                            </div>
+
+                            <div class="p-4 border rounded bg-white shadow-sm">
+                                {{ weight_form|crispy }}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <h5 class="fw-bold text-danger mb-0">Marokerő</h5>
+                                <button type="button" class="btn btn-sm btn-link text-muted ms-2" data-bs-toggle="collapse" data-bs-target="#gripHelp">
+                                    <i class="bi bi-question-circle"></i> Miért mérjük?
+                                </button>
+                            </div>
+
+                            <div class="collapse" id="gripHelp">
+                                <div class="p-3 mb-3 bg-light border-start border-danger border-4 small text-dark">
+                                    A marokerő hirtelen csökkenése a központi idegrendszer fáradtságának egyik legbiztosabb jele. Ha alacsony, Ditta pihenőt fog javasolni!
+                                </div>
+                            </div>
+
+                            <div class="p-4 border rounded bg-white shadow-sm">
+                                {{ feedback_form|crispy }}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-dark w-100 btn-lg rounded-pill shadow">
+                            <i class="bi bi-save me-2"></i> Adatok rögzítése
                         </button>
                     </form>
                 </div>
             </div>
+
+            <div class="text-center mt-4">
+                <a href="{% url 'biometric_data:athlete_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Vissza a főoldalra
+                </a>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+    /* Biztonsági fix a lenyíló szövegekhez */
+    .collapse.show {
+        display: block !important;
+        height: auto !important;
+        visibility: visible !important;
+    }
+    .card { border-radius: 20px; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var collapsibles = document.querySelectorAll('.collapse');
+        collapsibles.forEach(function(el) {
+            el.addEventListener('shown.bs.collapse', function () {
+                this.style.height = 'auto';
+                this.style.display = 'block';
+            });
+        });
+    });
+</script>
 {% endblock %}

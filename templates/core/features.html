@@ -1,0 +1,397 @@
+{% extends "base_out.html" %}
+{% load static %}
+
+{% block title %}Funkciók és Működés - digiT-Train{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">Hogyan működik a digiT-Train?</h1>
+        <p class="lead text-muted">Ismerje meg a regisztráció folyamatát és a biztonságos szakmai hierarchiát.</p>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-5">
+        <div class="row g-0">
+            <div class="col-md-4 bg-primary text-white d-flex align-items-center justify-content-center p-4">
+                <i class="bi bi-person-check display-1"></i>
+            </div>
+            <div class="col-md-8">
+                <div class="card-body p-4 p-lg-5">
+                    <h2 class="fw-bold">1. Ingyenes regisztráció és Profilalkotás</h2>
+                    <p class="text-muted">A rendszer használata egy egyszerű regisztrációval kezdődik. Fontos, hogy a regisztráció után minden felhasználónak ki kell töltenie a <strong>Profil oldalát</strong>. Ez nem csak adminisztráció: az itt megadott alapvető biometriai adatok (pl. születési dátum, nem) szolgálnak alapul az AI algoritmusok pontos számításaihoz.</p>
+                    <div class="alert alert-info border-0 shadow-sm">
+                        <i class="bi bi-info-circle-fill me-2"></i> A 18 év alatti felhasználók esetében a rendszer korlátozásokat alkalmaz a biztonság érdekében.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h2 class="text-center mb-4 fw-bold">Válasszon szakmai utat</h2>
+    <div class="row g-4 mb-5">
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h4 class="fw-bold text-primary"><i class="bi bi-building me-2"></i>Egyesület alapítása</h4>
+                    <p class="text-muted small">Bármely 18 év feletti felhasználó létrehozhat egy digitális egyesületet. Itt meg kell adni az egyesület rövid és teljes nevét, valamint ki kell választani a sportágakat. Az alapító válik az egyesület vezetőjévé, aki teljes kontrollal bír a későbbi jóváhagyások felett.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-body">
+                    <h4 class="fw-bold text-success"><i class="bi bi-person-video3 me-2"></i>Edzői csatlakozás</h4>
+                    <p class="text-muted small">Az edzők a regisztráció után megkeresik a listában az adott egyesületet és sportágat. A jelentkezésük után az <strong>Egyesület vezetőjének</strong> jóváhagyása szükséges a munkájuk megkezdéséhez.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-light p-4 p-lg-5 rounded shadow-sm border mb-5">
+        <h2 class="text-center fw-bold mb-5">Többlépcsős Jóváhagyási Rendszer</h2>
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <p class="text-center text-muted mb-5">A digiT-Train zárt ökoszisztémát alkot, ahol minden kapcsolat szakmai ellenőrzésen alapul:</p>
+                
+                <div class="list-group shadow-sm">
+                    <div class="list-group-item d-flex align-items-start p-3">
+                        <i class="bi bi-1-circle-fill text-primary me-3 fs-4"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">Egyesület Vezető</h6>
+                            <p class="mb-0 small text-muted">Alapít (18+ év felett), és ő hagyja jóvá az edzők jelentkezését.</p>
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex align-items-start p-3">
+                        <i class="bi bi-2-circle-fill text-primary me-3 fs-4"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">Szülő (Kiskorú sportoló esetén)</h6>
+                            <p class="mb-0 small text-muted">Először a szülő regisztrál, megkeresi az egyesületet/edzőt. Ő adja meg az elsődleges engedélyt a gyermek adatkezeléséhez.</p>
+                        </div>
+                    </div>
+                    <div class="list-group-item d-flex align-items-start p-3">
+                        <i class="bi bi-3-circle-fill text-primary me-3 fs-4"></i>
+                        <div>
+                            <h6 class="fw-bold mb-1">Edző</h6>
+                            <p class="mb-0 small text-muted">Jóváhagyja a szülő csatlakozását, és végül felveszi a sportolót a keretbe. Felnőtt sportolók esetén az edző közvetlenül hagyja jóvá a jelentkezést.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-5" id="biometria">
+        <h2 class="text-center mb-5 fw-bold">Napi Biometrikus Monitorozás</h2>
+        
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                    <div class="card-header bg-warning text-dark fw-bold py-3">
+                        <i class="bi bi-sunrise-fill me-2"></i> Reggeli "Ready-to-Train" Állapot
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4 small">A napot a szervezet belső egyensúlyának felmérésével kezdjük, hogy meghatározzuk az aznapi optimális terhelhetőséget.</p>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <strong>Súly és HRV</strong> <br>
+                                        <small class="text-muted">Szívfrekvencia variabilitás (ms) – Az idegrendszer aktuális terhelhetősége.</small>
+                                    </div>
+                                    <span class="badge bg-dark rounded-pill shadow-sm"><i class="bi bi-watch me-1"></i> Okosóra javasolt</span>
+                                </div>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div><strong>Alvásminőség</strong> <br><small class="text-muted">A regeneráció legfontosabb mutatója.</small></div>
+                                <i class="bi bi-moon-stars text-primary"></i>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div><strong>Általános közérzet</strong> <br><small class="text-muted">Szubjektív fáradtság és mentális készenlét.</small></div>
+                                <i class="bi bi-emoji-smile text-primary"></i>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card h-100 border-0 shadow-sm overflow-hidden">
+                    <div class="card-header bg-dark text-white fw-bold py-3">
+                        <i class="bi bi-pala-fill me-2"></i> Edzés Monitoring & Esti Zárás
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted mb-4 small">Az edzés közbeni és utáni adatok segítenek a folyadékpótlás és a neuromuszkuláris fáradtság azonnali elemzésében.</p>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div><strong>Hidratációs Kontroll</strong> <br><small class="text-muted">Edzés előtti/utáni súly és folyadékbevitel.</small></div>
+                                <span class="badge bg-info">Azonnali visszajelzés</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div><strong>Edzés Intenzitás (RPE)</strong> <br><small class="text-muted">A sportoló által érzékelt nehézség (1-10).</small></div>
+                                <i class="bi bi-graph-up text-danger"></i>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div><strong>Neuromuszkuláris Fáradtság</strong> <br><small class="text-muted">Marokerő mérés az idegrendszeri kifáradás jelzésére.</small></div>
+                                <i class="bi bi-hand-index-thumb text-dark"></i>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 p-4 bg-white rounded border-start border-4 border-danger shadow-sm">
+            <h4 class="fw-bold"><i class="bi bi-lightning-charge-fill text-danger me-2"></i> Just-in-Time Visszajelzés</h4>
+            <p class="text-muted mb-0">
+                Rendszerünk egyik legnagyobb előnye az <strong>azonnali adatfeldolgozás</strong>. Amint a sportoló rögzíti az adatait, az edző és a szülő (kiskorúak esetén) a saját műszerfalán valós időben látja az eredményeket. Ha a rendszer drasztikus HRV csökkenést, súlyvesztést vagy kritikus szintre eső marokerőt észlel, azonnali riasztást küld, így a túlterheléses sérülések még a kialakulásuk előtt megelőzhetőek.
+            </p>
+        </div>
+    </div>
+
+    <div class="py-5" id="training-log">
+        <div class="card shadow-sm border-0 overflow-hidden mb-5">
+            <div class="row g-0">
+                <div class="col-md-5 bg-dark text-white p-5 d-flex flex-column justify-content-center">
+                    <h2 class="fw-bold mb-4">Digitális Edzésnapló & Jelenlét</h2>
+                    <p>Az edzők számára a digiT-Train egy teljes körű adminisztrációs felület, amely kiváltja a papíralapú névsorokat és Excel táblákat.</p>
+                    <ul class="list-unstyled mt-3">
+                        <li class="mb-2"><i class="bi bi-calendar-event me-2 text-warning"></i> Edzések meghirdetése és szüneteltetése</li>
+                        <li class="mb-2"><i class="bi bi-check2-square me-2 text-warning"></i> Digitális jelenléti ív vezetése</li>
+                        <li class="mb-2"><i class="bi bi-file-earmark-spreadsheet me-2 text-warning"></i> Excel alapú riportálás</li>
+                    </ul>
+                </div>
+                <div class="col-md-7 p-4 p-lg-5 bg-white">
+                    <h3 class="fw-bold h4 mb-4">Vendég sportolók és Életút-követés</h3>
+                    <p class="text-muted small">
+                        Egyedülálló funkciónk a <strong>"Nem regisztrált sportoló"</strong> kezelése. Az edzők rögzíthetik olyan sportolók (pl. próbázók vagy legfiatalabbak) adatait és jelenlétét is, akik még nem rendelkeznek saját fiókkal. 
+                    </p>
+                    <div class="p-3 bg-light rounded border-start border-4 border-primary mb-4">
+                        <h6 class="fw-bold mb-1 small text-primary"><i class="bi bi-shield-lock-fill me-1"></i> GDPR & Adatösszekapcsolás</h6>
+                        <p class="mb-0 x-small text-muted">Amint a sportoló (vagy szülője) elvégzi a hivatalos regisztrációt, a rendszer intelligensen felkínálja az adatok összekapcsolását. Így a sportolói életút már az első pillanattól kezdve, hézagmentesen dokumentálható.</p>
+                    </div>
+
+                    <h3 class="fw-bold h4 mb-4">Személyre szabott felmérések</h3>
+                    <p class="text-muted small">
+                        Minden sportág más mutatókat igényel. A digiT-Train lehetővé teszi egyedi mérési protokollok létrehozását. Legyen szó Cooper-tesztről, specifikus technikai felmérésekről vagy kondicionális adatokról, a rendszer tárolja és trendekbe rendezi az eredményeket.
+                    </p>
+                    <p class="text-muted small fw-bold">
+                        <i class="bi bi-code-slash me-2 text-primary"></i> Igény esetén egyedi algoritmusokat és mérési modulokat is fejlesztünk egyesületei számára!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-5" id="data-sharing">
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-header bg-primary text-white py-3">
+                <h2 class="h4 mb-0 fw-bold"><i class="bi bi-share-fill me-2"></i> Kontrollált Adatmegosztás</h2>
+            </div>
+            <div class="card-body p-4 p-lg-5">
+                <div class="row align-items-center">
+                    <div class="col-lg-7">
+                        <h3 class="fw-bold h4 mb-3">Transzparens Teljesítményadatok</h3>
+                        <p class="text-muted">
+                            A digiT-Train rendszerében keletkező minden adat (biometria, edzésnapló, mérések) a sportoló tulajdona. Az <strong>adatmegosztási modul</strong> lehetővé teszi, hogy ezeket az eredményeket a sportoló – vagy kiskorú esetén a szülő – megossza az edzővel és az egyesületi vezetőkkel.
+                        </p>
+                        <div class="p-3 bg-warning bg-opacity-10 rounded border-start border-4 border-warning">
+                            <h6 class="fw-bold mb-1"><i class="bi bi-shield-check me-1"></i> GDPR Megfelelőség & Kiskorúak Védelme</h6>
+                            <p class="mb-0 small text-muted">
+                                A 18 év alatti sportolók esetében a rendszer <strong>kettős megerősítést</strong> kér. Az adatmegosztást a szülőnek kell kezdeményeznie vagy jóváhagynia, biztosítva, hogy a gyermek szenzitív biometriai adataihoz csak a jogosult szakmai stáb férhessen hozzá.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-lg-5 text-center mt-4 mt-lg-0">
+                        <div class="p-4 border rounded bg-light">
+                            <i class="bi bi-file-earmark-lock2 display-2 text-primary"></i>
+                            <p class="mt-2 fw-bold small text-uppercase">Titkosított Adattárolás</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-5 bg-dark text-white rounded shadow-lg overflow-hidden" id="ditta-navigator">
+        <div class="row g-0">
+            <div class="col-md-4 d-flex align-items-center justify-content-center p-5 bg-primary">
+                <div class="text-center">
+                    <i class="bi bi-compass display-1"></i>
+                    <h3 class="fw-bold mt-3">Ditta</h3>
+                    <span class="badge bg-white text-primary px-3 py-2">Navigátor Asszisztens</span>
+                </div>
+            </div>
+            <div class="col-md-8 p-4 p-lg-5">
+                <h2 class="fw-bold mb-4">Személyes segítő a digitális úton</h2>
+                <p class="lead text-info">Ditta segít, hogy Önnek ne a rendszer kiismerésével, hanem a sporttal kelljen foglalkoznia.</p>
+                
+                <div class="row g-3 mt-2">
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-secondary bg-opacity-25 rounded h-100 border-start border-primary border-3">
+                            <h6 class="fw-bold"><i class="bi bi-map me-2"></i> Eligazodás a rendszerben</h6>
+                            <p class="small mb-0 text-light">Ditta megmutatja, hol találja a mérési naplót, hogyan töltheti fel a profiladatokat, vagy hol tekintheti meg az edzője visszajelzéseit.</p>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <div class="p-3 bg-secondary bg-opacity-25 rounded h-100 border-start border-primary border-3">
+                            <h6 class="fw-bold"><i class="bi bi-lightbulb me-2"></i> Első lépések támogatása</h6>
+                            <p class="small mb-0 text-light">A bonyolult regisztrációs és jóváhagyási folyamatok során Ditta súg: "Most már csak az edződ jóváhagyására várunk!"</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-white bg-opacity-10 rounded">
+                    <p class="small mb-0">
+                        <i class="bi bi-info-circle-fill me-2 text-info"></i> 
+                        <strong>Fontos:</strong> Ditta Navigátor nem hoz szakmai döntéseket és nem értékeli az adatokat. Feladata a felhasználói élmény megkönnyítése, hogy minden funkciót magabiztosan tudjon használni az első perctől kezdve.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-5 mt-5 border-top border-4 border-warning pt-5" id="ditta-ai-pro">
+        <div class="text-center mb-5">
+            <span class="badge bg-warning text-dark px-3 py-2 mb-2 fw-bold text-uppercase">Prémium Funkció</span>
+            <h2 class="display-5 fw-bold">Ditta AI Pro – Digitális Sporttudomány</h2>
+            <p class="lead text-muted">Amikor az adat nem csak szám, hanem stratégiai előny.</p>
+        </div>
+
+        <div class="card shadow-lg border-0 mb-5 overflow-hidden">
+            <div class="row g-0">
+                <div class="col-lg-6 p-4 p-lg-5">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="bg-primary bg-opacity-10 p-3 rounded-circle me-3">
+                            <i class="bi bi-brain text-primary fs-2"></i>
+                        </div>
+                        <h3 class="fw-bold mb-0">Ditta, az Adatguru</h3>
+                    </div>
+                    <p class="text-muted">Ez a modul a sportoló "digitális mentora". Ditta összefüggéseiben vizsgálja a biometrikus adatokat (alvás, HRV, terhelés) és közérthető magyarázatot ad a formaingadozásokra.</p>
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> <strong>Ok-okozati elemzés:</strong> Megmutatja, miért esik a teljesítmény.</li>
+                        <li class="mb-2"><i class="bi bi-check2-circle text-success me-2"></i> <strong>Szakmai Benchmarking:</strong> Az edzők számára lehetővé teszi két sportoló aktuális állapotának tudományos összehasonlítását.</li>
+                    </ul>
+                </div>
+                <div class="col-lg-6 bg-light d-flex align-items-center justify-content-center">
+                    <div class="text-center p-5">
+                        <i class="bi bi-bar-chart-line display-1 text-primary opacity-25"></i>
+                        <p class="mt-3 text-muted small italic">Személyre szabott elemzések és sportolói összehasonlítások</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4 mb-5">
+            <div class="col-md-6">
+                <div class="card h-100 shadow border-0 bg-dark text-white">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold text-warning mb-3"><i class="bi bi-crystal-ball me-2"></i>Forma Előrejelzés</h4>
+                        <p class="small text-light text-opacity-75">Egy tanított <strong>Machine Learning algoritmus</strong> elemzi a történeti adatokat és az edzésnaplókat. A modell képes felismerni a rejtett mintákat, és megbecsülni a sportoló várható formáját a következő ciklusra.</p>
+                        <div class="p-3 bg-white bg-opacity-10 rounded">
+                            <h6 class="fw-bold small mb-1">Sérüléskockázat értékelés:</h6>
+                            <p class="x-small mb-0">A rendszer jelzi, ha a terhelési és regenerációs adatok aszinkronba kerülnek, csökkentve ezzel a túlterheléses sérülések kockázatát.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-6">
+                <div class="card h-100 shadow border-0">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold text-primary mb-3"><i class="bi bi-camera-video me-2"></i>MediaPipe Mozgáselemzés</h4>
+                        <p class="small text-muted">Használja telefonja kameráját biomechanikai laboratóriumként! A MediaPipe technológiával kötött mozgásformákat elemzünk videó alapján:</p>
+                        <div class="row g-2">
+                            <div class="col-6"><span class="badge bg-light text-dark border w-100">Guggolás elemzés</span></div>
+                            <div class="col-6"><span class="badge bg-light text-dark border w-100">Testtartás szűrés</span></div>
+                            <div class="col-6"><span class="badge bg-light text-dark border w-100">Vállkörzés (ROM)</span></div>
+                            <div class="col-6"><span class="badge bg-light text-dark border w-100">Helyből magas ugrás</span></div>
+                        </div>
+                        <p class="small text-danger mt-3 mb-0 fw-bold">Azonnali aszimmetria és izomgyengeség felismerés!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="py-5 bg-light rounded-3 shadow-sm border mt-5" id="arazas">
+        <div class="container">
+            <div class="text-center mb-5">
+                <h2 class="display-6 fw-bold">Válassza ki az Önnek megfelelő csomagot</h2>
+                <p class="text-muted">Támogassa fejlődését prémium funkciókkal vagy gyűjtsön kreditet ingyen!</p>
+            </div>
+
+            <div class="row g-4 justify-content-center">
+                <div class="col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-body p-4 text-center">
+                            <i class="bi bi-eye-slash text-primary fs-1"></i>
+                            <h4 class="fw-bold mt-3">Hirdetésmentesség</h4>
+                            <p class="small text-muted">Zavartalan élmény havi előfizetéssel.</p>
+                            <hr>
+                            {% for plan in ad_free_plans|slice:":1" %}
+                                <h2 class="fw-bold">{{ plan.price_ft }} Ft<span class="fs-6 text-muted"> / {{ plan.duration_days }} nap</span></h2>
+                            {% endfor %}
+                            <p class="small text-muted mt-3">Az ingyenes verzió fenntartását hirdetésekkel biztosítjuk, de ez bármikor kikapcsolható.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card h-100 shadow border-primary" style="transform: scale(1.05);">
+                        <div class="card-body p-4 text-center">
+                            <span class="badge bg-primary mb-2">Legnépszerűbb</span>
+                            <i class="bi bi-cpu text-primary fs-1"></i>
+                            <h4 class="fw-bold mt-2">Ditta AI Pro</h4>
+                            <p class="small text-muted">Adatguru, ML Előrejelzés és Analitika.</p>
+                            <hr>
+                            {% for plan in ml_plans|slice:":1" %}
+                                <h2 class="fw-bold text-primary">{{ plan.price_ft }} Ft<span class="fs-6 text-muted"> / {{ plan.duration_days }} nap</span></h2>
+                            {% endfor %}
+                            <p class="small text-muted mt-3">Tartalmazza a teljes szakmai támogatást és a gépi tanulási modellek elérését.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-body p-4 text-center">
+                            <i class="bi bi-camera-reels text-primary fs-1"></i>
+                            <h4 class="fw-bold mt-3">Videó Elemzés</h4>
+                            <p class="small text-muted">Darabszám alapú MediaPipe mérések.</p>
+                            <hr>
+                            {% for plan in analysis_plans|slice:":1" %}
+                                <h2 class="fw-bold">{{ plan.price_ft }} Ft<span class="fs-6 text-muted"> / {{ plan.analysis_count }} mérés</span></h2>
+                            {% endfor %}
+                            <p class="small text-muted mt-3">Csak annyit fizet, amennyit használ. Ideális időszakos felmérésekhez.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="p-4 bg-white rounded shadow-sm h-100">
+                        <h5 class="fw-bold text-success"><i class="bi bi-coin me-2"></i>Kreditrendszer: Ingyen is elérhető!</h5>
+                        <p class="small text-muted mb-0">
+                            Nálunk a fejlődés nem csak pénzkérdés. A napi hirdetések megtekintésével <strong>krediteket gyűjthet</strong>, amelyeket beválthat videó elemzésekre vagy rövid távú ML funkciókra. Így a digiT-Train mindenki számára elérhető marad.
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-4 bg-white rounded shadow-sm h-100">
+                        <h5 class="fw-bold text-info"><i class="bi bi-people-fill me-2"></i>Vásárlás mások részére</h5>
+                        <p class="small text-muted mb-0">
+                            <strong>Szülők, edzők és vezetők</strong> figyelmébe: A rendszer lehetővé teszi, hogy ne csak a saját, hanem sportolói számára is vásároljon szolgáltatásokat. A fizetés után a jogosultságok azonnal aktiválódnak a célfelhasználó profilján.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>    
+
+    <div class="text-center py-4">
+        <h3 class="fw-bold">Készen áll a kezdésre?</h3>
+        <a href="{% url 'users:register' %}" class="btn btn-warning btn-lg px-5 fw-bold shadow mt-3">Regisztráció megkezdése</a>
+    </div>
+</div>
+{% endblock %}

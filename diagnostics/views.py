@@ -147,11 +147,24 @@ def run_diagnostic_job_view(request):
 
 @login_required
 def job_status(request, job_id):
+    # Lekérjük a job-ot, vagy 404 hiba
     job = get_object_or_404(DiagnosticJob, id=job_id, user=request.user)
+    
+    # Mivel a modellben nincs 'progress' mező, kiszámoljuk a státusz alapján:
+    # Ez megakadályozza az AttributeError-t és a frontend is kap egy százalékot
+    progress_value = 0
+    if job.status == DiagnosticJob.JobStatus.PENDING:
+        progress_value = 10
+    elif job.status == DiagnosticJob.JobStatus.PROCESSING:
+        progress_value = 50
+    elif job.status in [DiagnosticJob.JobStatus.COMPLETED, DiagnosticJob.JobStatus.FAILED]:
+        progress_value = 100
+
     return JsonResponse({
         "status": job.status,
-        "progress": job.progress,
-        "is_finished": job.status in [DiagnosticJob.JobStatus.COMPLETED, DiagnosticJob.JobStatus.FAILED]
+        "progress": progress_value,  # Itt már nem job.progress-t hívunk!
+        "is_finished": job.status in [DiagnosticJob.JobStatus.COMPLETED, DiagnosticJob.JobStatus.FAILED],
+        "error_message": job.error_message if job.status == DiagnosticJob.JobStatus.FAILED else None
     })
 
 # --- LISTÁZÁS ÉS DASHBOARD ---

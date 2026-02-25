@@ -5,599 +5,157 @@
 
 {% block extra_css %}
 <style>
+    /* 1. LOGÓ FIX - Hogy ne legyen óriási a fejlécben */
+    header img, .navbar-brand img, img[src*="ditta"], #ditta-icon-container img {
+        display: inline-block !important;
+        width: auto !important;
+        max-width: 50px !important; /* Állítsd be a kívánt szélességre */
+        height: auto !important;
+    }
+
+    /* 2. ELRENDEZÉS */
     .profile-container { max-width: 1400px; margin: 0 auto; padding: 20px; }
-
     .header-section { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+    
+    .main-content { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
+    @media (max-width: 1200px) { .main-content { grid-template-columns: 1fr; } }
 
-    .calibration-status {
-        display: inline-block;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: 600;
-        margin-top: 10px;
-    }
+    .form-card, .visualization-card { background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+    .form-card h3, .visualization-card h3 { color: #667eea !important; margin-bottom: 20px; font-size: 24px; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
 
-    .status-calibrated {
-        background: rgba(46, 213, 115, 0.3);
-        border: 2px solid #2ed573;
-    }
+    /* INPUT STÍLUSOK */
+    .measurement-input-wrapper { position: relative; }
+    .measurement-input-wrapper input { width: 100%; padding: 12px 45px 12px 15px; border: 2px solid #e1e8ed; border-radius: 8px; font-size: 16px; }
+    .measurement-input-wrapper .unit { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); color: #95a5a6; font-weight: 600; }
 
-    .status-not-calibrated {
-        background: rgba(255, 107, 107, 0.3);
-        border: 2px solid #ff6b6b;
-    }
+    .btn-primary-custom { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important; border: none !important; color: white !important; padding: 15px 40px; border-radius: 8px; font-weight: 600; width: 100%; }
 
-    .main-content {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 30px;
-        margin-bottom: 30px;
-    }
+    .file-input-label { display: block; padding: 20px; background: #f8f9fa; border: 2px dashed #dee2e6; border-radius: 8px; text-align: center; cursor: pointer; }
+    .file-input-label.has-file { background: #d4edda !important; border-color: #28a745 !important; }
 
-    @media (max-width: 1200px) {
-        .main-content {
-            grid-template-columns: 1fr;
-        }
-    }
+    /* AI KÉP */
+    .ai-result-image { display: block !important; width: 100% !important; height: auto !important; border-radius: 10px; }
 
-    .form-card {
-        background: white;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    }
-
-    .form-card h3 {
-        color: #667eea;
-        margin-bottom: 20px;
-        font-size: 24px;
-        border-bottom: 3px solid #667eea;
-        padding-bottom: 10px;
-    }
-
-    .measurement-group {
-        margin-bottom: 25px;
-    }
-
-    .measurement-group label {
-        display: block;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-
-    .measurement-input-wrapper {
-        position: relative;
-    }
-
-    .measurement-input-wrapper input {
-        width: 100%;
-        padding: 12px 45px 12px 15px;
-        border: 2px solid #e1e8ed;
-        border-radius: 8px;
-        font-size: 16px;
-        transition: all 0.3s;
-    }
-
-    .measurement-input-wrapper input:focus {
-        outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-    }
-
-    .measurement-input-wrapper .unit {
-        position: absolute;
-        right: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #95a5a6;
-        font-weight: 600;
-        pointer-events: none;
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 15px 40px;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s;
-        width: 100%;
-        margin-top: 20px;
-    }
-
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-    }
-
-    .visualization-card {
-        background: white;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-    }
-
-    .visualization-card h3 {
-        color: #667eea;
-        margin-bottom: 20px;
-        font-size: 24px;
-        border-bottom: 3px solid #667eea;
-        padding-bottom: 10px;
-    }
-
-    .body-diagram {
-        position: relative;
-        max-width: 400px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-
-    .body-svg {
-        width: 100%;
-        height: auto;
-    }
-
-    .measurement-label {
-        position: absolute;
-        background: rgba(102, 126, 234, 0.95);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 600;
-        white-space: nowrap;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
-        pointer-events: none;
-        z-index: 10;
-    }
-
-    .measurement-label::after {
-        content: '';
-        position: absolute;
-        width: 2px;
-        height: 20px;
-        background: rgba(102, 126, 234, 0.5);
-        left: 50%;
-        transform: translateX(-50%);
-    }
-
-    .measurement-label.left::after {
-        top: 100%;
-    }
-
-    .measurement-label.right::after {
-        bottom: 100%;
-    }
-
-    .confidence-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 10px;
-        margin-left: 5px;
-        font-weight: 700;
-    }
-
-    .confidence-high { background: #2ed573; color: white; }
-    .confidence-medium { background: #ffa502; color: white; }
-    .confidence-low { background: #ff6b6b; color: white; }
-
-    .calibration-result {
-        background: #f8f9fa;
-        padding: 20px;
-        border-radius: 10px;
-        margin-top: 20px;
-    }
-
-    .calibration-result h4 {
-        color: #2c3e50;
-        margin-bottom: 15px;
-        font-size: 18px;
-    }
-
-    .result-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 10px 0;
-        border-bottom: 1px solid #e1e8ed;
-    }
-
-    .result-item:last-child {
-        border-bottom: none;
-    }
-
-    .result-label {
-        color: #7f8c8d;
-        font-weight: 600;
-    }
-
-    .result-value {
-        color: #2c3e50;
-        font-weight: 700;
-    }
-
-    .annotated-image {
-        margin-top: 20px;
-        border-radius: 10px;
-        overflow: hidden;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    }
-
-    .annotated-image img {
-        width: 100%;
-        height: auto;
-        display: block;
-    }
-
-    .quality-warnings {
-        background: #fff3cd;
-        border-left: 4px solid #ffc107;
-        padding: 15px;
-        border-radius: 5px;
-        margin-top: 20px;
-    }
-
-    .quality-warnings h4 {
-        color: #856404;
-        margin-bottom: 10px;
-        font-size: 16px;
-    }
-
-    .quality-warnings ul {
-        margin: 0;
-        padding-left: 20px;
-    }
-
-    .quality-warnings li {
-        color: #856404;
-        margin-bottom: 5px;
-    }
-
-    .upload-section {
-        background: white;
-        padding: 30px;
-        border-radius: 15px;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-        margin-bottom: 30px;
-    }
-
-    .upload-section h3 {
-        color: #667eea;
-        margin-bottom: 20px;
-        font-size: 24px;
-        border-bottom: 3px solid #667eea;
-        padding-bottom: 10px;
-    }
-
-    .upload-instructions {
-        background: #e3f2fd;
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-    }
-
-    .upload-instructions h4 {
-        color: #1976d2;
-        font-size: 16px;
-        margin-bottom: 10px;
-    }
-
-    .upload-instructions ul {
-        margin: 0;
-        padding-left: 20px;
-        color: #1976d2;
-    }
-
-    .upload-instructions li {
-        margin-bottom: 5px;
-    }
-
-    .file-input-wrapper {
-        position: relative;
-        margin-bottom: 15px;
-    }
-
-    .file-input-wrapper input[type="file"] {
-        display: none;
-    }
-
-    .file-input-label {
-        display: block;
-        padding: 15px;
-        background: #f8f9fa;
-        border: 2px dashed #dee2e6;
-        border-radius: 8px;
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s;
-    }
-
-    .file-input-label:hover {
-        background: #e9ecef;
-        border-color: #667eea;
-    }
-
-    .file-input-label.has-file {
-        background: #d4edda;
-        border-color: #28a745;
-    }
-
-    .file-preview {
-        margin-top: 10px;
-        text-align: center;
-    }
-
-    .file-preview img {
-        max-width: 100%;
-        max-height: 200px;
-        border-radius: 8px;
-        box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    }
-
-    .height-input-group {
-        margin-bottom: 20px;
-    }
-
-    .height-input-group label {
-        display: block;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 8px;
-    }
-
-    .height-input-group input {
-        width: 100%;
-        padding: 12px 15px;
-        border: 2px solid #e1e8ed;
-        border-radius: 8px;
-        font-size: 16px;
-    }
-
-    .messages {
-        list-style: none;
-        padding: 0;
-        margin-bottom: 20px;
-    }
-
-    .alert {
-        padding: 15px;
-        border-radius: 8px;
-        margin-bottom: 10px;
-    }
-
-    .alert-success {
-        background: #d4edda;
-        border: 1px solid #c3e6cb;
-        color: #155724;
-    }
-
-    .alert-error {
-        background: #f8d7da;
-        border: 1px solid #f5c6cb;
-        color: #721c24;
-    }
-
-    .alert-warning {
-        background: #fff3cd;
-        border: 1px solid #ffeaa7;
-        color: #856404;
-    }
-
-    .loading-overlay {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.7);
-        z-index: 9999;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .loading-overlay.active {
-        display: flex;
-    }
-
-    .loading-content {
-        background: white;
-        padding: 40px;
-        border-radius: 15px;
-        text-align: center;
-    }
-
-    .spinner {
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #667eea;
-        border-radius: 50%;
-        width: 50px;
-        height: 50px;
-        animation: spin 1s linear infinite;
-        margin: 0 auto 20px;
-    }
-
-    @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-
-    .manual-section {
-    background: #f8f9ff;
-    border: 2px dashed #667eea;
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: inset 0 0 10px rgba(102, 126, 234, 0.05);
-    }
-    .manual-section h3 {
-        color: #764ba2;
-        margin-bottom: 15px;
-    }
-
-
+    /* LOADING */
+    .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; justify-content: center; align-items: center; color: white; }
+    .loading-overlay.active { display: flex; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto mt-10 bg-white shadow-xl rounded-2xl p-8">
-
-  <h1 class="text-2xl font-bold text-gray-800 mb-6">
-    🧬 Antropometriai Kalibráció
-  </h1>
-
-  <!-- Kalibrációs űrlap -->
-  <form id="calibrationForm" method="POST" enctype="multipart/form-data" class="space-y-6">
-    {% csrf_token %}
-
-    <div class="upload-instructions mb-4">
-        <h4>ℹ️ Megadandó adatok</h4>
-        <ul>
-        <li><b>Magasság (m):</b> teljes testmagasság.</li>
-        <li><b>Combhossz (cm):</b> csípőtől térdig mért távolság.</li>
-        <li><b>Lábszárhossz (cm):</b> térdtől bokáig mért távolság.</li>
-        </ul>
+<div class="profile-container">
+    <div class="header-section">
+        <h1>🧬 Antropometriai Kalibráció</h1>
+        {% if profile.reference_job %}
+            <div style="background: rgba(46, 213, 115, 0.3); border: 1px solid #2ed573; padding: 5px 15px; border-radius: 20px; display: inline-block;">
+                ✓ Kalibrálva: {{ profile.reference_job.created_at|date:"Y.m.d" }}
+            </div>
+        {% endif %}
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div>
-        <label for="id_user_stated_height_m" class="block text-sm font-medium text-gray-700">
-          Magasság (m) <span class="text-red-500">*</span>
-        </label>
-        <input type="number" step="0.01" min="1.4" max="2.3" name="user_stated_height_m"
-               id="id_user_stated_height_m"
-               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-               placeholder="Pl. 1.75" required>
-      </div>
+    <div class="main-content">
+        <div class="form-card">
+            <h3>Adatok megadása</h3>
+            <form id="calibrationForm" method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label>Magasság (m)</label>
+                        <div class="measurement-input-wrapper">
+                            <input type="number" step="0.01" name="user_stated_height_m" value="1.75" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Comb (cm)</label>
+                        <div class="measurement-input-wrapper">
+                            <input type="number" step="0.1" name="user_stated_thigh_cm" value="45.0" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label>Lábszár (cm)</label>
+                        <div class="measurement-input-wrapper">
+                            <input type="number" step="0.1" name="user_stated_shin_cm" value="38.0" required>
+                        </div>
+                    </div>
+                </div>
 
-      <div>
-        <label for="id_user_stated_thigh_cm" class="block text-sm font-medium text-gray-700">
-          Combhossz (cm) <span class="text-red-500">*</span>
-        </label>
-        <input type="number" step="0.1" min="30" max="70" name="user_stated_thigh_cm"
-               id="id_user_stated_thigh_cm"
-               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-               placeholder="Pl. 45.0" required>
-      </div>
+                <div class="mt-4">
+                    <p class="fw-bold">AI Fotók feltöltése</p>
+                    <div class="mb-3">
+                        <label for="id_front_photo" class="file-input-label" id="label_front">📷 Elölnézeti fotó</label>
+                        <input type="file" name="front_photo" id="id_front_photo" accept="image/*" style="display:none;" required onchange="updateFileName(this, 'label_front')">
+                    </div>
+                    <div class="mb-3">
+                        <label for="id_side_photo" class="file-input-label" id="label_side">📷 Oldalnézeti fotó</label>
+                        <input type="file" name="side_photo" id="id_side_photo" accept="image/*" style="display:none;" required onchange="updateFileName(this, 'label_side')">
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary-custom">📏 Kalibráció indítása</button>
+            </form>
+        </div>
 
-      <div>
-        <label for="id_user_stated_shin_cm" class="block text-sm font-medium text-gray-700">
-          Lábszárhossz (cm) <span class="text-red-500">*</span>
-        </label>
-        <input type="number" step="0.1" min="25" max="65" name="user_stated_shin_cm"
-               id="id_user_stated_shin_cm"
-               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-               placeholder="Pl. 38.0" required>
-      </div>
+        <div class="visualization-card">
+            <h3>Mért értékek</h3>
+            {% if profile.reference_job and profile.reference_job.result.measurements %}
+                <table class="table">
+                    <thead>
+                        <tr><th>Testrész</th><th>Mért (cm)</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for key, data in profile.reference_job.result.measurements.items %}
+                        <tr>
+                            <td>
+                                <strong>
+                                {# Pontos egyezések vizsgálata az AI kulcsokra #}
+                                {% if key|lower == 'trunk' %}Törzs
+                                {% elif key|lower == 'leftshin' or key|lower == 'left_shin' %}Bal lábszár
+                                {% elif key|lower == 'rightshin' or key|lower == 'right_shin' %}Jobb lábszár
+                                {% elif key|lower == 'leftthigh' or key|lower == 'left_thigh' %}Bal comb
+                                {% elif key|lower == 'rightthigh' or key|lower == 'right_thigh' %}Jobb comb
+                                {% elif key|lower == 'leftforearm' or key|lower == 'left_forearm' %}Bal alkar
+                                {% elif key|lower == 'rightforearm' or key|lower == 'right_forearm' %}Jobb alkar
+                                {% elif key|lower == 'leftupperarm' or key|lower == 'left_upper_arm' %}Bal felkar
+                                {% elif key|lower == 'rightupperarm' or key|lower == 'right_upper_arm' %}Jobb felkar
+                                {% elif key|lower == 'pelviswidth' or key|lower == 'pelvis_width' %}Medence szélessége
+                                {% elif key|lower == 'shoulderwidth' or key|lower == 'shoulder_width' %}Vállszélesség
+                                {% elif key|lower == 'full_height' or key|lower == 'fullheight' %}Magasság (AI)
+                                {% else %}{{ key|title }}{% endif %}
+                                </strong>
+                            </td>
+                            <td class="text-primary fw-bold">{{ data.length|floatformat:1 }} cm</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if profile.annotated_image_url %}
+                    <img src="{{ profile.annotated_image_url }}" class="ai-result-image shadow mt-3" alt="Eredmény">
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">Nincs adat. Tölts fel képet!</p>
+                </div>
+            {% endif %}
+        </div>
     </div>
-
-    <div class="pt-4 border-t border-gray-200">
-      <label for="id_front_photo" class="block text-sm font-medium text-gray-700">
-        Elölnézeti fotó <span class="text-red-500">*</span>
-      </label>
-      <input type="file" name="front_photo" id="id_front_photo" accept="image/*"
-             class="mt-2 block w-full text-sm text-gray-600 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-
-      <label for="id_side_photo" class="block text-sm font-medium text-gray-700 mt-4">
-        Oldalnézeti fotó <span class="text-red-500">*</span>
-      </label>
-      <input type="file" name="side_photo" id="id_side_photo" accept="image/*"
-             class="mt-2 block w-full text-sm text-gray-600 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-    </div>
-
-    <div class="pt-6">
-      <button type="submit"
-              class="w-full inline-flex justify-center items-center px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-300 transition-all">
-        📏 Kalibráció indítása
-      </button>
-    </div>
-  </form>
-
-    <!-- Eredmény blokk -->
-    {% if profile.reference_job and profile.reference_job.result.measurements %}
-        <div class="mt-8 border-t pt-6">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">📏 Mért testméretek</h2>
-        
-        <div class="overflow-x-auto">
-            <table class="min-w-full bg-white border border-gray-200 rounded-lg">
-            <thead class="bg-indigo-100">
-                <tr>
-                <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Testrész</th>
-                <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Mért érték (cm)</th>
-                <th class="px-6 py-3 text-left text-sm font-semibold text-gray-700">Megbízhatóság</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-                {% for key, data in profile.reference_job.result.measurements.items %}
-                <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 text-sm text-gray-800">{{ key|title|cut:"_" }}</td>
-                <td class="px-6 py-4 text-sm font-semibold text-indigo-600">
-                    {% if data.length %}{{ data.length|floatformat:1 }} cm{% else %}—{% endif %}
-                </td>
-                <td class="px-6 py-4 text-sm">
-                    {% if data.confidence %}
-                    <span class="px-2 py-1 rounded-full text-xs font-semibold
-                        {% if data.confidence > 0.8 %}bg-green-100 text-green-800
-                        {% elif data.confidence > 0.6 %}bg-yellow-100 text-yellow-800
-                        {% else %}bg-red-100 text-red-800{% endif %}">
-                        {{ data.confidence|floatformat:0 }}%
-                    </span>
-                    {% else %}—{% endif %}
-                </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            </table>
-        </div>
-
-        <!-- Manuális szerkesztés gomb -->
-        <div class="mt-6">
-            <a href="{% url 'diagnostics_jobs:anthropometry_profile_view' %}" 
-            class="inline-block px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700">
-            ✏️ Adatok manuális szerkesztése
-            </a>
-        </div>
-        </div>
-    
-    {% else %}
-    <p class="text-gray-500 mt-6">Még nem történt sikeres kalibráció.</p>
-    {% endif %}
-
-    {% if profile.annotated_image_url %}
-        <div class="mt-8 text-center">
-        <h2 class="text-xl font-semibold text-gray-800 mb-4">📸 Annotált kalibrációs kép</h2>
-        <img src="{{ profile.annotated_image_url }}" alt="Annotated calibration" 
-            class="mx-auto rounded-xl shadow-lg border border-gray-200 max-w-full h-auto">
-        <p class="text-gray-500 mt-2 text-sm">
-            A képen zöld vonalakkal jelölve a szegmensek és mért hosszak.
-        </p>
-        </div>
-    {% endif %}
-
 </div>
 
-<!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-content">
-    <div class="spinner"></div>
-    <h3>⏳ Kalibráció folyamatban...</h3>
-    <p>Ez 5–15 másodpercet vehet igénybe</p>
-  </div>
+    <div class="text-center">
+        <div class="spinner-border text-light mb-3"></div>
+        <h3>⏳ AI elemzés folyamatban...</h3>
+    </div>
 </div>
 
 <script>
-document.getElementById('calibrationForm').addEventListener('submit', () => {
-  document.getElementById('loadingOverlay').classList.add('active');
-});
-
-// Auto-refresh if job still processing
-{% if latest_anthropometry_job and latest_anthropometry_job.status == 'PROCESSING' %}
-setTimeout(() => location.reload(), 5000);
-{% endif %}
+    function updateFileName(input, labelId) {
+        const label = document.getElementById(labelId);
+        if (input.files.length > 0) {
+            label.classList.add('has-file');
+            label.innerHTML = "✅ " + input.files[0].name;
+        }
+    }
+    document.getElementById('calibrationForm').onsubmit = function() {
+        document.getElementById('loadingOverlay').classList.add('active');
+    };
 </script>
 {% endblock %}

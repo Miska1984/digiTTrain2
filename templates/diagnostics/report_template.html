@@ -3,87 +3,88 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>{{ user.get_full_name|default:user.username }} - Elemzési Riport</title>
+    <title>{{ full_name }} - Elemzési Riport</title>
     <style>
+        @page { size: A4; margin: 1.5cm; }
         body {
-            font-family: "Helvetica", sans-serif;
+            font-family: "Helvetica", "Arial", sans-serif;
             color: #222;
-            margin: 2cm;
-        }
-        h1, h2, h3 {
-            color: #003366;
+            line-height: 1.5;
+            margin: 0;
         }
         .header {
             text-align: center;
-            margin-bottom: 20px;
+            border-bottom: 3px solid #0d6efd;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
         }
-        .logo {
-            width: 120px;
-            margin-bottom: 10px;
-        }
+        .logo { width: 150px; margin-bottom: 10px; }
+        h1 { color: #003366; margin: 0; font-size: 24px; }
+        .meta-info { color: #555; font-size: 14px; margin-top: 5px; }
+        
         .section-title {
             color: #0d6efd;
-            border-bottom: 2px solid #0d6efd;
-            margin-top: 30px;
-            padding-bottom: 4px;
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin-top: 25px;
+            font-size: 18px;
+            text-transform: uppercase;
         }
-        .metric {
-            padding: 5px 0;
-            margin: 3px 0;
-        }
-        .snapshot {
-            text-align: center;
-            margin: 10px 0;
-        }
-        .snapshot img {
-            max-width: 80%;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        .user-card {
+            margin: 15px 0;
+            padding: 10px;
+            border-left: 4px solid #0d6efd;
+            background: #f1f8ff;
         }
         .footer {
             text-align: center;
-            font-size: 0.8em;
-            color: #777;
-            margin-top: 30px;
+            font-size: 11px;
+            color: #888;
+            margin-top: 50px;
+            border-top: 1px solid #ddd;
+            padding-top: 15px;
         }
+        /* Biztosítjuk, hogy a beágyazott HTML jól nézzen ki */
+        .embedded-content { margin-top: 20px; }
     </style>
 </head>
 <body>
 
     <div class="header">
-        {% if company_logo %}
-            <img src="{{ company_logo }}" alt="Logo" class="logo">
-        {% endif %}
         <h1>
-            {% if job.job_type == 'SQUAT_ASSESSMENT' %}
-                Guggolás Biomechanikai Elemzés
-            {% elif job.job_type == 'POSTURE_ASSESSMENT' %}
-                Testtartás és Szimmetria Elemzés
-            {% else %}
-                Általános Diagnosztikai Jelentés
-            {% endif %}
+            {% if job.job_type == 'SQUAT_ASSESSMENT' %} Guggolás Biomechanikai Elemzés
+            {% elif job.job_type == 'POSTURE_ASSESSMENT' %} Testtartás és Szimmetria Elemzés
+            {% else %} Általános Diagnosztikai Jelentés {% endif %}
         </h1>
-        <p>{{ company_name }} | {{ report_date|date:"Y.m.d H:i" }}</p>
+        <div class="meta-info">
+            DigiT-Train Pro | Készült: {{ current_date }}
+        </div>
     </div>
 
-    <h2 class="section-title">Felhasználói adatok</h2>
-    <p><strong>Név:</strong> {{ user.get_full_name|default:user.username }}</p>
-    <p><strong>Sportág:</strong> {{ job.sport_type }}</p>
-    <p><strong>Videó:</strong> <a href="{{ job.video_url }}" target="_blank">{{ job.video_url }}</a></p>
+    <div class="user-card">
+        <p style="margin: 5px 0;"><strong>Sportoló:</strong> {{ full_name }}</p>
+        <p style="margin: 5px 0;"><strong>Azonosító:</strong> #{{ job.id }}</p>
+        <p style="margin: 5px 0;"><strong>Sportág:</strong> {{ sport_name }}</p>
+    </div>
 
-    <h2 class="section-title">Elemzési eredmények</h2>
-    {{ section_html|safe }}
+    <div class="embedded-content">
+        {{ section_html|safe }}
+    </div>
 
-    {% if analysis.skeleton_video_url %}
-    <h2 class="section-title">Vizuális elemzés</h2>
-    <p style="text-align:center;">
-        <a href="{{ analysis.skeleton_video_url }}" target="_blank">🎥 Mozgásváz Videó megtekintése</a>
+    {% if analysis_data.skeleton_video_url %}
+    <div class="section-title">Vizuális elemzés</div>
+    <p style="text-align:center; margin-top: 15px;">
+        <a href="{{ analysis_data.skeleton_video_url }}" style="color: #0d6efd; font-weight: bold;">
+            🎥 Animált mozgásváz megtekintése (felhő alapú lejátszás)
+        </a>
     </p>
     {% endif %}
 
     <div class="footer">
-        Ezt a riportot a DigiTTrain rendszer automatikusan generálta.<br>
-        Elemzési motor: <strong>MediaPipe Pose</strong>
+        Ez a dokumentum bizalmas, biomechanikai adatokat tartalmaz.<br>
+        Generálta: <strong>DigiT-Train AI Engine (MediaPipe Pose 2.0)</strong><br>
+        &copy; 2026 DigiT-Train - Minden jog fenntartva.
     </div>
 
 </body>

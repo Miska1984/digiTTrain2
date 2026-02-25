@@ -1,0 +1,639 @@
+{% extends "base_out.html" %}
+{% load static %}
+
+{% block title %}A Motorházban - digiT-Train{% endblock %}
+
+{% block content %}
+
+<div class="bg-primary text-white py-5 mb-0">
+    <div class="container text-center">
+        <h1 class="display-4 fw-bold">A Motorházban</h1>
+        <p class="lead text-white-50">A digiT-Train algoritmusainak matematikai, fizikai és sporttudományi háttere.</p>
+    </div>
+</div>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top shadow-sm border-bottom">
+    <div class="container">
+        <span class="navbar-brand d-lg-none">Fejezetek</span>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav w-100 justify-content-between text-uppercase small fw-bold">
+                <li class="nav-item"><a class="nav-link text-primary" href="#ml-form">1. Forma-predikció</a></li>
+                <li class="nav-item"><a class="nav-link text-primary" href="#mp-posture">2. Testtartás</a></li>
+                <li class="nav-item"><a class="nav-link text-primary" href="#mp-shoulder">3. Váll-mobilitás</a></li>
+                <li class="nav-item"><a class="nav-link text-primary" href="#mp-squat">4. Guggolás</a></li>
+                <li class="nav-item"><a class="nav-link text-primary" href="#mp-jump">5. Ugrás</a></li>
+                <li class="nav-item"><a class="nav-link text-primary" href="#mp-sls">6. Stabilitás</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+
+    <section class="py-5 border-bottom" id="forma-predikcio-melyviz">
+        <div class="container">
+            <h2 class="fw-bold text-primary mb-4">1. A Forma-predikciós Algoritmus</h2>
+            <p class="lead text-muted">A digiT-Train jelenleg futó adatmodellje egy dinamikus gépi tanulási rendszert (**Random Forest Regressor**) alkalmaz, amely naponta adaptálódik a sportoló egyedi élettani válaszaihoz.</p>
+
+            <div class="card border-0 shadow-sm bg-light mb-5">
+                <div class="card-body p-4 p-lg-5">
+                    <h4 class="fw-bold mb-4"><i class="bi bi-clock-history me-2 text-primary"></i>A Napi Adatfeldolgozási Ciklus</h4>
+                    <div class="row text-center g-3">
+                        <div class="col-md-4">
+                            <div class="p-3 bg-white rounded shadow-sm border-top border-4 border-info">
+                                <h6 class="fw-bold">02:00 - Snapshot</h6>
+                                <p class="small text-muted mb-0">A <code>FeatureBuilder</code> modul elkészíti a napi biometriai vektort.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 bg-white rounded shadow-sm border-top border-4 border-warning">
+                                <h6 class="fw-bold">02:30 - Training</h6>
+                                <p class="small text-muted mb-0">A <code>TrainingService</code> újratanítja a modellt a teljes adatbázison.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="p-3 bg-white rounded shadow-sm border-top border-4 border-success">
+                                <h6 class="fw-bold">03:00 - Prediction</h6>
+                                <p class="small text-muted mb-0">Ditta generálja a végleges <strong>Forma-indexet</strong> és a tanácsokat.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="fw-bold mb-4">A "Feature Vector" – Mit elemez az algoritmus?</h3>
+            <p>A kódunkban szereplő <code>FEATURE_COLUMNS</code> fix sorrendje alapján az alábbi paramétereket vetjük össze:</p>
+
+            <div class="row g-4 mb-5">
+                <div class="col-lg-8">
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle bg-white border mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th style="width: 15%">Jel (Kód)</th>
+                                    <th style="width: 25%">Megnevezés</th>
+                                    <th>Szakmai háttér és Tudományos bázis</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>age</code> (A)</td>
+                                    <td><strong>Életkor</strong></td>
+                                    <td>Befolyásolja a regenerációs görbét és a HRV alapértékeit.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>gender</code> (G)</td>
+                                    <td><strong>Biológiai nem</strong></td>
+                                    <td>Meghatározza a testkompozíciós és élettani bázisnormákat.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>category</code> (C)</td>
+                                    <td><strong>Sportág kategória</strong></td>
+                                    <td>A modell más súlyozást alkalmaz küzdősportnál (CNS fókusz), mint állóképességinél (kardió fókusz).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>avg_hrv</code> (H)</td>
+                                    <td><strong>Átlagos HRV</strong></td>
+                                    <td>Plews et al. (2013) alapján: az autonóm idegrendszer egyensúlyának legpontosabb tükre.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>avg_sleep</code> (S)</td>
+                                    <td><strong>Átlagos Alvás</strong></td>
+                                    <td>A szubjektív és hormonális regeneráció elsődleges mutatója.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>grip_r/l</code> (GR/GL)</td>
+                                    <td><strong>Marokerő</strong></td>
+                                    <td>Garcia-Pallares (2011): A neuromuszkuláris és központi idegrendszeri (CNS) fáradtság mérőszáma.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>weight_loss</code> ($W_\Delta$)</td>
+                                    <td><strong>Súly-delta</strong></td>
+                                    <td>Az edzés alatti folyadékvesztés abszolút értéke (kg).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>dehyd_idx</code> (DI)</td>
+                                    <td><strong>Dehidratáció</strong></td>
+                                    <td>A testsúlyarányos folyadékvesztés, mely korrelál a kognitív teljesítménycsökkenéssel.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="p-4 bg-dark text-white rounded shadow-lg h-100 d-flex flex-column justify-content-center border-start border-warning border-5">
+                        <h5 class="text-warning fw-bold mb-3">Matematikai Absztrakció</h5>
+                        <p class="small text-light opacity-75 italic">"A modell nem izolált pontokat, hanem trendeket keres a biometriai térben."</p>
+                        <hr class="border-secondary">
+                        <p class="h5 fw-bold text-center">$$Forma = f(A, G, C, H, S, GR, GL, W_\Delta, DI)$$</p>
+                        <div class="mt-4">
+                            <h6 class="small fw-bold text-warning">Modell: Random Forest Regressor</h6>
+                            <p class="x-small mb-0 opacity-75">100 független döntési fa (Ensemble method) szavazatának súlyozott átlaga.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            
+
+            <div class="p-4 bg-light border rounded mb-5 shadow-sm">
+                <h5 class="fw-bold mb-3"><i class="bi bi-journal-bookmark-fill me-2 text-primary"></i>Alkalmazott Tudományos Modellek</h5>
+                <div class="row small">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><strong>Fitness-Fatigue (Banister, 1975):</strong> Az edzésterhelés és a regeneráció eredőjének matematikai modellezése.</li>
+                            <li><strong>CNS Monitoring (Garcia-Pallares, 2011):</strong> A marokerő-dinamika validálása az idegrendszeri fáradtság mérésében.</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><strong>HRV Adaptáció (Plews, 2013):</strong> A szívfrekvencia variabilitás 30 napos mozgóátlagának jelentősége.</li>
+                            <li><strong>ACWR Logic (Gabbett, 2016):</strong> A hirtelen terhelésnövekedés és a sérülésveszély összefüggései.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-white border-bottom" id="mediapipe-posture">
+        <div class="container">
+            <h2 class="fw-bold text-primary mb-4">2. Computer Vision: MediaPipe Testtartás-analízis</h2>
+            <p class="lead text-muted">A testtartás vizsgálata során a digitális képfeldolgozás segítségével azonosítjuk a test statikus aszimmetriáit, amelyek a későbbi mozgásbeli hibák vagy sérülések előjelei lehetnek.</p>
+
+            <div class="row align-items-center mb-5">
+                <div class="col-lg-7">
+                    <h4 class="fw-bold"><i class="bi bi-camera-video me-2 text-primary"></i>A mérés biomechanikai folyamata</h4>
+                    <p>A rendszer a <code>PostureAssessmentService</code> segítségével a videó minden képkockáján azonosítja a MediaPipe 33 kulcspontját (Landmarks). A mérés pontosságát az <strong>antropometriai kalibráció</strong> adja: a szoftver a felhasználó előre megadott testméretei alapján skálázza a koordinátákat, így milliméter pontos elmozdulásokat is képes detektálni.</p>
+                    
+                    <div class="p-3 bg-light border-start border-4 border-primary rounded">
+                        <h6 class="fw-bold mb-1">A "Dőlés" matematikai számítása:</h6>
+                        <p class="small mb-0">Rendszerünk a trigonometria segítségével határozza meg a váll és a medence vízszintes síktól való eltérését:</p>
+                        <p class="h6 fw-bold mt-2 text-center">$$\text{Tilt Angle} = \arctan\left(\frac{|y_2 - y_1|}{|x_2 - x_1|}\right) \cdot \frac{180}{\pi}$$</p>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-center">
+                    
+                    <p class="text-muted small italic mt-2">A test 33 kulcspontjának 3D-s leképezése és szögmérése.</p>
+                </div>
+            </div>
+
+            <h3 class="fw-bold mb-4">Mért változók és Diagnosztikai jelentőségük</h3>
+            <p>A <code>run_analysis</code> folyamat során az alábbi kulcsfontosságú metrikákat rögzítjük és elemezzük:</p>
+
+            <div class="row g-4">
+                <div class="col-lg-12">
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle bg-white border mb-0">
+                            <thead class="table-primary">
+                                <tr>
+                                    <th style="width: 20%">Paraméter</th>
+                                    <th style="width: 20%">Kódnév</th>
+                                    <th>Szakmai magyarázat</th>
+                                    <th>Miből mit következtetünk?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Váll dőlésszöge</strong></td>
+                                    <td><code>shoulder_tilt</code></td>
+                                    <td>A két vállcsúcs (acromion) közötti vízszintes eltérés.</td>
+                                    <td>Jelzi a vállöv aszimmetriáját, ami hátizom egyensúlytalanságra vagy gerincferdülésre utalhat.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Medence dőlése</strong></td>
+                                    <td><code>hip_tilt</code></td>
+                                    <td>A csípőcsontok (ASIS) magasságkülönbsége.</td>
+                                    <td>Felfedi a végtaghossz-különbséget vagy a medence elcsavarodását, ami gátolja az optimális erőátvitelt.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Súlypont eltolódás</strong></td>
+                                    <td><code>lateral_shift</code></td>
+                                    <td>A test középvonalának oldalirányú kitérése a bázistól.</td>
+                                    <td>Megmutatja, hogy a sportoló melyik oldalát terheli dominánsan (féloldalas állás), ami ízületi kopáshoz vezethet.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>A-P Proxy</strong></td>
+                                    <td><code>ap_proxy</code></td>
+                                    <td>Antero-Posterior elmozdulás (előre-hátra billegés).</td>
+                                    <td>A boka stabilitását és a core-izmok kontrollját jelzi statikus helyzetben.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="p-4 bg-dark text-white rounded h-100 shadow">
+                        <h5 class="fw-bold text-warning mb-3">Posture Score (0-100)</h5>
+                        <p class="small">A rendszer egy aggregált pontszámot számol a dőlések és aszimmetriák súlyozott átlagából. </p>
+                        <ul class="small opacity-75">
+                            <li><strong>90-100:</strong> Kiváló szimmetria, stabil tartás.</li>
+                            <li><strong>70-89:</strong> Enyhe aszimmetria, korrekciós gyakorlatok javasoltak.</li>
+                            <li><strong>70 alatt:</strong> Jelentős eltérés, szakorvosi/gyógytornász konzultáció ajánlott.</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-4 bg-light border border-2 rounded h-100">
+                        <h5 class="fw-bold text-primary mb-3">Ditta Automatizált Kiértékelése</h5>
+                        <p class="small text-muted italic">"A szoftver nem csak számol, hanem értelmez is. Ha a <code>max_shoulder_tilt</code> értéke meghalad egy kritikus küszöböt, Ditta azonnal figyelmezteti az edzőt és a sportolót a videóból kimentett pillanatfelvétel (Snapshot) segítségével."</p>
+                        
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-secondary mt-5 border-0 shadow-sm">
+                <h6 class="fw-bold"><i class="bi bi-shield-check me-2"></i>Validáció és Fejlesztési lehetőség</h6>
+                <p class="mb-0 small text-muted">A testtartás elemzése jelenleg statikus. Tervezett fejlesztésünk a <strong>dinamikus posture tracking</strong>, ahol a súlypont vándorlását (Stabilometria) vizsgáljuk mozgás közben, hasonlóan a laboratóriumi erőplatókhoz, de méregdrága hardver nélkül.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5" id="mediapipe-shoulder">
+        <div class="container">
+            <h2 class="fw-bold text-primary mb-4">3. Vállövi Mobilitás és Funkcionális Kontroll</h2>
+            <p class="lead text-muted">A váll körzése (Shoulder Circumduction) során a felsőtest legösszetettebb ízületét vizsgáljuk. Az algoritmus nemcsak a mozgás terjedelmét, hanem a végrehajtás során fellépő kóros kompenzációkat is figyeli.</p>
+
+            <div class="row align-items-center mb-5">
+                <div class="col-lg-7">
+                    <h4 class="fw-bold"><i class="bi bi-arrow-repeat me-2 text-primary"></i>A mobilitás mérése 3D-ben</h4>
+                    <p>A <code>ShoulderCircumductionService</code> a kar felemelése során folyamatosan számolja a felkarcsont (humerus) és a törzs függőleges tengelye által bezárt szöget. A mérés során a rendszer külön kezeli a bal és jobb oldalt, hogy azonosítsa a dominancia vagy korábbi sérülés miatti aszimmetriát.</p>
+                    
+                    <div class="p-3 bg-light border-start border-4 border-primary rounded">
+                        <h6 class="fw-bold mb-1">A maximális eleváció (ROM) számítása:</h6>
+                        <p class="small mb-2">A számítás a váll (11/12), a könyök (13/14) és a csípő (23/24) koordinátái alapján történik a 3D-s térben:</p>
+                        <p class="h6 fw-bold mt-2 text-center">$$\theta_{elevation} = \text{calculate\_angle\_3d}(\text{Elbow, Shoulder, Hip})$$</p>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-center">
+                    
+                    <p class="text-muted small italic mt-2">A kar emelési szögének dinamikus követése MediaPipe kulcspontokkal.</p>
+                </div>
+            </div>
+
+            <h3 class="fw-bold mb-4">Dinamikus Metrikák és Kompenzációs Indexek</h3>
+            <p>A kódunkban található <code>run_analysis</code> folyamat három fő szempont alapján pontozza a mozgást:</p>
+
+            <div class="row g-4">
+                <div class="col-lg-12">
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle bg-white border mb-0">
+                            <thead class="table-info">
+                                <tr>
+                                    <th style="width: 20%">Metrika</th>
+                                    <th style="width: 20%">Kódnév</th>
+                                    <th>Élettani jelentés</th>
+                                    <th>Kockázati elemzés</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Max. Eleváció</strong></td>
+                                    <td><code>max_elevation_angle</code></td>
+                                    <td>A kar legmagasabb pontja a fej felett (fokban).</td>
+                                    <td>A 170° alatti érték beszűkült vállízületet vagy rövidült mellizmot jelez.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Maximális Aszimmetria</strong></td>
+                                    <td><code>max_asymmetry</code></td>
+                                    <td>A bal és jobb kar mozgástartománya közötti különbség.</td>
+                                    <td>A 10° feletti eltérés jelentős aszimmetria, ami féloldalas terheléshez és gyulladáshoz vezethet.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Törzs-kompenzáció</strong></td>
+                                    <td><code>trunk_tilt_compensation</code></td>
+                                    <td>A törzs oldalirányú dőlése a kar emelése közben.</td>
+                                    <td>Ha a sportoló "bedől", az azt jelenti, hogy a gerincével csalja el a váll mobilitásának hiányát.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Scapula stabilitás</strong></td>
+                                    <td><code>scapula_score</code></td>
+                                    <td>A lapocka és a vállöv stabilitását leíró pontszám.</td>
+                                    <td>Az alacsony érték "szárnyaló lapockát" vagy gyenge fűrészizmot jelez.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="p-4 bg-dark text-white rounded h-100 shadow border-bottom border-warning border-5">
+                        <h5 class="fw-bold text-warning mb-3">Overall Shoulder Score</h5>
+                        <p class="small">A végső pontszám (<code>overall_score</code>) a mobilitás (ROM) és a végrehajtási minőség (kompenzációk hiánya) ötvözete.</p>
+                        <ul class="small mb-0">
+                            <li class="mb-2"><span class="badge bg-success">85+ Pont:</span> Optimális funkció, sport-specifikus terhelhetőség.</li>
+                            <li class="mb-2"><span class="badge bg-warning text-dark">70-85 Pont:</span> Mérsékelt merevség, preventív nyújtás szükséges.</li>
+                            <li><span class="badge bg-danger">70 Alatt:</span> Magas sérülésveszély (impingement szindróma gyanúja).</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="fw-bold text-primary mb-3">Ditta Szakértői Betekintése</h5>
+                            <p class="small text-muted">Az algoritmus a <code>save_snapshot_to_gcs</code> funkcióval elmenti a mozgás azon pillanatát, ahol a legnagyobb az aszimmetria vagy a dőlés.</p>
+                            <div class="bg-light p-3 rounded italic small">
+                                "Ditta észleli: A jobb vállad 152°-nál megáll, miközben a bal 174°-ig emelkedik. Ezt a törzsed 8°-os balra dőlésével próbálod kompenzálni. Javaslat: M. Pectoralis Minor SMR és nyújtás."
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-white border-bottom" id="mediapipe-squat">
+        <div class="container">
+            <h2 class="fw-bold text-primary mb-4">4. Guggolás: Mozgásminőség és Ízületi Terhelés</h2>
+            <p class="lead text-muted">A guggolás elemzése során a <code>SquatAssessmentService</code> a test alsó láncának mobilitását és a törzs stabilitását vizsgálja. A cél a biztonságos végrehajtási tartomány meghatározása és a technikai hibák kiszűrése.</p>
+
+            <div class="row align-items-center mb-5">
+                <div class="col-lg-7">
+                    <h4 class="fw-bold"><i class="bi bi-person-bounding-box me-2 text-primary"></i>Kinematikai lánc elemzése</h4>
+                    <p>A szoftver a guggolás minden fázisában (leereszkedés, alsó holtpont, felemelkedés) figyeli a <strong>térdszöget</strong> és a <strong>törzsdőlést</strong>. A mérés alapja a MediaPipe által detektált csípő (23/24), térd (25/26) és boka (27/28) pontok alkotta 3D-s vektorok.</p>
+                    
+                    <div class="p-3 bg-light border-start border-4 border-primary rounded">
+                        <h6 class="fw-bold mb-1">A "Törzsdőlés" (Trunk Lean) számítása:</h6>
+                        <p class="small mb-2">A függőleges referenciatengely és a váll-csípő vonal által bezárt szöget mérjük:</p>
+                        <p class="h6 fw-bold mt-2 text-center">$$\text{Trunk Lean} = 180^\circ - \text{calculate\_angle\_3d}(\text{Shoulder, Hip, Vertical\_Ref})$$</p>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-center">
+                    
+                    <p class="text-muted small italic mt-2">A guggolás biomechanikai modellje: térd- és törzsszög korreláció.</p>
+                </div>
+            </div>
+
+            <h3 class="fw-bold mb-4">Mért változók és Biomechanikai határértékek</h3>
+            <p>Az algoritmus a <code>run_analysis</code> során az alábbi kritikus paramétereket emeli ki:</p>
+
+            <div class="row g-4">
+                <div class="col-lg-12">
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle bg-white border mb-0">
+                            <thead class="table-warning">
+                                <tr>
+                                    <th style="width: 20%">Paraméter</th>
+                                    <th style="width: 20%">Kódnév</th>
+                                    <th>Szakmai leírás</th>
+                                    <th>Szakértői következtetés</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Minimum Térdszög</strong></td>
+                                    <td><code>min_knee_angle</code></td>
+                                    <td>A guggolás legmélyebb pontján mért belső szög.</td>
+                                    <td>A 110° feletti érték (elégtelen mélység) boka- vagy csípőmobilitási problémát jelez.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Max. Törzsdőlés</strong></td>
+                                    <td><code>max_trunk_lean</code></td>
+                                    <td>A törzs előredőlésének mértéke a függőlegeshez képest.</td>
+                                    <td>A 40° feletti dőlés a lumbális szakasz túlterhelését és a core-izmok gyengeségét mutatja.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Mozgáskontroll</strong></td>
+                                    <td><code>control_score</code></td>
+                                    <td>A súlypont stabilitása és a végrehajtás egyenletessége.</td>
+                                    <td>A bizonytalan mozgás (remegés) neuromuszkuláris fáradtságra vagy instabilitásra utal.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>ROM Index</strong></td>
+                                    <td><code>rom_score</code></td>
+                                    <td>A mozgástartomány százalékos értékelése az ideálishoz képest.</td>
+                                    <td>Összegzi a mobilitási tartalékokat a teljes mozgásláncban.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5">
+                <div class="col-md-6">
+                    <div class="p-4 bg-dark text-white rounded h-100 shadow">
+                        <h5 class="fw-bold text-warning mb-3">Squat Score Logika</h5>
+                        <p class="small">A végső <code>overall_squat_score</code> három fő pilléren nyugszik:</p>
+                        <div class="progress mb-2" style="height: 25px;">
+                            <div class="progress-bar bg-info" style="width: 40%">Mobilitás (40%)</div>
+                            <div class="progress-bar bg-warning text-dark" style="width: 40%">Stabilitás (40%)</div>
+                            <div class="progress-bar bg-success" style="width: 20%">Kontroll (20%)</div>
+                        </div>
+                        <p class="x-small text-muted mt-2 italic">A súlyozás biztosítja, hogy egy mély, de instabil guggolás ne kaphasson "kiváló" minősítést.</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-4 bg-light border border-2 rounded h-100">
+                        <h5 class="fw-bold text-primary mb-3">Automatizált Vizuális Kontroll</h5>
+                        <p class="small">A rendszer a <code>save_snapshot_to_gcs</code> segítségével két kritikus ponton készít bizonyító erejű felvételt:</p>
+                        <ul class="small">
+                            <li><strong>Knee Angle Snapshot:</strong> A legmélyebb ponton, a mobilitás igazolására.</li>
+                            <li><strong>Trunk Lean Snapshot:</strong> A legnagyobb dőlésnél, a tartáshiba dokumentálására.</li>
+                        </ul>
+                        
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5" id="mediapipe-jump">
+        <div class="container">
+            <h2 class="fw-bold text-primary mb-4">5. Helyből Magasugrás: Robbanékonyság és Landolási Kontroll</h2>
+            <p class="lead text-muted">A függőleges ugrás elemzése a sportoló robbanékony erejét (Power Output) és a landolás során fellépő ízületi stabilitást vizsgálja. Ez a modul kulcsfontosságú a sérülések (pl. ACL szakadás) megelőzésében.</p>
+
+            <div class="row align-items-center mb-5">
+                <div class="col-lg-7">
+                    <h4 class="fw-bold"><i class="bi bi-lightning-charge me-2 text-primary"></i>A repülési idő és magasság kalkulációja</h4>
+                    <p>A <code>VerticalJumpAssessmentService</code> a súlypont (Center of Mass - CoM) elmozdulását követi az idő függvényében. Az ugrás magasságát a repülési időből ($t_{flight}$) származtatjuk a fizika törvényszerűségei alapján, míg a landolást a térdízület oldalirányú kitérése alapján minősítjük.</p>
+                    
+                    <div class="p-3 bg-light border-start border-4 border-primary rounded">
+                        <h6 class="fw-bold mb-1">Az ugrásmagasság (h) fizikai alapja:</h6>
+                        <p class="small mb-2">A szabadesés képletét alkalmazva a repülési időből:</p>
+                        <p class="h6 fw-bold mt-2 text-center">$$h = \frac{g \cdot t_{flight}^2}{8}$$</p>
+                        <p class="x-small text-muted mt-1 mb-0">Ahol $g \approx 9.81 m/s^2$ a nehézségi gyorsulás.</p>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-center">
+                    
+                    <p class="text-muted small italic mt-2">Az ugrás fázisainak fázis-specifikus MediaPipe elemzése.</p>
+                </div>
+            </div>
+
+            <h3 class="fw-bold mb-4">Dinamikus Paraméterek és Biztonsági Indexek</h3>
+            <p>A <code>run_analysis</code> folyamat során a robbanékonyság mellett a "csendes gyilkosokat", azaz a landolási hibákat is mérjük:</p>
+
+            <div class="row g-4">
+                <div class="col-lg-12">
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle bg-white border mb-0">
+                            <thead class="table-danger text-white">
+                                <tr>
+                                    <th style="width: 20%">Paraméter</th>
+                                    <th style="width: 20%">Kódnév</th>
+                                    <th>Szakmai háttér</th>
+                                    <th>Diagnosztikai jelentőség</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Ugrásmagasság</strong></td>
+                                    <td><code>jump_height_cm</code></td>
+                                    <td>A súlypont emelkedésének nettó értéke (cm).</td>
+                                    <td>A robbanékony erő és a neuromuszkuláris frissesség közvetlen mutatója.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Countermovement</strong></td>
+                                    <td><code>min_cm_knee_angle</code></td>
+                                    <td>Az elrugaszkodást megelőző "beugrás" (előkészítő fázis) mélysége.</td>
+                                    <td>Megmutatja, mennyire hatékonyan használja a sportoló a nyújtási-rövidülési ciklust (SSC).</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Térd Valgus Index</strong></td>
+                                    <td><code>max_valgus_angle</code></td>
+                                    <td>A térd befelé dőlése a landolás pillanatában.</td>
+                                    <td><strong>Kritikus!</strong> A magas érték instabil térdet és fokozott szalagsérülés-kockázatot jelez.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Landolási Kontroll</strong></td>
+                                    <td><code>landing_control_score</code></td>
+                                    <td>Az excentrikus fékezés egyenletessége.</td>
+                                    <td>Az alacsony pontszám "merev" landolásra utal, ami túlterheli az ízületeket.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-5 text-center g-4">
+                <div class="col-md-4">
+                    <div class="p-4 bg-white border rounded shadow-sm">
+                        <h6 class="fw-bold text-success">Elrugaszkodási Sebesség</h6>
+                        <p class="display-6 fw-bold">0.85</p>
+                        <p class="x-small text-muted">Takeoff Speed Index (Simulated)</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-4 bg-white border rounded shadow-sm border-danger border-2">
+                        <h6 class="fw-bold text-danger">Valgus Rizikó</h6>
+                        <p class="display-6 fw-bold">Magas</p>
+                        <p class="x-small text-muted">Befelé dőlő térd detektálva a landolásnál.</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-4 bg-white border rounded shadow-sm">
+                        <h6 class="fw-bold text-primary">Szimmetria Index</h6>
+                        <p class="display-6 fw-bold">92%</p>
+                        <p class="x-small text-muted">A két láb egyenletes terhelése.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 p-4 bg-dark text-white rounded shadow">
+                <h5 class="fw-bold text-warning mb-3">Ditta Coaching Insight (Robbanékonyság)</h5>
+                <p class="small opacity-75 italic">"A szoftver a <code>takeoff_cm</code> és <code>landing_valgus</code> snapshotok segítségével vizuálisan is megmutatja a kritikus pontokat. Ha a landolási pontszámod 75 alatt van, Ditta azonnal excentrikus kontroll gyakorlatokat és plyometriai alapozást javasol a sérülések elkerülése érdekében."</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="py-5 bg-white border-bottom" id="mediapipe-sls">
+        <div class="container">
+            <h2 class="fw-bold text-primary mb-4">6. Egylábon Állás: Propriocepció és Ízületi Kontroll</h2>
+            <p class="lead text-muted">Az egylábon állás tesztje a testtartás-szabályozás (Postural Control) hatékonyságát méri. A <code>SingleLegStanceAssessmentService</code> a boka, a térd és a medence mikromozgásait elemzi, hogy feltárja az instabilitásból eredő sérüléskockázatokat.</p>
+
+            <div class="row align-items-center mb-5">
+                <div class="col-lg-7">
+                    <h4 class="fw-bold"><i class="bi bi-reception-4 me-2 text-primary"></i>Stabilitási paraméterek követése</h4>
+                    <p>A teszt során a rendszer másodpercenként 30 képkockát elemezve figyeli a súlyponti kitéréseket. Különös figyelmet fordítunk a <strong>Pelvic Drop</strong> (medence lecsapódás) és a <strong>Knee Sway</strong> (térd remegése) jelenségekre, amelyek a gyenge csípőstabilizátorok (pl. m. gluteus medius) egyértelmű jelei.</p>
+                    
+                    <div class="p-3 bg-light border-start border-4 border-primary rounded">
+                        <h6 class="fw-bold mb-1">Medence kontroll (Trendelenburg-index):</h6>
+                        <p class="small mb-2">A két csípőcsont (ASIS) horizontális dőlését mérjük a támaszkodó láb oldalán:</p>
+                        <p class="h6 fw-bold mt-2 text-center">$$\text{Pelvic Drop} = \text{calculate\_horizontal\_tilt}(\text{Left\_Hip, Right\_Hip})$$</p>
+                    </div>
+                </div>
+                <div class="col-lg-5 text-center">
+                    
+                    <p class="text-muted small italic mt-2">A medence és a térd stabilitásának digitális monitorozása.</p>
+                </div>
+            </div>
+
+            <h3 class="fw-bold mb-4">Analitikai Mutatók</h3>
+            <p>A <code>run_analysis</code> algoritmus az alábbi négy pillér alapján határozza meg a stabilitási pontszámot:</p>
+
+            <div class="row g-4 mb-5">
+                <div class="col-lg-12">
+                    <div class="table-responsive shadow-sm">
+                        <table class="table table-hover align-middle bg-white border mb-0">
+                            <thead class="table-secondary">
+                                <tr>
+                                    <th style="width: 25%">Vizsgált Terület</th>
+                                    <th style="width: 20%">Kódnév</th>
+                                    <th>Szakmai háttér</th>
+                                    <th>Kockázati küszöb</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Medence dőlés</strong></td>
+                                    <td><code>max_pelvic_drop_deg</code></td>
+                                    <td>A medence stabilitása a frontális síkban.</td>
+                                    <td>> 7° dőlés esetén a csípőstabilizátorok elégtelen működése valószínűsíthető.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Térd Valgus (Sway)</strong></td>
+                                    <td><code>max_knee_valgus_deg</code></td>
+                                    <td>A térdízület befelé irányuló mozgása.</td>
+                                    <td>> 5° kitérés instabilitást és keresztszalag-terhelést jelez.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Boka Remegés</strong></td>
+                                    <td><code>ankle_sway_amplitude</code></td>
+                                    <td>A boka oldalirányú korrekciós mozgásai.</td>
+                                    <td>A túlzott kilengés korábbi bokasérülések utáni propriocepciós hiányra utal.</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Törzs Kitérés</strong></td>
+                                    <td><code>trunk_sway_amplitude</code></td>
+                                    <td>A felsőtest kompenzációs mozgása.</td>
+                                    <td>A Core-izmok és a vesztibuláris rendszer egyensúlyát mutatja.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="card border-primary shadow mt-5">
+        <div class="card-body p-4 p-lg-5">
+            <div class="row align-items-center">
+                <div class="col-md-2 text-center d-none d-md-block">
+                    <i class="bi bi-shield-check display-1 text-primary"></i>
+                </div>
+                <div class="col-md-10">
+                    <h4 class="fw-bold">Szakmai Validáció és Nyílt Párbeszéd</h4>
+                    <p>A digiT-Train algoritmusai a sporttudományi publikációkon alapulnak. Ha Ön szakértő, és észrevétele van a mérési logikánkkal vagy a küszöbértékekkel kapcsolatban, ossza meg velünk:</p>
+                    <a href="mailto:digittrain.2025@gmail.com" class="btn btn-primary fw-bold">
+                        <i class="bi bi-envelope-at me-2"></i>digittrain.2025@gmail.com
+                    </a>
+                    <p class="small text-muted mt-3 mb-0 italic">Minden szakmai visszajelzést várunk, és indokolt esetben beépítjük a rendszerbe.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

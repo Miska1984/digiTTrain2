@@ -5,43 +5,136 @@
 
 {% block content %}
 <div class="container my-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8 col-lg-8">
-            <div class="card shadow-lg border-0">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="card-title mb-0">{{ title }}</h2>
-                    <p class="mb-0 small">Kérjük, rögzítse a reggeli testsúlyát és az ébredési paramétereket.</p>
-                </div>
-                <div class="card-body">
-                    <form method="post">
-                        {% csrf_token %}
-
-                        {# -------------------- 1. TESTSÚLY ADATOK (WeightDataForm) -------------------- #}
-                        <div class="mb-5 p-4 border rounded">
-                            <h4 class="fw-bold text-primary mb-3">Testsúly (Reggeli)</h4>
-                            <p class="text-muted small">Ezt az adatot naponta egyszer rögzítheti.</p>
-                            
-                            {# morning_weight mező renderelése az új formból #}
-                            {{ weight_form|crispy }}
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm" style="border-radius: 15px; background: linear-gradient(135deg, #e3f2fd 0%, #ffffff 100%);">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="flex-shrink-0 me-3">
+                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="bi bi-robot text-white fs-3"></i>
                         </div>
-
-                        {# -------------------- 2. HRV, ALVÁS, KÖZÉRZET (HRVandSleepDataForm) -------------------- #}
-                        <div class="mb-5 p-4 border rounded">
-                            <h4 class="fw-bold text-success mb-3">HRV és Ébredési Állapot</h4>
-                            <p class="text-muted small">Ezeket az adatokat is naponta egyszer rögzítheti/módosíthatja.</p>
-                            
-                            {# EZ A MÓDSZER BIZTOSABB: Az egész hrv_form renderelése egyszerre #}
-                            {{ hrv_form|crispy }}
-
-                        </div>
-
-                        <button type="submit" class="btn btn-success mt-4 w-100 btn-lg">
-                            <i class="bi bi-save me-2"></i> Adatok Mentése / Módosítása
-                        </button>
-                    </form>
+                    </div>
+                    <div>
+                        <h5 class="fw-bold text-primary mb-1">Ditta üzenete:</h5>
+                        <p class="mb-0 italic text-dark" id="ditta-morning-msg">
+                            {% if messages %}
+                                {% for message in messages %} 
+                                    <strong>Ditta elemzése:</strong> {{ message }} 
+                                {% endfor %}
+                            {% else %}
+                                {{ welcome_message }}
+                            {% endif %}
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-8">
+            <div class="card shadow-lg border-0" style="border-radius: 20px; overflow: hidden;">
+                <div class="card-header bg-primary text-white py-3">
+                    <h2 class="card-title h4 mb-0"><i class="bi bi-sun me-2"></i>{{ title }}</h2>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="mb-5">
+                            <div class="d-flex align-items-center mb-3">
+                                <h4 class="fw-bold text-primary mb-0">1. Reggeli testsúly</h4>
+                                <button type="button" class="btn btn-link btn-sm text-muted ms-2" data-bs-toggle="collapse" data-bs-target="#weightHelp">
+                                    <i class="bi bi-question-circle"></i> Miért mérjük?
+                                </button>
+                            </div>
+                            
+                            <div class="collapse" id="weightHelp">
+                                <div class="p-3 mb-3 alert alert-light border-start border-primary border-4 small">
+                                    <strong>Ditta magyarázata:</strong> A reggeli súly a legpontosabb alapértéked. Ebből látom az anyagcseréd változását és az edzés közbeni folyadékvesztésed mértékét. Mérd magad éhgyomorra, hasonló ruházatban!
+                                </div>
+                            </div>
+                            
+                            <div class="p-4 bg-light rounded-3 border">
+                                {{ weight_form|crispy }}
+                            </div>
+                        </div>
+
+                        <div class="mb-5">
+                            <div class="d-flex align-items-center mb-3">
+                                <h4 class="fw-bold text-success mb-0">2. Regenerációs mutatók</h4>
+                                <button type="button" class="btn btn-link btn-sm text-muted ms-2" data-bs-toggle="collapse" data-bs-target="#hrvHelp">
+                                    <i class="bi bi-question-circle"></i> Segítség az értékekhez
+                                </button>
+                            </div>
+
+                            <div class="collapse" id="hrvHelp">
+                                <div class="p-3 mb-3 alert alert-light border-start border-success border-4 small">
+                                    <p class="mb-1"><strong>HRV (Szívritmus variabilitás):</strong> A központi idegrendszered állapota. Minél magasabb a saját átlagodhoz képest, annál kipihentebb vagy.</p>
+                                    <p class="mb-0"><strong>Alvás minősége:</strong> Nem csak az óra számít, hanem hogy ébredéskor mennyire érzed magad feltöltődve.</p>
+                                </div>
+                            </div>
+                            
+                            <div class="p-4 bg-light rounded-3 border border-success-subtle">
+                                {{ hrv_form|crispy }}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary mt-2 w-100 btn-lg rounded-pill shadow">
+                            <i class="bi bi-check2-circle me-2"></i> Adatok rögzítése
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="{% url 'biometric_data:athlete_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left me-1"></i> Vissza a főoldalra
+                </a>
+            </div>
+        </div>
+    </div>
 </div>
+
+<style>
+    .italic { font-style: italic; }
+    .card { transition: all 0.3s ease; }
+    /* Ez segít megakadályozni az animációs villogást */
+    .collapse.show {
+        height: auto !important;
+        visibility: visible !important;
+        display: block !important;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Megkeressük az összes collapse elemet az oldalon
+        var collapseElements = document.querySelectorAll('.collapse');
+        
+        collapseElements.forEach(function(el) {
+            // Amikor a lenyílás animációja véget ér
+            el.addEventListener('shown.bs.collapse', function () {
+                console.log('Lenyílva: ' + this.id);
+                // Kényszerítjük a magasságot és láthatóságot
+                this.style.height = 'auto';
+                this.style.overflow = 'visible';
+                this.style.display = 'block';
+            });
+
+            // Biztonsági mentés: ha rákattintanak, 300ms múlva (animáció vége) fixáljuk
+            el.previousElementSibling.addEventListener('click', function() {
+                setTimeout(function() {
+                    if (el.classList.contains('show')) {
+                        el.style.height = 'auto';
+                        el.style.display = 'block';
+                    }
+                }, 350);
+            });
+        });
+    });
+</script>
 {% endblock %}

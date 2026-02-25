@@ -2,11 +2,9 @@
 
 import os
 import logging
-import shutil
 from django.conf import settings
 from django.template.loader import render_to_string
 from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
 from weasyprint import HTML, CSS
 from datetime import datetime
 from urllib.parse import urljoin
@@ -14,7 +12,6 @@ from typing import Union
 
 logger = logging.getLogger(__name__)
 
-# HTML sablonok mozgástípusokhoz
 TEMPLATE_MAP = {
     "SQUAT_ASSESSMENT": "diagnostics/reports/squat_details.html",
     "POSTURE_ASSESSMENT": "diagnostics/reports/posture_details.html",
@@ -24,90 +21,77 @@ TEMPLATE_MAP = {
     "SINGLE_LEG_STANCE_RIGHT": "diagnostics/reports/single_leg_stance_details.html",
 }
 
-# Alapsablon
 REPORT_TEMPLATE = "diagnostics/report_template.html"
 
-
 def generate_pdf_report(job, analysis_data, output_dir=None) -> Union[str, None]:
-    """
-    PDF riport generálása egy elemzett mozgás alapján, majd GCS-re feltöltése.
-
-    :param job: DiagnosticJob objektum
-    :param analysis_data: dict (az elemzés eredménye)
-    :param output_dir: Nem használt, a /tmp könyvtárat használjuk.
-    :return: a PDF fájl GCS URL-je, vagy None hiba esetén
-    """
     try:
-        # 1. Sablon meghatározása
+        # FONTOS: Import helyben, hogy ne omoljon össze a Celery
+        from users.models import UserRole 
+
         template_name = TEMPLATE_MAP.get(job.job_type, "diagnostics/reports/generic_details.html")
+        logger.info(f"📄 PDF generálás indítása: {job.id}")
 
-        logger.info(f"📄 PDF generálása sablonból: {template_name}")
+        # Sportág lekérése
+        sport_name = "Általános"
+        try:
+            user_role = UserRole.objects.filter(user=job.user, status='approved').select_related('sport').first()
+            if user_role and user_role.sport:
+                sport_name = user_role.sport.name
+        except: pass
 
-        # 2. Részletes mozgásspecifikus szekció renderelése
-        # Ezzel generáljuk a beágyazandó HTML-t a fő sablonhoz
-        section_html = render_to_string(template_name, {"analysis": analysis_data, "job": job})
+        # Név (Magyar sorrend)
+        user_display_name = job.user.username
+        try:
+            p = job.user.profile
+            if p.last_name and p.first_name:
+                user_display_name = f"{p.last_name} {p.first_name}"
+        except: pass
 
-        # 3. 🔑 Fő sablon környezetének (context) összeállítása: A JAVÍTÁS EZ!
-        # Átadjuk a 'job' objektumot, hogy a fő sablon hozzáférhessen a 'job.user'-hez.
+        # PONTZÁM KINYERÉSE (Ez a rész felel a pontokért!)
+        # Megnézzük a metrics-ben, ha ott nincs, akkor az analysis_data gyökerében
+        m = analysis_data.get('metrics', {})
+        p_score = m.get('posture_score') or analysis_data.get('posture_score', '--')
+
+        current_date_str = datetime.now().strftime('%Y.%m.%d')
+
         context = {
-            "job": job, # <-- A [user] hiba megoldása
-            "analysis_data": analysis_data,
-            "user": job.user,
-            "section_html": section_html,
-            "current_date": datetime.now().strftime('%Y.%m.%d %H:%M'),
+            "job": job,
+            "analysis": analysis_data,
+            "full_name": user_display_name,
+            "sport_name": sport_name,
+            "posture_score": p_score,  # <--- Új, közvetlen változó!
+            "date": current_date_str,
+            "current_date": current_date_str,
         }
 
-        # 4. Fő sablon renderelése
+        # Belső rész renderelése
+        section_html = render_to_string(template_name, context)
+        context["section_html"] = section_html
+
+        # Fő sablon renderelése
         html_content = render_to_string(REPORT_TEMPLATE, context)
         
-        # 5. CSS betöltése
-        css = None
-        try:
-            # A WeasyPrint megköveteli a STATIC_ROOT-ból való betöltést (ha létezik)
-            css_path = os.path.join(settings.STATIC_ROOT, 'diagnostics/css/pdf_report.css')
-            if settings.STATIC_ROOT and os.path.exists(css_path):
-                 css = CSS(filename=css_path) 
-            else:
-                 logger.warning("⚠️ Nem sikerült betölteni a PDF CSS fájlt (vagy nem létezik).")
-        except Exception:
-            logger.warning("⚠️ Hiba a PDF CSS fájl betöltése közben.")
-            
-        # 6. WeasyPrint Base URL a statikus fájlokhoz (Képek, CSS)
-        # Ez biztosítja, hogy a sablonban lévő relatív útvonalak feloldhatók legyenek
-        base_url_for_weasyprint = urljoin('file:///', str(settings.BASE_DIR))
-
-
-        # 7. PDF generálása Helyi /tmp fájlba WeasyPrinttel
+        # PDF mentési útvonal
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         pdf_filename = f"job_{job.id}_{job.job_type.lower()}_report_{timestamp}.pdf"
         temp_pdf_path = os.path.join("/tmp", pdf_filename)
         
-        logger.info(f"💾 PDF generálása a /tmp-be: {temp_pdf_path}")
+        # Base URL a képeknek
+        base_url = urljoin('file:///', str(settings.BASE_DIR) + '/')
+
+        # WeasyPrint futtatása
+        HTML(string=html_content, base_url=base_url).write_pdf(temp_pdf_path)
         
-        if css:
-            HTML(string=html_content, base_url=base_url_for_weasyprint).write_pdf(temp_pdf_path, stylesheets=[css])
-        else:
-            HTML(string=html_content, base_url=base_url_for_weasyprint).write_pdf(temp_pdf_path)
-        
-        
-        # 8. Feltöltés a default_storage-ba (GCS)
+        # Mentés GCS-re
         target_path = f"jobs/{job.id}/reports/{pdf_filename}"
-        
-        logger.info(f"⬆️ PDF feltöltése GCS-re: {target_path}")
-        
-        with open(temp_pdf_path, 'rb') as pdf_file:
-            # A default_storage.save() feltölti a GCS-re
-            path_in_storage = default_storage.save(target_path, pdf_file)
+        with open(temp_pdf_path, 'rb') as f:
+            path_in_storage = default_storage.save(target_path, f)
             
-        # default_storage.url() -> visszaadja a teljes GCS URL-t
         pdf_url = default_storage.url(path_in_storage)
-        logger.info(f"✅ PDF feltöltve GCS-re: {pdf_url}")
-        
-        # 9. Tisztítás
         os.remove(temp_pdf_path)
         
         return pdf_url
         
     except Exception as e:
-        logger.error(f"❌ PDF generálás/feltöltés kritikus hiba: {e}", exc_info=True)
+        logger.error(f"❌ PDF hiba: {str(e)}", exc_info=True)
         return None

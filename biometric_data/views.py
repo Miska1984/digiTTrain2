@@ -33,12 +33,9 @@ ditta_service = DittaCoachService()
 @login_required
 def morning_check(request):
     today = date.today()
-    
-    # Lekérdezzük a mai bejegyzéseket
     weight_instance = WeightData.objects.filter(user=request.user, workout_date=today).first()
     hrv_instance = HRVandSleepData.objects.filter(user=request.user, recorded_at=today).first()
 
-    # Cím és üzenet beállítása
     if weight_instance or hrv_instance:
         title = 'Reggeli Mérések Módosítása'
         action_message = 'módosítva'
@@ -56,17 +53,25 @@ def morning_check(request):
 
             if is_weight_filled or is_hrv_filled:
                 if is_weight_filled:
-                    weight_data = weight_form.save(commit=False)
-                    weight_data.user = request.user
-                    weight_data.save()
+                    w_data = weight_form.save(commit=False)
+                    w_data.user = request.user
+                    w_data.save()
                 
                 if is_hrv_filled:
-                    hrv_data = hrv_form.save(commit=False)
-                    hrv_data.user = request.user
-                    hrv_data.save()
+                    h_data = hrv_form.save(commit=False)
+                    h_data.user = request.user
+                    h_data.save()
                 
-                messages.success(request, f'A reggeli adatok sikeresen {action_message} lettek!')
-                return redirect('core:main_page')
+                # --- DITTA ANALÍZIS A MENTÉS UTÁN ---
+                analysis_query = "Most rögzítettem ezeket: "
+                if is_weight_filled: analysis_query += f"Súly: {weight_form.cleaned_data['morning_weight']} kg. "
+                if is_hrv_filled: analysis_query += f"HRV: {hrv_form.cleaned_data['hrv']}, Alvás: {hrv_form.cleaned_data['sleep_quality']}/10."
+                
+                # Kérünk egy azonnali reakciót Dittától
+                ditta_feedback = ditta_service.get_ditta_response(request.user, 'biometrics_morning_check', analysis_query)
+                messages.success(request, ditta_feedback) # Ditta válasza megy a success üzenetbe!
+                
+                return redirect('biometric_data:athlete_dashboard') # Dashboardra vigyük, ott látja a grafikonokat is
             else:
                 messages.error(request, 'Kérlek tölts ki legalább egy mezőt!')
 
@@ -74,17 +79,16 @@ def morning_check(request):
         weight_form = MorningWeightDataForm(instance=weight_instance)
         hrv_form = HRVandSleepDataForm(instance=hrv_instance)
     
+    # Alap üzenet, ha csak megnyitja az oldalt
     app_context = 'biometrics_morning_check'
-    check_query = "Most rögzítettem a reggeli adataimat. Mi a véleményed róluk?" if request.method == 'POST' else None
-    
-    welcome_message = ditta_service.get_ditta_response(request.user, app_context, check_query)
+    welcome_message = ditta_service.get_ditta_response(request.user, app_context)
 
     context = {
         'weight_form': weight_form,
         'hrv_form': hrv_form,
         'title': title,
         'app_context': app_context,
-        'welcome_message': welcome_message,
+        'welcome_message': welcome_message, # Ez jelenik meg a robot ikon mellett
     }
     return render(request, 'biometric_data/morning_check.html', context)
 

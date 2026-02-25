@@ -1,118 +1,71 @@
-<div class="report-section">
-  <h2 class="section-title">🧍‍♀️ Testtartás Elemzés (Posture Assessment)</h2>
+<div class="report-container">
+    <div class="header-section">
+        <h1 class="text-primary">Testtartás Elemzési Riport</h1>
+        <div class="athlete-info">
+            <p><strong>Sportoló neve:</strong> {{ full_name }}</p>
+            <p><strong>Mérés dátuma:</strong> {{ date }}</p>
+        </div>
+    </div>
 
-  <table class="metrics-table">
-    <thead>
-      <tr>
-        <th>Mérési paraméter</th>
-        <th>Átlagos érték</th>
-        <th>Maximális érték</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Válldőlés (Laterális)</td>
-        <td>{{ analysis.metrics.average_shoulder_tilt|default:"–" }}°</td>
-        <td>{{ analysis.metrics.max_shoulder_tilt|default:"–" }}°</td>
-      </tr>
-      <tr>
-        <td>Csípődőlés (Laterális)</td>
-        <td>{{ analysis.metrics.average_hip_tilt|default:"–" }}°</td>
-        <td>{{ analysis.metrics.max_hip_tilt|default:"–" }}°</td>
-      </tr>
-      <tr>
-        <td>**Sagittális egyensúly (AP Proxy)**</td>
-        <td>{{ analysis.metrics.average_ap_proxy|default:"–" }} (arány)</td> 
-        <td>{{ analysis.metrics.max_ap_proxy|default:"–" }} (arány)</td> 
-      </tr>
-      <tr>
-        <td>**Laterális eltolódás (Lateral Shift)**</td>
-        <td>{{ analysis.metrics.average_lateral_shift|default:"–" }} (arány)</td> 
-        <td>{{ analysis.metrics.max_lateral_shift|default:"–" }} (arány)</td> 
-      </tr>
-      <tr class="highlight-row">
-        <td>**Összesített testtartás pontszám**</td>
-        <td colspan="2">**{{ analysis.metrics.posture_score|default:"–" }}%**</td>
-      </tr>
-    </tbody>
-  </table>
+   <div class="score-box text-center" style="background: #f0f7ff; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 2px solid #0d6efd;">
+        <h2 style="margin: 0; color: #003366; font-size: 18px;">POSTURE SCORE</h2>
+        <div style="font-size: 64px; font-weight: bold; color: #0d6efd; margin: 10px 0;">
+            {# Az új, közvetlen változót használjuk #}
+            {{ posture_score|default:"--" }}
+        </div>
+        <p style="margin: 0; color: #666; font-size: 12px;">Computer Vision alapú statikus aszimmetria vizsgálat</p>
+    </div>
 
-  <div class="snapshot-container">
-    {% if analysis.shoulder_snapshot_url %}
-      <div class="snapshot">
-        <h4>Váll dőlés pillanatkép</h4>
-        <img src="{{ analysis.shoulder_snapshot_url }}" alt="Váll pillanatkép" class="snapshot-img" />
-      </div>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+        <thead>
+            <tr style="background-color: #343a40; color: white;">
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Paraméter</th>
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: center;">Mért érték</th>
+                <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Diagnózis</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Váll dőlésszöge</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">{{ analysis.metrics.average_shoulder_tilt }}°</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">{% if analysis.metrics.average_shoulder_tilt > 3 %}Aszimmetria észlelhető{% else %}Optimális{% endif %}</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Medence dőlése</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">{{ analysis.metrics.average_hip_tilt }}°</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">Végtaghossz vagy medence csavarodás jele.</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Súlypont eltolódás</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">{{ analysis.metrics.average_lateral_shift|floatformat:2 }}</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">Oldalirányú terhelés dominanciája.</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="display: flex; margin-top: 30px; gap: 20px;">
+        {% if analysis.metrics.shoulder_snapshot_url or analysis.shoulder_snapshot_url %}
+        <div style="flex: 1; text-align: center;">
+            <p style="font-weight: bold; font-size: 12px;">Váll aszimmetria snapshot</p>
+            <img src="{{ analysis.shoulder_snapshot_url|default:analysis.metrics.shoulder_snapshot_url }}" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        {% endif %}
+        {% if analysis.metrics.hip_snapshot_url or analysis.hip_snapshot_url %}
+        <div style="flex: 1; text-align: center;">
+            <p style="font-weight: bold; font-size: 12px;">Csípő aszimmetria snapshot</p>
+            <img src="{{ analysis.hip_snapshot_url|default:analysis.metrics.hip_snapshot_url }}" style="width: 100%; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        {% endif %}
+    </div>
+
+    {% if analysis.feedback %}
+    <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-left: 5px solid #ffc107;">
+        <h5 style="margin-top: 0;">Ditta szakmai javaslatai:</h5>
+        <ul style="margin-bottom: 0;">
+            {% for msg in analysis.feedback %}
+                <li>{{ msg }}</li>
+            {% endfor %}
+        </ul>
+    </div>
     {% endif %}
-    {% if analysis.hip_snapshot_url %}
-      <div class="snapshot">
-        <h4>Csípő dőlés pillanatkép</h4>
-        <img src="{{ analysis.hip_snapshot_url }}" alt="Csípő pillanatkép" class="snapshot-img" />
-      </div>
-    {% endif %}
-  </div>
-
-  {% if analysis.feedback %}
-  <div class="feedback-section">
-    <h3>📝 Megjegyzések és javaslatok</h3>
-    <ul>
-      {% for msg in analysis.feedback %}
-        <li>{{ msg }}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  {% endif %}
 </div>
-
-<style>
-  .report-section {
-    margin-top: 20px;
-    padding: 15px;
-    background: #f9f9f9;
-    border-radius: 12px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-  }
-  .section-title {
-    color: #333;
-    font-size: 20px;
-    margin-bottom: 15px;
-    border-left: 4px solid #0066cc;
-    padding-left: 8px;
-  }
-  .metrics-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 20px;
-  }
-  .metrics-table th, .metrics-table td {
-    border: 1px solid #ddd;
-    padding: 8px 10px;
-    text-align: center;
-  }
-  .metrics-table th {
-    background-color: #eaf3ff;
-    color: #333;
-  }
-  .highlight-row {
-    background-color: #dff0d8;
-  }
-  .snapshot-container {
-    display: flex;
-    gap: 20px;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-  }
-  .snapshot {
-    text-align: center;
-    flex: 1 1 45%;
-  }
-  .snapshot-img {
-    max-width: 100%;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-  }
-  .feedback-section ul {
-    list-style: disc;
-    padding-left: 20px;
-  }
-</style>
